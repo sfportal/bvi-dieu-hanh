@@ -618,6 +618,55 @@ function render(){
 }
 
 /* ---------- overview ---------- */
+/* ---------- việc hôm nay + cảnh báo việc im lặng ---------- */
+const SILENT_DAYS=3;
+function tTouch(t){ return dOf(t.updatedAt)||dOf(t.createdAt)||todayStr(); }
+function tOpenKids(id){ return Object.values(S.tasks).some(x=>x.parent===id&&x.status!=="done"); }
+function tSilent(t){ if(t.status==="done"||t.kind==="epic") return false; const idle=diffDays(todayStr(),tTouch(t)); return idle>=SILENT_DAYS&&(t.status==="doing"||tLate(t)||(t.due&&diffDays(t.due,todayStr())<=7)); }
+function myOpen(pid){ return Object.entries(S.tasks).filter(([id,t])=>t.kind!=="epic"&&t.status!=="done"&&t.R===pid&&!tOpenKids(id)).sort((a,b)=>(tLate(b[1])?1:0)-(tLate(a[1])?1:0)||prRank(a[1])-prRank(b[1])||(a[1].due||"9").localeCompare(b[1].due||"9")); }
+function workdaysBack(n){ const out=[]; let d=addDays(todayStr(),-1); while(out.length<n){ if(new Date(d+"T00:00:00").getDay()!==0) out.push(d); d=addDays(d,-1); } return out; }
+function isReporter(pid){ const p=S.people[pid]; return p&&p.team!=="thuengoai"&&p.team!=="lead"&&p.active!==false; }
+function todayPanel(){ if(!me||!S.people[me]) return '';
+  const L=myOpen(me), top=L.slice(0,3), sil=L.filter(([,t])=>tSilent(t)), late=L.filter(([,t])=>tLate(t)).length, rep=S.daily[todayStr()+"_"+me], hr=new Date().getHours();
+  const row=([id,t],i)=>'<div class="trow" style="padding-inline:0"><span class="t"><span class="pill" style="min-width:22px;justify-content:center">'+(i+1)+'</span><input type="checkbox" aria-label="Xong" data-tdone="'+id+'"><button class="btn sm" style="border:0;padding:0;background:none;text-align:left;font-weight:600" data-otask="'+id+'"><span class="tt">'+esc(t.title)+'</span></button>'+(t.zone&&S.zones[t.zone]?'<span class="pill">'+esc(zShort(S.zones[t.zone].name))+'</span>':'')+'</span><span class="row">'+prBadge(t)+(t.due?'<span class="sub mono">'+dm(t.due)+'</span>':'')+(t.status==="doing"?stBadge(t):'<button class="btn sm" data-tdoing="'+id+'">Bắt đầu</button>')+'</span></div>';
+  let h='<div class="panel" style="margin-top:12px;border-left:4px solid var(--brand)"><div class="row between"><h2>Việc của '+esc(pname(me))+' hôm nay</h2><span class="row" style="gap:6px">'+(late?'<span class="pill bad">'+late+' quá hạn</span>':'')+'<span class="pill">'+L.length+' việc đang mở</span></span></div>';
+  h+=top.length?'<div class="sub" style="margin:2px 0 4px">Làm theo thứ tự 1 → 3. Xong việc nào tick ngay việc đó.</div>'+top.map(row).join(""):'<div class="sub">Bạn chưa có việc nào đang mở.</div>';
+  if(L.length>3) h+='<div class="sub" style="margin-top:4px">Còn '+(L.length-3)+' việc khác ở trang <a href="#cong-viec">Công việc</a>.</div>';
+  if(sil.length) h+='<div class="alert warn" style="margin-top:8px">'+sil.length+' việc của bạn đã '+SILENT_DAYS+' ngày trở lên chưa cập nhật: '+sil.slice(0,4).map(([id,t])=>'<a href="#" data-otask="'+id+'">'+esc(t.title.slice(0,50))+'</a>').join(", ")+(sil.length>4?'…':'')+'. Mở việc, ghi tiến độ hoặc đổi trạng thái.</div>';
+  if(!L.length&&!isReporter(me)) return '';
+  return h+'</div>'; }
+function teamWatchData(){ const days=workdaysBack(6), t0=todayStr();
+  return Object.entries(S.people).filter(([k])=>isReporter(k)).map(([k,p])=>{ const L=myOpen(k); return {k,p,open:L.length,late:L.filter(([,t])=>tLate(t)),sil:L.filter(([,t])=>tSilent(t)),rep:!!S.daily[t0+"_"+k],miss:days.filter(d=>!S.daily[d+"_"+k]&&!Object.values(S.leaves).some(l=>l.person===k&&leaveOn(l,d)&&l.status!=="rejected")).length,doneWk:Object.values(S.tasks).filter(t=>t.R===k&&t.status==="done"&&tDone(t)>=addDays(t0,-6)).length}; })
+    .sort((a,b)=>(b.late.length+b.sil.length+b.miss)-(a.late.length+a.sil.length+a.miss)); }
+function teamWatch(){ if(!canManage()) return ''; const R=teamWatchData(); if(!R.length) return '';
+  const bad=R.filter(r=>r.late.length||r.sil.length||r.miss>=2).length;
+  return '<div class="panel" style="margin-top:12px"><div class="row between"><h2>Theo dõi cập nhật của đội</h2><span class="pill '+(bad?"warn":"good")+'">'+(bad?bad+' người cần nhắc':'Mọi người đều cập nhật đều')+'</span></div><div class="tw"><table><thead><tr><th>Người</th><th class="n">Đang mở</th><th class="n">Quá hạn</th><th class="n">Im lặng ≥'+SILENT_DAYS+' ngày</th><th class="n">Xong 7 ngày</th><th>Báo cáo hôm nay</th><th class="n">Thiếu báo cáo (6 ngày làm việc)</th></tr></thead><tbody>'
+    +R.map(r=>'<tr data-watch="'+r.k+'" style="cursor:pointer"><td><b>'+esc(r.p.name)+'</b></td><td class="n">'+r.open+'</td><td class="n">'+(r.late.length?'<span class="pill bad">'+r.late.length+'</span>':'0')+'</td><td class="n">'+(r.sil.length?'<span class="pill warn">'+r.sil.length+'</span>':'0')+'</td><td class="n">'+r.doneWk+'</td><td>'+(r.rep?'<span class="pill good">Đã gửi</span>':'<span class="pill">Chưa</span>')+'</td><td class="n">'+(r.miss>=2?'<span class="pill bad">'+r.miss+'</span>':r.miss)+'</td></tr>').join("")+'</tbody></table></div><div class="sub">Im lặng: việc đang làm, sắp đến hạn hoặc quá hạn mà '+SILENT_DAYS+' ngày chưa ai cập nhật. Bấm vào tên để xem chi tiết và nhắc.</div></div>'; }
+function openWatch(k){ const r=teamWatchData().find(x=>x.k===k); if(!r) return; ui.drawer=()=>openWatch(k);
+  const li=(arr,why)=>arr.map(([id,t])=>'<div class="trow" style="padding-inline:0"><span class="t"><button class="btn sm" style="border:0;padding:0;background:none;text-align:left" data-otask="'+id+'"><span class="tt">'+esc(t.title)+'</span></button></span><span class="row"><span class="sub">'+why(t)+'</span></span></div>').join("");
+  const reps=workdaysBack(6).map(d=>'<span class="pill '+(S.daily[d+"_"+k]?"good":"")+'">'+dm(d)+'</span>').join("");
+  const msg="Chào "+r.p.name+", em cập nhật giúp anh/chị: "+[r.late.length?r.late.length+" việc quá hạn":"",r.sil.length?r.sil.length+" việc "+SILENT_DAYS+" ngày chưa cập nhật":"",!r.rep?"báo cáo cuối ngày hôm nay":""].filter(Boolean).join(", ")+". Mở web BVI Điều hành, mục Tổng quan có sẵn danh sách.";
+  showDrawer('<div class="dh"><div><h2>'+esc(r.p.name)+'</h2><div class="sub">'+r.open+' việc đang mở · '+r.doneWk+' việc xong trong 7 ngày</div></div><button class="btn sm" data-close>Đóng</button></div><div class="db">'
+    +'<div class="panel"><h2>Báo cáo 6 ngày làm việc gần nhất</h2><div class="row" style="flex-wrap:wrap;gap:4px">'+reps+'</div></div>'
+    +'<div class="panel"><h2>Quá hạn ('+r.late.length+')</h2>'+(li(r.late,t=>"Hạn "+dm(t.due))||'<div class="sub">Không có.</div>')+'</div>'
+    +'<div class="panel"><h2>Im lặng ≥'+SILENT_DAYS+' ngày ('+r.sil.length+')</h2>'+(li(r.sil,t=>diffDays(todayStr(),tTouch(t))+" ngày chưa cập nhật")||'<div class="sub">Không có.</div>')+'</div>'
+    +'<div class="panel"><h2>Tin nhắc nhanh</h2><textarea id="wmsg" rows="3" style="width:100%">'+esc(msg)+'</textarea><button class="btn sm" id="wcopy" style="margin-top:6px">Sao chép để gửi Zalo</button></div></div>');
+  $("#wcopy").addEventListener("click",()=>{ navigator.clipboard?.writeText($("#wmsg").value).then(()=>toast("Đã sao chép"),()=>toast("Chọn và sao chép thủ công")); });
+  bindTaskLinks($("#layer")); }
+function bindTaskLinks(A){
+  A.querySelectorAll("[data-otask]").forEach(b=>b.addEventListener("click",e=>{ e.preventDefault(); openTask(b.dataset.otask); }));
+  A.querySelectorAll("[data-tdone]").forEach(c=>c.addEventListener("change",async()=>{ if(await upd("tasks",c.dataset.tdone,{status:c.checked?"done":"doing",doneAt:c.checked?new Date().toISOString():null,...stamp()})) toast(c.checked?"Đã xong, sẽ tự vào báo cáo cuối ngày":"Đã mở lại"); }));
+  A.querySelectorAll("[data-tdoing]").forEach(b=>b.addEventListener("click",async()=>{ if(await upd("tasks",b.dataset.tdoing,{status:"doing",...stamp()})) toast("Đã chuyển sang Đang làm"); }));
+  A.querySelectorAll("[data-watch]").forEach(r=>r.addEventListener("click",()=>openWatch(r.dataset.watch)));
+}
+function quickPrefill(){ const t0=todayStr();
+  const done=Object.entries(S.tasks).filter(([id,t])=>t.kind!=="epic"&&t.R===me&&t.status==="done"&&tDone(t)===t0).map(([,t])=>t).map(t=>"• "+t.title);
+  const doing=Object.entries(S.tasks).filter(([id,t])=>t.kind!=="epic"&&!tOpenKids(id)&&t.R===me&&t.status==="doing"&&dOf(t.updatedAt)===t0).map(([,t])=>t).map(t=>"• Đang làm: "+t.title);
+  const next=myOpen(me).slice(0,3).map(([,t])=>"• "+t.title+(t.due?" (hạn "+dm(t.due)+")":""));
+  const late=myOpen(me).filter(([,t])=>tLate(t)).map(([,t])=>"• Quá hạn: "+t.title+" (hạn "+dm(t.due)+"). Lý do: ");
+  return {done:[...done,...doing].join("\n"),next:next.join("\n"),block:late.slice(0,3).join("\n")}; }
+function maybeNudge(){ try{ if(!me||!isReporter(me)||S.daily[todayStr()+"_"+me]||ui.drawer) return; if(new Date().getHours()<17) return; const k="bvi_nudge_"+todayStr()+"_"+me; if(localStorage.getItem(k)) return; localStorage.setItem(k,"1"); setTimeout(()=>{ if(!S.daily[todayStr()+"_"+me]&&!ui.drawer) openQuick(); },800); }catch(e){} }
+
 function vOverview(){
   const zs=focusZones().map(([id,z])=>({id,z,s:zstatus(z)}));
   if(!activeZones().length) return '<div class="empty">Chưa có vùng nào. Quản trị nạp danh sách vùng từ FarmBase để bắt đầu.</div>';
@@ -627,6 +676,7 @@ function vOverview(){
   const g={A:0,B:0,C:0}; zs.forEach(x=>g[grp(x.z)]++);
   let h='<div class="row between"><div><h1>Tổng quan</h1><div class="sub">Hôm nay '+dmy(todayStr())+' · '+zs.length+' vùng '+(ui.focus?'ưu tiên 1–2':'đang theo dõi')+' · cập nhật trực tiếp</div></div>'+focusBar()+'</div>'+(()=>{ const t=todayStr(); const off=Object.values(S.leaves).filter(l=>leaveOn(l,t)&&l.status!=="pending"&&l.status!=="rejected"); const pend=Object.values(S.leaves).filter(l=>(l.status||"pending")==="pending").length; return (off.length||(pend&&canManage()))?'<div class="row" style="margin-top:8px">'+(off.length?'<span class="pill">Hôm nay nghỉ: '+off.map(l=>esc(pname(l.person))+(l.type==="early"?" (về sớm "+esc(l.time||"")+")":"")).join(", ")+'</span>':'')+(pend&&canManage()?'<a class="pill warn" href="#nhan-su">'+pend+' đơn nghỉ chờ duyệt</a>':'')+'</div>':''; })()+(me?quickBar():'<div class="alert" style="margin-top:8px">Chọn tên của bạn ở góc trên để thấy việc của mình và gửi báo cáo nhanh.</div>');
   { const sp=spMine().length; if(sp) h+='<div class="row" style="margin-top:8px"><a class="pill warn" href="#ho-tro">'+sp+' yêu cầu hỗ trợ đang chờ bạn</a></div>'; }
+  h+=todayPanel()+teamWatch();
   { const fp=faqPending().length; if(fp&&canManage()) h+='<div class="row" style="margin-top:8px"><a class="pill warn" href="#faq">'+fp+' FAQ chờ duyệt</a></div>'; }
   h+='<div class="grid kpis" style="margin-top:12px">'
    +tile("Tổng vùng",zs.length,fmtHa(ha)+" ha","","")
@@ -1158,12 +1208,12 @@ function openLeave(){
     Object.assign(d,{person:me,reason,handover:$("#lh").value.trim(),status:"pending",createdAt:new Date().toISOString()});
     if(await put("leaves","l"+uid(),d)){ toast("Đã gửi đơn, chờ duyệt"); closeDrawer(); } });
 }
-function quickBar(){ const r=S.daily[todayStr()+"_"+me]; return '<div class="qr"><div><b>Báo cáo nhanh hôm nay</b><div class="sub">'+(r?'Đã gửi lúc '+(r.at||"").slice(11,16)+'. Có thể sửa đến hết ngày.':'Ba câu: hoàn thành gì, vướng gì, dự kiến hoàn thiện gì.')+'</div></div><button class="btn '+(r?'':'pri')+'" data-quick>'+(r?'Sửa báo cáo':'Gửi báo cáo nhanh')+'</button></div>'; }
+function quickBar(){ const r=S.daily[todayStr()+"_"+me], late=!r&&new Date().getHours()>=16&&isReporter(me); return '<div class="qr"'+(late?' style="border-color:var(--bad)"':'')+'><div><b>Báo cáo cuối ngày</b><div class="sub">'+(r?'Đã gửi lúc '+(r.at||"").slice(11,16)+'. Có thể sửa đến hết ngày.':late?'<b style="color:var(--bad)">Bạn chưa gửi báo cáo hôm nay.</b> Đã điền sẵn từ việc bạn tick, chỉ cần sửa và gửi.':'Ba câu: hoàn thành gì, vướng gì, dự kiến làm gì. Hệ thống điền sẵn từ việc bạn tick.')+'</div></div><button class="btn '+(r?'':'pri')+'" data-quick>'+(r?'Sửa báo cáo':'Gửi báo cáo nhanh')+'</button></div>'; }
 function openQuick(){
   if(!me){ toast("Chọn tên của bạn ở góc trên trước"); return; }
-  const r=S.daily[todayStr()+"_"+me]||{};
+  const r0=S.daily[todayStr()+"_"+me]; const pf=r0?{}:quickPrefill(); const r=r0||pf;
   ui.drawer=null;
-  showDrawer('<div class="dh"><div><h2>Báo cáo nhanh '+dmy(todayStr())+'</h2><div class="sub">'+esc(pname(me))+'</div></div><button class="btn sm" data-close>Đóng</button></div><form class="db" id="qform">'
+  showDrawer('<div class="dh"><div><h2>Báo cáo nhanh '+dmy(todayStr())+'</h2><div class="sub">'+esc(pname(me))+'</div></div><button class="btn sm" data-close>Đóng</button></div><form class="db" id="qform">'+(!r0&&(pf.done||pf.next)?'<div class="alert" style="margin-bottom:8px">Đã điền sẵn từ việc bạn tick xong và 3 việc ưu tiên tiếp theo. Sửa lại cho đúng rồi gửi.</div>':'')
     +'<div class="f"><label for="q1">Hôm nay hoàn thành gì?</label><textarea id="q1" rows="3" placeholder="Ví dụ: Khảo sát xong 12 lô vùng Cuôr Đăng; nộp DVC vùng Sình Thời">'+esc(r.done||"")+'</textarea></div>'
     +'<div class="f"><label for="q2">Đang vướng gì? Cần ai gỡ?</label><textarea id="q2" rows="2" placeholder="Để trống nếu không vướng">'+esc(r.block||"")+'</textarea></div>'
     +'<div class="f"><label for="q3">Dự kiến hoàn thiện gì, khi nào?</label><textarea id="q3" rows="2" placeholder="Ví dụ: 06/11 xong thu giấy tờ 8 hộ còn thiếu">'+esc(r.next||"")+'</textarea></div>'
@@ -1972,6 +2022,7 @@ function bindView(){
     $("#dday")?.addEventListener("change",e=>{ui.dday=e.target.value;render();});
   }
   A.querySelectorAll("[data-quick]").forEach(b=>b.addEventListener("click",openQuick));
+  if(ui.view==="tong-quan"){ bindTaskLinks(A); maybeNudge(); }
   A.querySelectorAll("[data-newleave]").forEach(b=>b.addEventListener("click",openLeave));
   A.querySelectorAll("[data-ldec]").forEach(b=>b.addEventListener("click",async()=>{ if(!canManage()) return; const [lid,st]=b.dataset.ldec.split("|"); if(await upd("leaves",lid,{status:st,decidedBy:me||"",decidedAt:new Date().toISOString()})) toast(LST[st]); }));
   A.querySelectorAll("[data-ldel]").forEach(b=>b.addEventListener("click",async()=>{ if(b.dataset.c!=="1"){b.dataset.c="1";b.textContent="Bấm lần nữa để rút";return;} if(await del("leaves",b.dataset.ldel)) toast("Đã rút đơn"); }));
