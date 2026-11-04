@@ -28,7 +28,7 @@ R('''(pm.paid?'<span class="pill good">Đã thu</span>':ok?''','''(pm.paid&&canF
 R('ui.view=VIEWS.some(v=>v[0]===h)||h==="khach"?h:"tong-quan";','ui.view=VIEWS.some(v=>v[0]===h)||h==="khach"||h==="tai-khoan"?h:"tong-quan";')
 R('  else if(v==="thong-ke") el.innerHTML=vStats();','  else if(v==="thong-ke") el.innerHTML=vStats();\n  else if(v==="tai-khoan") el.innerHTML=vAccounts();')
 R('  if(ui.view==="thong-ke") bindStats(A);','''  if(ui.view==="thong-ke") bindStats(A);
-  if(ui.view==="tai-khoan"){ $("#accAdd")?.addEventListener("click",()=>openAcc(null)); A.querySelectorAll("[data-acc]").forEach(r=>r.addEventListener("click",()=>openAcc(r.dataset.acc))); $("#impJson")?.addEventListener("change",e=>{ const f=e.target.files[0]; e.target.value=""; if(f) importJson(f); }); }''')
+  if(ui.view==="tai-khoan"){ $("#accAdd")?.addEventListener("click",()=>openAcc(null)); $("#accBulk")?.addEventListener("click",openBulk); A.querySelectorAll("[data-acc]").forEach(r=>r.addEventListener("click",()=>openAcc(r.dataset.acc))); $("#impJson")?.addEventListener("change",e=>{ const f=e.target.files[0]; e.target.value=""; if(f) importJson(f); }); }''')
 # texts that referenced claude.ai
 s=s.replace('Hãy mở trang khi đã đăng nhập claude.ai; nếu vẫn vậy, tải lại trang.','Tải lại trang.')
 R('Bạn chưa có quyền tải tệp lên trang này. Nhờ quản lý cấp quyền Contributor trở lên.','Tài khoản chỉ xem không tải tệp lên được.')

@@ -114,7 +114,7 @@ async function loadAcc(){ const r=await callAdmin({action:"list"}); if(r.error){
 function vAccounts(){
   if(!isOwner()) return '<div class="alert bad">Chỉ owner quản lý tài khoản.</div>';
   if(ACC===null){ loadAcc(); return '<div class="empty">Đang tải danh sách tài khoản…</div>'; }
-  let h='<div class="row between"><div><h1>Tài khoản, phân quyền</h1><div class="sub">'+ACC.length+' tài khoản. Owner: toàn quyền, cấp tài khoản. Quản lý: sửa mọi dữ liệu, duyệt phép, FAQ. Nhân viên: ghi việc, vùng, lịch, báo cáo. Chỉ xem: không sửa. Tài chính bật riêng từng người.</div></div><button class="btn pri" id="accAdd">Thêm tài khoản</button></div>';
+  let h='<div class="row between"><div><h1>Tài khoản, phân quyền</h1><div class="sub">'+ACC.length+' tài khoản. Owner: toàn quyền, cấp tài khoản. Quản lý: sửa mọi dữ liệu, duyệt phép, FAQ. Nhân viên: ghi việc, vùng, lịch, báo cáo. Chỉ xem: không sửa. Tài chính bật riêng từng người.</div></div><div class="row"><button class="btn" id="accBulk">Tạo tài khoản cho nhân sự</button><button class="btn pri" id="accAdd">Thêm tài khoản</button></div></div>';
   h+='<div class="tw panel" style="margin-top:12px"><table><thead><tr><th>Tài khoản</th><th>Nhân sự</th><th>Vai trò</th><th>Tài chính</th><th>Trạng thái</th><th>Đăng nhập gần nhất</th></tr></thead><tbody>'
    +ACC.map(u=>'<tr data-acc="'+u.id+'" style="cursor:pointer"><td><b>'+esc(u.name||"")+'</b><div class="sub">'+esc(u.email)+'</div></td><td>'+esc(pname(u.person_id)||"—")+'</td><td>'+ROLE_L[u.role]+'</td><td>'+(u.role==="owner"||u.can_finance?'<span class="pill good">Được xem</span>':'<span class="pill">Không</span>')+'</td><td>'+(u.active?(u.must_change_pw?'<span class="pill warn">Chờ đổi mật khẩu</span>':'<span class="pill good">Hoạt động</span>'):'<span class="pill bad">Đã khóa</span>')+'</td><td class="sub">'+(u.last_sign_in_at?dmy(u.last_sign_in_at.slice(0,10)):"Chưa")+'</td></tr>').join("")+'</tbody></table></div>';
   h+='<div class="panel" style="margin-top:12px"><h2>Chuyển dữ liệu từ bản cũ</h2><div class="sub">Ở bản cũ trên Claude, vào Công ty bấm "Xuất toàn bộ dữ liệu (JSON)", rồi chọn file đó ở đây. Bản ghi trùng mã sẽ được ghi đè bằng bản trong file.</div><label class="btn" style="margin-top:8px;cursor:pointer">Chọn file JSON<input type="file" id="impJson" accept=".json,application/json" hidden></label><span class="sub" id="impJmsg" style="margin-left:8px"></span></div>';
@@ -157,3 +157,29 @@ async function importJson(file){
   if(fins.length){ const {error}=await SB.from("contract_fin").upsert(fins); if(error){ m.textContent="Đã ghi dữ liệu, nhưng lỗi phần tài chính: "+error.message; return; } }
   await loadAll(); m.textContent="Đã chuyển "+rows.length+" bản ghi."; render();
 }
+
+function slugName(n){ const w=String(n||"").replace(/^(anh|chị|chi|em|ông|ong|bà|ba|cô|co|chú|chu)\s+/i,"").trim().split(/\s+/).pop()||"user"; return w.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/đ/g,"d").replace(/Đ/g,"D").toLowerCase().replace(/[^a-z0-9]/g,""); }
+function bulkPlan(domain){
+  const taken=new Set((ACC||[]).map(u=>u.email.toLowerCase())); const linked=new Set((ACC||[]).map(u=>u.person_id).filter(Boolean));
+  const ps=Object.entries(S.people).filter(([k,p])=>p.active!==false&&!linked.has(k)).sort((a,b)=>(a[1].order||99)-(b[1].order||99));
+  const cnt={}; return ps.map(([k,p])=>{ const b=slugName(p.name); let n=(cnt[b]||0)+1, em; do{ em=b+(n>1?n:"")+"@"+domain; n++; }while(taken.has(em)); cnt[b]=n-1; taken.add(em);
+    return {pid:k,name:p.name,email:em,role:p.team==="dieuphoi"||p.team==="lead"?"manager":"staff",fin:false,on:true}; }); }
+function openBulk(){
+  const st={domain:"salefronts.com",pw:"123123123",rows:null}; st.rows=bulkPlan(st.domain);
+  const draw=()=>{ showDrawer('<div class="dh"><div><h2>Tạo tài khoản cho nhân sự</h2><div class="sub">Nhân sự chưa có tài khoản. Email = tên gọi không dấu, trùng thì thêm số.</div></div><button class="btn sm" data-close>Đóng</button></div><div class="db">'
+    +'<div class="f2"><div class="f"><label for="bkD">Tên miền email</label><input id="bkD" value="'+esc(st.domain)+'"></div><div class="f"><label for="bkP">Mật khẩu cấp chung (từ 8 ký tự)</label><input id="bkP" value="'+esc(st.pw)+'" autocomplete="off"></div></div><div class="sub" style="margin:4px 0 8px">Ai cũng phải đổi mật khẩu ở lần đăng nhập đầu.</div>'
+    +(st.rows.length?st.rows.map((r,i)=>'<div class="panel" style="margin-bottom:6px;padding:8px 10px"><label class="chk"><input type="checkbox" data-bk="'+i+'"'+(r.on?" checked":"")+'><span><b>'+esc(r.name)+'</b></span></label><div class="row" style="flex-wrap:wrap;gap:6px;margin-top:4px"><input data-bke="'+i+'" value="'+esc(r.email)+'" style="flex:1 1 200px;min-width:0"><select data-bkr="'+i+'">'+["manager","staff","viewer"].map(x=>'<option value="'+x+'"'+(r.role===x?" selected":"")+'>'+ROLE_L[x]+'</option>').join("")+'</select><label class="row" style="gap:4px;font-size:13px"><input type="checkbox" data-bkf="'+i+'"'+(r.fin?" checked":"")+'> Tài chính</label></div><div class="sub" id="bkm'+i+'"></div></div>').join(""):'<div class="sub">Mọi nhân sự đã có tài khoản.</div>')
+    +'<div class="row" style="position:sticky;bottom:0;background:var(--surface);padding:10px 0"><button class="btn pri" id="bkGo"'+(st.rows.some(r=>r.on)?'':' disabled')+'>Tạo '+st.rows.filter(r=>r.on).length+' tài khoản</button><span class="sub" id="bkMsg"></span></div></div>');
+    const L=$("#layer");
+    $("#bkD").addEventListener("change",e=>{ st.domain=e.target.value.trim().replace(/^@/,""); st.rows=bulkPlan(st.domain); draw(); });
+    $("#bkP").addEventListener("input",e=>{ st.pw=e.target.value; });
+    L.querySelectorAll("[data-bk]").forEach(c=>c.addEventListener("change",()=>{ st.rows[+c.dataset.bk].on=c.checked; draw(); }));
+    L.querySelectorAll("[data-bke]").forEach(c=>c.addEventListener("change",()=>{ st.rows[+c.dataset.bke].email=c.value.trim().toLowerCase(); }));
+    L.querySelectorAll("[data-bkr]").forEach(c=>c.addEventListener("change",()=>{ st.rows[+c.dataset.bkr].role=c.value; }));
+    L.querySelectorAll("[data-bkf]").forEach(c=>c.addEventListener("change",()=>{ st.rows[+c.dataset.bkf].fin=c.checked; }));
+    $("#bkGo")?.addEventListener("click",async e=>{ if(st.pw.length<8){ toast("Mật khẩu cần ít nhất 8 ký tự"); return; } e.currentTarget.disabled=true; let ok=0; const todo=st.rows.filter(r=>r.on);
+      for(const r of todo){ const i=st.rows.indexOf(r); $("#bkMsg").textContent="Đang tạo "+(ok+1)+"/"+todo.length+"…";
+        const res=await callAdmin({action:"create",email:r.email,password:st.pw,name:r.name,person_id:r.pid,role:r.role,can_finance:r.fin});
+        $("#bkm"+i).textContent=res.error?("Lỗi: "+(/already/i.test(res.error)?"email đã có tài khoản":res.error)):"✓ Đã tạo"; if(!res.error){ ok++; r.on=false; } }
+      $("#bkMsg").textContent="Đã tạo "+ok+"/"+todo.length+" tài khoản."; await loadAcc(); });
+  }; draw(); }
