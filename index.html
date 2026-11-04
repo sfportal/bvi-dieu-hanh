@@ -245,7 +245,7 @@ const ICONS={"lien-he":'<rect x="4" y="3" width="16" height="18" rx="2"/><circle
 /* ---------- state ---------- */
 const S={zones:{},people:{},tasks:{},contracts:{},daily:{},units:{},events:{},leaves:{},faqs:{},supports:{},contacts:{}};
 let sampleNs=null, mcpNs=null; let assetsNs=null, dlNs=null, userCan=false; let db=null, ready=false, loadedCols=new Set(), me=null, viewerName="";
-const ui={sp:{tab:""},view:"tong-quan",zf:{q:"",prov:"",ward:"",unit:"",grp:"",pri:"",step:"",owner:"",st:"",hidden:false},tf:{mine:false,st:"open",team:"",pr:"",r:""},ct:{q:"",type:""},ch:{type:"burn",ep:"",pr:""},cust:"",open:{}, epicOpen:{}, focus:true, pick:false, ef:{kind:"",when:"up",mine:false}, dday:"", fq:{tab:"ok",q:"",cat:"",aud:""}, st:{p:"week",from:"",to:""}, imp:null};
+const ui={sp:{tab:""},view:"tong-quan",zf:{q:"",prov:"",ward:"",unit:"",grp:"",pri:"",step:"",owner:"",st:"",hidden:false},tf:{mine:false,st:"open",team:"",pr:"",r:""},ct:{q:"",type:""},ch:{type:"wday",ep:"",pr:"",wk:0},cust:"",open:{}, epicOpen:{}, focus:true, pick:false, ef:{kind:"",when:"up",mine:false}, dday:"", fq:{tab:"ok",q:"",cat:"",aud:""}, st:{p:"week",from:"",to:""}, imp:null};
 try{const s=JSON.parse(localStorage.getItem("bvi-ui")||"{}"); if(s.zf)Object.assign(ui.zf,s.zf); if(s.focus===false)ui.focus=false;}catch(e){}
 function saveUi(){try{localStorage.setItem("bvi-ui",JSON.stringify({me,zf:ui.zf,focus:ui.focus}))}catch(e){}}
 
@@ -1820,7 +1820,7 @@ document.addEventListener("click",e=>{ const n=e.target.closest&&e.target.closes
   const o=e.target.closest&&e.target.closest("[data-sp]"); if(o){ e.preventDefault(); openSupport(o.dataset.sp); } });
 
 /* ---------- biểu đồ tiến độ ---------- */
-const CHT={burn:"Việc còn mở theo ngày (thực tế so với kế hoạch)",week:"Việc đến hạn theo tuần",person:"Tiến độ theo người",gantt:"Tiến độ từng epic (dòng thời gian)"};
+const CHT={wday:"Tuần này: tiến độ từng ngày",wperson:"Tuần này: theo người",burn:"Việc còn mở theo ngày (thực tế so với kế hoạch)",week:"Việc đến hạn theo tuần",person:"Tiến độ theo người",gantt:"Tiến độ từng epic (dòng thời gian)"};
 function chScope(){ const c=ui.ch; const inEp=id=>{ let x=S.tasks[id], g=0; while(x&&g++<6){ if(x.kind==="epic") return x; x=S.tasks[x.parent]; } return null; };
   return Object.entries(S.tasks).filter(([id,t])=>t.kind!=="epic").filter(([id,t])=>{ if(c.ep){ const e=inEp(id); if(!e||e!==S.tasks[c.ep]) return false; } if(c.pr==="1"&&t.prio!=="1") return false; if(c.pr==="12"&&!t.prio) return false; return true; }); }
 const dOf=x=>(x||"").slice(0,10);
@@ -1867,16 +1867,46 @@ function chGantt(){ const t0=todayStr(); const E=Object.entries(S.tasks).filter(
     g+='<rect x="'+x1+'" y="'+y+'" width="'+(x2-x1)+'" height="18" rx="4" fill="var(--chip)" stroke="var(--line)"/><rect x="'+x1+'" y="'+y+'" width="'+((x2-x1)*r.p)+'" height="18" rx="4" fill="'+(late?"var(--bad)":behind?"var(--warn)":"var(--good)")+'"/><text x="'+(x2+4)+'" y="'+(y+13)+'" fill="var(--muted)">'+Math.round(r.p*100)+'%</text>'; });
   if(t0>=a0&&t0<=b0) g+='<line x1="'+X(t0)+'" x2="'+X(t0)+'" y1="0" y2="'+(H-20)+'" stroke="var(--info)" stroke-width="2" stroke-dasharray="4 3"/>';
   return '<div style="overflow-x:auto"><div style="min-width:620px">'+svgWrap(W,H,g)+'</div></div><div class="legend"><span><i class="sw" style="background:var(--good)"></i>Kịp tiến độ</span><span><i class="sw" style="background:var(--warn)"></i>Chậm hơn thời gian đã trôi qua</span><span><i class="sw" style="background:var(--bad)"></i>Quá hạn</span><span><i class="sw" style="background:var(--info)"></i>Hôm nay</span></div><div class="sub">Thanh chạy từ ngày tạo việc đầu tiên đến hạn epic; phần tô màu là % việc đã xong.</div>'; }
+function wkStart(d){ const x=new Date(d+"T00:00:00"); return addDays(d,-((x.getDay()+6)%7)); }
+function wkRange(){ const a=addDays(wkStart(todayStr()),7*(+ui.ch.wk||0)); return {a,b:addDays(a,6),days:[0,1,2,3,4,5,6].map(i=>addDays(a,i))}; }
+function wkData(L){ const {a,b}=wkRange(); const leaf=L.filter(([id])=>!tKids(id).length);
+  const due=leaf.filter(([,t])=>t.due&&t.due>=a&&t.due<=b), fin=leaf.filter(([,t])=>{ const d=tDone(t); return d&&d>=a&&d<=b; });
+  const carry=leaf.filter(([,t])=>t.status!=="done"&&t.due&&t.due<a); return {a,b,due,fin,carry}; }
+const WDN=["T2","T3","T4","T5","T6","T7","CN"];
+function wkHead(W){ const {a,b,due,fin,carry}=W, dn=due.filter(([,t])=>t.status==="done").length, pc=due.length?Math.round(100*dn/due.length):0, late=due.filter(([,t])=>tLate(t)).length;
+  const k=(v,l,c)=>'<div class="panel" style="padding:10px;margin:0"><div style="font-size:22px;font-weight:700'+(c?';color:'+c:'')+'">'+v+'</div><div class="sub">'+l+'</div></div>';
+  return '<div class="sub" style="margin-bottom:6px">Tuần '+dm(a)+' đến '+dm(b)+'</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:10px">'
+    +k(dn+"/"+due.length,"việc đến hạn trong tuần đã xong ("+pc+"%)")+k(fin.length,"việc đã hoàn thành trong tuần","var(--good)")+k(late,"việc trong tuần đã trễ hạn",late?"var(--bad)":"")+k(carry.length,"việc tồn từ trước, chưa xong",carry.length?"var(--warn)":"")+'</div>'; }
+function wkList(arr,title){ if(!arr.length) return ''; return '<h2 style="margin-top:12px">'+title+' ('+arr.length+')</h2><div style="display:grid;gap:4px">'+arr.sort((x,y)=>(x[1].due||"").localeCompare(y[1].due||"")).slice(0,40).map(([id,t])=>'<a href="#" data-otask="'+id+'" class="row between" style="gap:8px;text-decoration:none;color:inherit;border-bottom:1px solid var(--line);padding:4px 0"><span style="min-width:0;overflow-wrap:anywhere">'+esc(t.title)+'</span><span class="sub" style="white-space:nowrap">'+esc(pname(t.R)||"Chưa giao")+' · '+dm(t.due)+'</span></a>').join("")+'</div>'; }
+function chWDay(L){ const W=wkData(L), {days}=wkRange(), t0=todayStr();
+  const B=days.map(d=>({done:0,open:0,late:0,fin:0})); W.due.forEach(([,t])=>{ const i=days.indexOf(t.due); B[i][t.status==="done"?"done":tLate(t)?"late":"open"]++; }); W.fin.forEach(([,t])=>{ const i=days.indexOf(tDone(t)); if(i>=0) B[i].fin++; });
+  const Wd=innerWidth<600?400:720,H=260,pl=28,pb=36,pt=16, mx=Math.max(1,...B.map(x=>Math.max(x.done+x.open+x.late,x.fin))), cw=(Wd-pl-10)/7, bw=Math.min(28,cw*.32);
+  const X=i=>pl+cw*(i+.5), Y=v=>(H-pt-pb)*v/mx; let g='';
+  for(let k=0;k<=4;k++){ const v=Math.round(mx*k/4), y=H-pb-Y(v); g+='<line x1="'+pl+'" x2="'+(Wd-10)+'" y1="'+y+'" y2="'+y+'" stroke="var(--line)"/><text x="'+(pl-4)+'" y="'+(y+4)+'" text-anchor="end" fill="var(--muted)">'+v+'</text>'; }
+  B.forEach((b,i)=>{ const x=X(i)-bw-1; let y=H-pb; [["done","var(--good)"],["open","var(--doing)"],["late","var(--bad)"]].forEach(([f,c])=>{ const h=Y(b[f]); if(h>0){ y-=h; g+='<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+h+'" fill="'+c+'"><title>'+b[f]+'</title></rect>'; } });
+    const tot=b.done+b.open+b.late; if(tot) g+='<text x="'+(x+bw/2)+'" y="'+(y-3)+'" text-anchor="middle" fill="currentColor">'+tot+'</text>';
+    const hf=Y(b.fin); if(hf>0) g+='<rect x="'+(X(i)+1)+'" y="'+(H-pb-hf)+'" width="'+bw+'" height="'+hf+'" fill="var(--info)" opacity=".85"><title>'+b.fin+' hoàn thành</title></rect><text x="'+(X(i)+1+bw/2)+'" y="'+(H-pb-hf-3)+'" text-anchor="middle" fill="var(--info)">'+b.fin+'</text>';
+    const isT=days[i]===t0; g+='<text x="'+X(i)+'" y="'+(H-pb+14)+'" text-anchor="middle" fill="'+(isT?"var(--info)":"var(--muted)")+'"'+(isT?' font-weight="700"':'')+'>'+WDN[i]+'</text><text x="'+X(i)+'" y="'+(H-pb+27)+'" text-anchor="middle" fill="var(--muted)">'+dm(days[i])+'</text>'; });
+  g+='<line x1="'+pl+'" x2="'+(Wd-10)+'" y1="'+(H-pb)+'" y2="'+(H-pb)+'" stroke="var(--line)"/>';
+  const rest=W.due.filter(([,t])=>t.status!=="done"), late=[...W.carry,...rest.filter(([,t])=>tLate(t))];
+  return wkHead(W)+svgWrap(Wd,H,g)+'<div class="legend"><span><i class="sw" style="background:var(--good)"></i>Đến hạn, đã xong</span><span><i class="sw" style="background:var(--doing)"></i>Đến hạn, chưa xong</span><span><i class="sw" style="background:var(--bad)"></i>Trễ hạn</span><span><i class="sw" style="background:var(--info)"></i>Hoàn thành trong ngày</span></div><div class="sub">Cột trái mỗi ngày là việc có hạn hôm đó, cột phải là số việc thực tế đã xong hôm đó. Chỉ tính việc nhỏ nhất (không đếm trùng việc tổng có việc con).</div>'
+    +wkList(late,"Trễ hạn cần xử lý")+wkList(rest.filter(([,t])=>!tLate(t)),"Còn lại trong tuần"); }
+function chWPerson(L){ const W=wkData(L), P={}; const g=k=>P[k]=P[k]||{done:0,open:0,late:0,fin:0,carry:0};
+  W.due.forEach(([,t])=>g(t.R||"?")[t.status==="done"?"done":tLate(t)?"late":"open"]++); W.fin.forEach(([,t])=>g(t.R||"?").fin++); W.carry.forEach(([,t])=>g(t.R||"?").carry++);
+  const ks=Object.keys(P).sort((a,b)=>(P[b].done+P[b].open+P[b].late+P[b].carry)-(P[a].done+P[a].open+P[a].late+P[a].carry)); if(!ks.length) return wkHead(W)+'<div class="empty">Tuần này chưa có việc nào.</div>';
+  const mx=Math.max(1,...ks.map(k=>P[k].done+P[k].open+P[k].late+P[k].carry));
+  return wkHead(W)+'<div style="display:grid;gap:10px">'+ks.map(k=>{ const p=P[k], tot=p.done+p.open+p.late, seg=(n,c)=>n?'<span style="width:'+(100*n/mx)+'%;background:'+c+';display:block;height:100%"></span>':'';
+    return '<div><div class="row between" style="flex-wrap:wrap;gap:4px"><b>'+esc(pname(k)||"Chưa giao")+'</b><span class="sub">'+p.done+'/'+tot+' đến hạn đã xong'+(tot?' ('+Math.round(100*p.done/tot)+'%)':'')+' · '+p.fin+' hoàn thành'+(p.late?' · <span style="color:var(--bad)">'+p.late+' trễ</span>':'')+(p.carry?' · <span style="color:var(--warn)">'+p.carry+' tồn từ trước</span>':'')+'</span></div><div style="display:flex;height:14px;border-radius:4px;overflow:hidden;background:var(--chip)">'+seg(p.done,"var(--good)")+seg(p.open,"var(--doing)")+seg(p.late,"var(--bad)")+seg(p.carry,"var(--warn)")+'</div></div>'; }).join("")+'</div><div class="legend" style="margin-top:8px"><span><i class="sw" style="background:var(--good)"></i>Đã xong</span><span><i class="sw" style="background:var(--doing)"></i>Chưa xong, còn hạn</span><span><i class="sw" style="background:var(--bad)"></i>Trễ hạn trong tuần</span><span><i class="sw" style="background:var(--warn)"></i>Tồn từ trước tuần</span></div><div class="sub">Theo người thực hiện (R), chỉ tính việc nhỏ nhất. Người có thanh vàng, đỏ dài cần nhắc sớm.</div>'; }
 function openCharts(){ ui.drawer=drawCharts; drawCharts(); }
 function drawCharts(){ const c=ui.ch; const eps=Object.entries(S.tasks).filter(([,t])=>t.kind==="epic").sort((a,b)=>prRank(a[1])-prRank(b[1])||(a[1].due||"9").localeCompare(b[1].due||"9"));
-  const L=chScope(); const body=c.type==="week"?chWeek(L):c.type==="person"?chPerson(L):c.type==="gantt"?chGantt():chBurn(L);
+  const L=chScope(); const body=c.type==="wday"?chWDay(L):c.type==="wperson"?chWPerson(L):c.type==="week"?chWeek(L):c.type==="person"?chPerson(L):c.type==="gantt"?chGantt():chBurn(L);
   const done=L.filter(([,t])=>t.status==="done").length, late=L.filter(([,t])=>tLate(t)).length;
   showDrawer('<div class="dh"><div><h2>Biểu đồ tiến độ công việc</h2><div class="sub">'+L.length+' việc · '+done+' xong · '+late+' quá hạn</div></div><button class="btn sm" data-close>Đóng</button></div><div class="db">'
     +'<div class="f2"><div class="f"><label for="chType">Loại biểu đồ</label><select id="chType">'+Object.entries(CHT).map(([k,l])=>'<option value="'+k+'"'+(c.type===k?" selected":"")+'>'+l+'</option>').join("")+'</select></div>'
     +'<div class="f"><label for="chEp">Phạm vi</label><select id="chEp"><option value="">Tất cả epic</option>'+eps.map(([k,e])=>'<option value="'+k+'"'+(c.ep===k?" selected":"")+'>'+esc(e.title.slice(0,60))+'</option>').join("")+'</select></div>'
-    +'<div class="f"><label for="chPr">Ưu tiên</label><select id="chPr"><option value="">Mọi mức</option><option value="1"'+(c.pr==="1"?" selected":"")+'>Chỉ ưu tiên cao</option><option value="12"'+(c.pr==="12"?" selected":"")+'>Cao và vừa</option></select></div></div>'
+    +'<div class="f"><label for="chPr">Ưu tiên</label><select id="chPr"><option value="">Mọi mức</option><option value="1"'+(c.pr==="1"?" selected":"")+'>Chỉ ưu tiên cao</option><option value="12"'+(c.pr==="12"?" selected":"")+'>Cao và vừa</option></select></div>'+(c.type==="wday"||c.type==="wperson"?'<div class="f"><label for="chWk">Tuần</label><select id="chWk">'+[[-1,"Tuần trước"],[0,"Tuần này"],[1,"Tuần sau"]].map(([v,l])=>'<option value="'+v+'"'+((+c.wk||0)===v?" selected":"")+'>'+l+'</option>').join("")+'</select></div>':'')+'</div>'
     +'<div class="panel" style="margin-top:8px">'+body+'</div></div>');
-  ["chType","chEp","chPr"].forEach((k,i)=>$("#"+k).addEventListener("change",e=>{ c[["type","ep","pr"][i]]=e.target.value; drawCharts(); }));
+  ["chType","chEp","chPr","chWk"].forEach((k,i)=>$("#"+k)?.addEventListener("change",e=>{ c[["type","ep","pr","wk"][i]]=e.target.value; drawCharts(); })); bindTaskLinks($("#layer"));
 }
 
 /* ---------- danh bạ liên hệ ---------- */
