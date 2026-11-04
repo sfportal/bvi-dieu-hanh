@@ -1736,11 +1736,29 @@ function spRow(id,s){ const z=s.zone&&S.zones[s.zone], t=s.task&&S.tasks[s.task]
    +(s.status==="declined"&&s.reason?'<div class="sub">Lý do: '+esc(s.reason)+'</div>':'')+'</div></div></button>'; }
 function spPanel(kind,id){ const L=Object.entries(S.supports||{}).filter(([,s])=>(kind==="zone"?s.zone:s.task)===id).sort((a,b)=>(spOpen(b[1])-spOpen(a[1]))||(b[1].createdAt||"").localeCompare(a[1].createdAt||""));
   if(!L.length) return ''; return '<div class="panel"><h2>Yêu cầu hỗ trợ ('+L.filter(([,s])=>spOpen(s)).length+' đang mở)</h2>'+L.slice(0,8).map(([k,s])=>spRow(k,s)).join("")+'</div>'; }
+function blkList(){ const out=[], t0=todayStr(), zTask=zid=>Object.entries(S.tasks).filter(([,t])=>t.zone===zid&&t.kind==="task"&&t.status!=="done").sort((a,b)=>prRank(a[1])-prRank(b[1]))[0];
+  Object.entries(S.tasks).forEach(([id,t])=>{ if(t.kind!=="epic"&&t.status==="wait") out.push({src:"wait",zone:t.zone||"",task:id,who:t.R,title:t.title,txt:t.note?t.note.slice(0,200):"Đang chờ người khác",prio:t.prio,date:dOf(t.updatedAt)}); });
+  activeZones().forEach(([zid,z])=>{ if(!z.blocker) return; const zt=zTask(zid); if(!zt&&!(z.priority==="1"||z.priority==="2"||z.priority==="GACC")) return; out.push({src:"zone",zone:zid,task:zt?zt[0]:"",who:zt?zt[1].R:z.owner,title:zShort(z.name)+(zt?" · "+zt[1].title.replace(/^[^:]{2,40}:\s*/,""):""),txt:z.blocker,need:z.needFrom,prio:zt?zt[1].prio:"",date:dOf(z.updatedAt)}); });
+  Object.values(S.daily).filter(d=>d.block&&d.date>=addDays(t0,-7)).forEach(d=>out.push({src:"daily",zone:"",task:"",who:d.person,title:"Báo cáo ngày "+dm(d.date),txt:d.block,date:d.date}));
+  const sp=Object.values(S.supports||{}).filter(spOpen);
+  out.forEach(x=>{ x.has=sp.some(s=>(x.task&&s.task===x.task)||(!x.task&&x.zone&&s.zone===x.zone)); });
+  return out.sort((a,b)=>(a.has?1:0)-(b.has?1:0)||((a.prio==="1"?0:a.prio==="2"?1:2)-(b.prio==="1"?0:b.prio==="2"?1:2))||(b.date||"").localeCompare(a.date||"")); }
+const BLKSRC={wait:"Việc đang chờ người khác",zone:"Vướng mắc ghi ở vùng",daily:"Vướng trong báo cáo ngày (7 ngày)"};
+function openBlk(){ ui.drawer=openBlk; const f=ui.blk||(ui.blk={src:"",who:"",nos:false});
+  const all=blkList(); const L=all.filter(x=>(!f.src||x.src===f.src)&&(!f.who||x.who===f.who)&&(!f.nos||!x.has));
+  const ppl=[...new Set(all.map(x=>x.who).filter(Boolean))].sort((a,b)=>pname(a).localeCompare(pname(b),"vi"));
+  let h='<div class="dh"><div><h2>Vướng mắc trong công việc</h2><div class="sub">'+all.length+' vướng mắc · '+all.filter(x=>!x.has).length+' chưa có yêu cầu hỗ trợ</div></div><button class="btn sm" data-close>Đóng</button></div><div class="db">'
+   +'<div class="filters"><select id="bsrc"><option value="">Mọi nguồn</option>'+Object.entries(BLKSRC).map(([k,l])=>'<option value="'+k+'"'+(f.src===k?" selected":"")+'>'+l+' ('+all.filter(x=>x.src===k).length+')</option>').join("")+'</select><select id="bwho"><option value="">Mọi người</option>'+ppl.map(k=>'<option value="'+k+'"'+(f.who===k?" selected":"")+'>'+esc(pname(k))+'</option>').join("")+'</select><label class="row"><input type="checkbox" id="bnos"'+(f.nos?" checked":"")+'> Chưa có yêu cầu hỗ trợ</label></div>';
+  h+=L.length?L.map(x=>'<div class="panel" style="padding:10px 12px"><div class="row between" style="align-items:flex-start;gap:8px"><div style="min-width:0"><b style="overflow-wrap:anywhere">'+esc(x.title)+'</b><div class="sub">'+esc(BLKSRC[x.src])+(x.who?' · '+esc(pname(x.who)):'')+(x.need?' · cần '+esc(x.need):'')+(x.date?' · '+dm(x.date):'')+'</div></div>'+(x.prio?prBadge({prio:x.prio,status:"todo"}):'')+'</div><div style="margin-top:6px;overflow-wrap:anywhere">'+esc(x.txt)+'</div><div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap">'+(x.has?'<span class="pill good">Đã có yêu cầu hỗ trợ</span>':'<button class="btn sm pri" data-sup-new="'+esc(x.zone)+'|'+esc(x.task)+'" data-sup-title="'+esc(x.txt.slice(0,90))+'">Tạo yêu cầu hỗ trợ</button>')+(x.task?'<button class="btn sm" data-otask="'+x.task+'">Mở việc</button>':'')+(x.zone?'<button class="btn sm" data-ozone="'+x.zone+'">Mở vùng</button>':'')+'</div></div>').join(""):'<div class="empty">Không có vướng mắc nào khớp bộ lọc.</div>';
+  showDrawer(h+'</div>');
+  const L2=$("#layer"); [["bsrc","src"],["bwho","who"]].forEach(([i,k])=>$("#"+i).addEventListener("change",e=>{f[k]=e.target.value;openBlk();})); $("#bnos").addEventListener("change",e=>{f.nos=e.target.checked;openBlk();});
+  L2.querySelectorAll("[data-otask]").forEach(b=>b.addEventListener("click",()=>openTask(b.dataset.otask)));
+  L2.querySelectorAll("[data-ozone]").forEach(b=>b.addEventListener("click",()=>openZone(b.dataset.ozone))); }
 function vSupport(){
   const all=Object.entries(S.supports||{}); const F=ui.sp;
   const lists={help:all.filter(([,s])=>s.helper===me&&spOpen(s)),sent:all.filter(([,s])=>s.by===me),open:all.filter(([,s])=>spOpen(s)),closed:all.filter(([,s])=>!spOpen(s))};
   if(!F.tab) F.tab=lists.help.length?"help":"open";
-  let h='<div class="row between"><div><h1>Hỗ trợ công việc</h1><div class="sub">Gặp khó khăn khi làm việc thì gửi ở đây, gắn vùng trồng hoặc công việc và chọn người hỗ trợ. Người hỗ trợ cập nhật trạng thái; không hỗ trợ thì ghi rõ lý do.</div></div><button class="btn pri" id="addSup">Gửi yêu cầu hỗ trợ</button></div>';
+  let h='<div class="row between"><div><h1>Hỗ trợ công việc</h1><div class="sub">Gặp khó khăn khi làm việc thì gửi ở đây, gắn vùng trồng hoặc công việc và chọn người hỗ trợ. Người hỗ trợ cập nhật trạng thái; không hỗ trợ thì ghi rõ lý do.</div></div><span class="row" style="gap:6px;flex-wrap:wrap"><button class="btn" id="blkBtn">Vướng mắc trong công việc ('+blkList().length+')</button><button class="btn pri" id="addSup">Gửi yêu cầu hỗ trợ</button></span></div>';
   const cnt=k=>all.filter(([,s])=>s.status===k).length;
   h+='<div class="row" style="flex-wrap:wrap;gap:6px;margin-top:10px">'+Object.entries(SPST).map(([k,[l,c]])=>'<span class="pill '+c+'">'+l+': <b>'+cnt(k)+'</b></span>').join("")+'</div>';
   h+='<div class="row" style="margin-top:10px;flex-wrap:wrap" role="tablist">'+[["help","Cần tôi hỗ trợ"],["sent","Tôi đã gửi"],["open","Đang mở"],["closed","Đã đóng"]].map(([k,l])=>'<button class="cp" role="tab" data-sptab="'+k+'" aria-pressed="'+(F.tab===k)+'">'+l+' · '+lists[k].length+'</button>').join("")+'</div>';
@@ -1749,11 +1767,12 @@ function vSupport(){
   return h+'<div class="panel" style="margin-top:12px;padding-top:4px">'+rows.map(([k,s])=>spRow(k,s)).join("")+'</div>'; }
 function bindSupport(A){
   $("#addSup")?.addEventListener("click",()=>openSupport(null,{}));
+  $("#blkBtn")?.addEventListener("click",openBlk);
   A.querySelectorAll("[data-sptab]").forEach(b=>b.addEventListener("click",()=>{ ui.sp.tab=b.dataset.sptab; render(); }));
 }
 function openSupport(id,preset){ if(!id&&!me){ toast("Tài khoản chưa gắn với nhân sự nên chưa gửi được. Nhờ owner gắn."); return; } ui.drawer=()=>drawSupport(id,preset); drawSupport(id,preset); }
 function drawSupport(id,preset){
-  const s=id?S.supports[id]:{title:"",detail:"",zone:preset?.zone||"",task:preset?.task||"",helper:"",due:"",status:"wait",by:me,updates:[]};
+  const s=id?S.supports[id]:{title:preset?.title||"",detail:"",zone:preset?.zone||"",task:preset?.task||"",helper:"",due:"",status:"wait",by:me,updates:[]};
   if(!s){ closeDrawer(); return; }
   const ppl=Object.entries(S.people).filter(([,p])=>p.active!==false).sort((a,b)=>a[1].name.localeCompare(b[1].name,"vi"));
   const canSt=!id||canManage()||s.helper===me||s.by===me, canEd=!id||canManage()||s.by===me;
@@ -1797,7 +1816,7 @@ function drawSupport(id,preset){
     if(!Object.keys(patch).length){ closeDrawer(); return; }
     if(await upd("supports",id,{...patch,...stamp()})){ toast("Đã lưu"); closeDrawer(); } });
 }
-document.addEventListener("click",e=>{ const n=e.target.closest&&e.target.closest("[data-sup-new]"); if(n){ e.preventDefault(); const [z,t]=n.dataset.supNew.split("|"); openSupport(null,{zone:z||"",task:t||""}); return; }
+document.addEventListener("click",e=>{ const n=e.target.closest&&e.target.closest("[data-sup-new]"); if(n){ e.preventDefault(); const [z,t]=n.dataset.supNew.split("|"); openSupport(null,{zone:z||"",task:t||"",title:n.dataset.supTitle||""}); return; }
   const o=e.target.closest&&e.target.closest("[data-sp]"); if(o){ e.preventDefault(); openSupport(o.dataset.sp); } });
 
 /* ---------- biểu đồ tiến độ ---------- */
