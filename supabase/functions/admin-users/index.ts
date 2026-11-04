@@ -46,6 +46,10 @@ Deno.serve(async (req) => {
   if (!who?.user) return json({ error: "not_signed_in" }, 401);
   const { data: me } = await admin.from("profiles").select("*").eq("id", who.user.id).single();
   if (!me || !me.active || me.role !== "owner") return json({ error: "owner_only" }, 403);
+  const RL: Record<string, string> = { owner: "Owner", manager: "Quản lý", staff: "Nhân viên", viewer: "Chỉ xem" };
+  const log = async (summary: string, title: string, docId: string | null) => {
+    try { await admin.from("activity_log").insert({ user_id: me.id, email: me.email, name: me.name || me.email, action: "account", col: "accounts", doc_id: docId, title, summary }); } catch (_) { /* nhật ký lỗi không chặn thao tác */ }
+  };
 
   if (act === "list") {
     const { data, error } = await admin.from("profiles").select("*").order("created_at");
@@ -64,6 +68,7 @@ Deno.serve(async (req) => {
     if (error) return json({ error: error.message }, 400);
     const { error: e2 } = await admin.from("profiles").insert({ id: data.user.id, email, name: String(body.name || ""), person_id: body.person_id || null, role, can_finance: !!body.can_finance, must_change_pw: true });
     if (e2) { await admin.auth.admin.deleteUser(data.user.id); return json({ error: e2.message }, 400); }
+    await log("tạo tài khoản, vai trò " + RL[role] + (body.can_finance ? ", được xem tài chính" : ""), email, data.user.id);
     return json({ ok: true, id: data.user.id, email, password: pw });
   }
   const id = String(body.id || "");
@@ -81,6 +86,12 @@ Deno.serve(async (req) => {
     }
     const { error } = await admin.from("profiles").update(patch).eq("id", id);
     if (error) return json({ error: error.message }, 400);
+    const ch: string[] = [];
+    if ("role" in patch && patch.role !== target.role) ch.push("vai trò: " + RL[target.role] + " → " + RL[String(patch.role)]);
+    if ("can_finance" in patch && patch.can_finance !== target.can_finance) ch.push(patch.can_finance ? "bật quyền xem tài chính" : "tắt quyền xem tài chính");
+    if ("name" in patch && patch.name !== target.name) ch.push("sửa tên hiển thị");
+    if ("person_id" in patch && patch.person_id !== target.person_id) ch.push("đổi nhân sự gắn với tài khoản");
+    if (ch.length) await log(ch.join("; "), target.email, id);
     return json({ ok: true });
   }
   if (act === "set_active") {
@@ -89,6 +100,7 @@ Deno.serve(async (req) => {
     const { error } = await admin.auth.admin.updateUserById(id, { ban_duration: on ? "none" : "876000h" });
     if (error) return json({ error: error.message }, 400);
     await admin.from("profiles").update({ active: on }).eq("id", id);
+    await log(on ? "mở khóa tài khoản" : "khóa tài khoản", target.email, id);
     return json({ ok: true });
   }
   if (act === "reset_password") {
@@ -96,12 +108,14 @@ Deno.serve(async (req) => {
     const { error } = await admin.auth.admin.updateUserById(id, { password: pw });
     if (error) return json({ error: error.message }, 400);
     await admin.from("profiles").update({ must_change_pw: !self }).eq("id", id);
+    await log("đặt lại mật khẩu", target.email, id);
     return json({ ok: true, password: pw });
   }
   if (act === "delete") {
     if (self) return json({ error: "Không xóa tài khoản owner đang dùng" }, 400);
     const { error } = await admin.auth.admin.deleteUser(id);
     if (error) return json({ error: error.message }, 400);
+    await log("xóa tài khoản", target.email, id);
     return json({ ok: true });
   }
   return json({ error: "unknown_action" }, 400);
