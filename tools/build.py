@@ -25,9 +25,10 @@ R('''<input type="number" data-it="'+i+'" data-k="price" value="'+esc(it.price)+
 R('''<input type="checkbox" data-pay="'+i+'"'+(p.paid?" checked":"")+'>''','''<input type="checkbox" data-pay="'+i+'"'+(p.paid?" checked":"")+(canFin()?'':' disabled')+'>''')
 R('''(pm.paid?'<span class="pill good">Đã thu</span>':ok?''','''(pm.paid&&canFin()?'<span class="pill good">Đã thu</span>':ok?''')
 # routes: accounts page
-R('ui.view=VIEWS.some(v=>v[0]===h)||h==="khach"?h:"tong-quan";','ui.view=VIEWS.some(v=>v[0]===h)||h==="khach"||h==="tai-khoan"?h:"tong-quan";')
-R('  else if(v==="thong-ke") el.innerHTML=vStats();','  else if(v==="thong-ke") el.innerHTML=vStats();\n  else if(v==="tai-khoan") el.innerHTML=vAccounts();')
+R('ui.view=VIEWS.some(v=>v[0]===h)||h==="khach"?h:"tong-quan";','ui.view=VIEWS.some(v=>v[0]===h)||h==="khach"||h==="tai-khoan"||h==="nhat-ky"?h:"tong-quan";')
+R('  else if(v==="thong-ke") el.innerHTML=vStats();','  else if(v==="thong-ke") el.innerHTML=vStats();\n  else if(v==="tai-khoan") el.innerHTML=vAccounts();\n  else if(v==="nhat-ky") el.innerHTML=vLog();')
 R('  if(ui.view==="thong-ke") bindStats(A);','''  if(ui.view==="thong-ke") bindStats(A);
+  if(ui.view==="nhat-ky") bindLog(A);
   if(ui.view==="tai-khoan"){ $("#accAdd")?.addEventListener("click",()=>openAcc(null)); $("#accBulk")?.addEventListener("click",openBulk); A.querySelectorAll("[data-acc]").forEach(r=>r.addEventListener("click",()=>openAcc(r.dataset.acc))); $("#impJson")?.addEventListener("change",e=>{ const f=e.target.files[0]; e.target.value=""; if(f) importJson(f); }); }''')
 # texts that referenced claude.ai
 s=s.replace('Hãy mở trang khi đã đăng nhập claude.ai; nếu vẫn vậy, tải lại trang.','Tải lại trang.')

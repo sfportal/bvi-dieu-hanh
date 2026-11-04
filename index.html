@@ -388,7 +388,7 @@ function showLogin(msg){
   $("#lf").addEventListener("submit",async e=>{ e.preventDefault(); $("#lmsg").textContent="Đang đăng nhập…";
     const {error}=await SB.auth.signInWithPassword({email:$("#lem").value.trim(),password:$("#lpw").value});
     if(error){ $("#lmsg").textContent=/invalid/i.test(error.message)?"Sai email hoặc mật khẩu.":/banned/i.test(error.message)?"Tài khoản đã bị khóa.":error.message; return; }
-    startSession(); });
+    await logEv("login"); startSession(); });
   $("#bootLink").addEventListener("click",e=>{ e.preventDefault(); showBootstrap(); });
 }
 function showBootstrap(){
@@ -399,16 +399,18 @@ function showBootstrap(){
     if(r.error){ $("#bmsg").textContent=r.error==="already_bootstrapped"?"Đã có owner. Hãy đăng nhập.":r.error; return; }
     const {error}=await SB.auth.signInWithPassword({email:r.email,password:$("#bpw").value}); if(error){ showLogin("Đã tạo owner, hãy đăng nhập."); return; } startSession(); });
 }
+async function logEv(a,sum){ try{ await SB.rpc("log_event",{p_action:a,p_summary:sum||null}); }catch(e){} }
+async function signOutLog(){ await logEv("logout"); await SB.auth.signOut(); }
 async function callAdmin(body,anon){
   try{ const h={"Content-Type":"application/json",apikey:SB_KEY}; if(!anon){ const {data}=await SB.auth.getSession(); h.Authorization="Bearer "+(data.session?.access_token||""); }
     const res=await fetch(SB_URL+"/functions/v1/admin-users",{method:"POST",headers:h,body:JSON.stringify(body)}); return await res.json(); }catch(e){ return {error:"Không kết nối được máy chủ"}; } }
 function showChangePw(first){
   const html='<h1 style="margin-top:0">'+(first?'Đổi mật khẩu lần đầu':'Đổi mật khẩu')+'</h1><div class="sub" style="margin-bottom:10px">'+esc(PROFILE?.email||"")+(first?' · mật khẩu được cấp chỉ dùng một lần':'')+'</div><form id="cpf" class="grid" style="gap:8px"><div class="f"><label for="np1">Mật khẩu mới (từ 8 ký tự)</label><input id="np1" type="password" minlength="8" required autocomplete="new-password"></div><div class="f"><label for="np2">Nhập lại</label><input id="np2" type="password" minlength="8" required autocomplete="new-password"></div><button class="btn pri">Lưu mật khẩu</button><div class="sub" id="cpm"></div></form>'+(first?'<div style="margin-top:8px"><a href="#" id="lo2" class="sub">Đăng xuất</a></div>':'');
   if(first) authCard(html); else showDrawer('<div class="dh"><h2>Đổi mật khẩu</h2><button class="btn sm" data-close>Đóng</button></div><div class="db">'+html.replace(/<h1[^]*?<\/h1>/,"")+'</div>');
-  $("#lo2")?.addEventListener("click",async e=>{e.preventDefault(); await SB.auth.signOut(); location.reload();});
+  $("#lo2")?.addEventListener("click",async e=>{e.preventDefault(); await signOutLog(); location.reload();});
   $("#cpf").addEventListener("submit",async e=>{ e.preventDefault(); const a=$("#np1").value; if(a!==$("#np2").value){ $("#cpm").textContent="Hai mật khẩu chưa khớp."; return; } if(a.length<8){ $("#cpm").textContent="Cần ít nhất 8 ký tự."; return; }
     $("#cpm").textContent="Đang lưu…"; const {error}=await SB.auth.updateUser({password:a}); if(error){ $("#cpm").textContent=/same/i.test(error.message)?"Mật khẩu mới phải khác mật khẩu cũ.":error.message; return; }
-    await SB.from("profiles").update({must_change_pw:false}).eq("id",PROFILE.id); PROFILE.must_change_pw=false; toast("Đã đổi mật khẩu"); if(first) startSession(); else closeDrawer(); });
+    await SB.from("profiles").update({must_change_pw:false}).eq("id",PROFILE.id); PROFILE.must_change_pw=false; logEv("password",first?"đổi mật khẩu lần đầu":"đổi mật khẩu"); toast("Đã đổi mật khẩu"); if(first) startSession(); else closeDrawer(); });
 }
 async function startSession(){
   const {data:{session}}=await SB.auth.getSession(); if(!session){ showLogin(); return; }
@@ -416,7 +418,7 @@ async function startSession(){
   if(error||!prof){ await SB.auth.signOut(); showLogin("Tài khoản chưa được cấp quyền. Liên hệ owner."); return; }
   if(!prof.active){ await SB.auth.signOut(); showLogin("Tài khoản đã bị khóa."); return; }
   PROFILE=prof; if(prof.must_change_pw){ showChangePw(true); return; }
-  userCan=["owner","manager"].includes(prof.role); me=prof.person_id||null; viewerName=prof.name||prof.email;
+  logEv("open"); userCan=["owner","manager"].includes(prof.role); me=prof.person_id||null; viewerName=prof.name||prof.email;
   if(prof.role!=="viewer") assetsNs=makeAssets();
   shellAuth(true); renderShell(); $("#app").innerHTML='<div class="empty">Đang tải dữ liệu…</div>';
   try{ await loadAll(); }catch(e){ $("#app").innerHTML='<div class="alert bad">Không đọc được dữ liệu: '+esc(e.message||"")+'. Tải lại trang.</div>'; return; }
@@ -432,9 +434,9 @@ async function boot(){
 function renderMe(){ const b=$("#meBtn"); if(b) b.textContent=(viewerName||"Tài khoản")+(PROFILE?" · "+ROLE_L[PROFILE.role]:""); }
 function openMe(){
   showDrawer('<div class="dh"><div><h2>'+esc(PROFILE.name||PROFILE.email)+'</h2><div class="sub">'+esc(PROFILE.email)+' · '+ROLE_L[PROFILE.role]+(canFin()?' · xem tài chính':'')+'</div></div><button class="btn sm" data-close>Đóng</button></div><div class="db">'
-   +'<div class="sub">Nhân sự gắn với tài khoản: <b>'+esc(pname(me)||"chưa gắn")+'</b></div><div class="row" style="margin-top:12px;flex-wrap:wrap"><button class="btn" id="mePw">Đổi mật khẩu</button>'+(isOwner()?'<a class="btn" href="#tai-khoan" id="meAcc">Quản lý tài khoản</a>':'')+'<button class="btn" id="meOut">Đăng xuất</button></div></div>');
-  $("#mePw").addEventListener("click",()=>showChangePw(false)); $("#meAcc")?.addEventListener("click",()=>closeDrawer());
-  $("#meOut").addEventListener("click",async()=>{ await SB.auth.signOut(); location.hash=""; location.reload(); });
+   +'<div class="sub">Nhân sự gắn với tài khoản: <b>'+esc(pname(me)||"chưa gắn")+'</b></div><div class="row" style="margin-top:12px;flex-wrap:wrap"><button class="btn" id="mePw">Đổi mật khẩu</button>'+(isOwner()?'<a class="btn" href="#tai-khoan" id="meAcc">Quản lý tài khoản</a>':'')+(canManage()?'<a class="btn" href="#nhat-ky" id="meLog">Nhật ký hoạt động</a>':'')+'<button class="btn" id="meOut">Đăng xuất</button></div></div>');
+  $("#mePw").addEventListener("click",()=>showChangePw(false)); $("#meAcc")?.addEventListener("click",()=>closeDrawer()); $("#meLog")?.addEventListener("click",()=>closeDrawer());
+  $("#meOut").addEventListener("click",async()=>{ await signOutLog(); location.hash=""; location.reload(); });
 }
 /* ---------- quản lý tài khoản (owner) ---------- */
 let ACC=null;
@@ -442,7 +444,7 @@ async function loadAcc(){ const r=await callAdmin({action:"list"}); if(r.error){
 function vAccounts(){
   if(!isOwner()) return '<div class="alert bad">Chỉ owner quản lý tài khoản.</div>';
   if(ACC===null){ loadAcc(); return '<div class="empty">Đang tải danh sách tài khoản…</div>'; }
-  let h='<div class="row between"><div><h1>Tài khoản, phân quyền</h1><div class="sub">'+ACC.length+' tài khoản. Owner: toàn quyền, cấp tài khoản. Quản lý: sửa mọi dữ liệu, duyệt phép, FAQ. Nhân viên: ghi việc, vùng, lịch, báo cáo. Chỉ xem: không sửa. Tài chính bật riêng từng người.</div></div><div class="row"><button class="btn" id="accBulk">Tạo tài khoản cho nhân sự</button><button class="btn pri" id="accAdd">Thêm tài khoản</button></div></div>';
+  let h='<div class="row between"><div><h1>Tài khoản, phân quyền</h1><div class="sub">'+ACC.length+' tài khoản. Owner: toàn quyền, cấp tài khoản. Quản lý: sửa mọi dữ liệu, duyệt phép, FAQ. Nhân viên: ghi việc, vùng, lịch, báo cáo. Chỉ xem: không sửa. Tài chính bật riêng từng người.</div></div><div class="row"><a class="btn" href="#nhat-ky">Nhật ký</a><button class="btn" id="accBulk">Tạo tài khoản cho nhân sự</button><button class="btn pri" id="accAdd">Thêm tài khoản</button></div></div>';
   h+='<div class="tw panel" style="margin-top:12px"><table><thead><tr><th>Tài khoản</th><th>Nhân sự</th><th>Vai trò</th><th>Tài chính</th><th>Trạng thái</th><th>Đăng nhập gần nhất</th></tr></thead><tbody>'
    +ACC.map(u=>'<tr data-acc="'+u.id+'" style="cursor:pointer"><td><b>'+esc(u.name||"")+'</b><div class="sub">'+esc(u.email)+'</div></td><td>'+esc(pname(u.person_id)||"—")+'</td><td>'+ROLE_L[u.role]+'</td><td>'+(u.role==="owner"||u.can_finance?'<span class="pill good">Được xem</span>':'<span class="pill">Không</span>')+'</td><td>'+(u.active?(u.must_change_pw?'<span class="pill warn">Chờ đổi mật khẩu</span>':'<span class="pill good">Hoạt động</span>'):'<span class="pill bad">Đã khóa</span>')+'</td><td class="sub">'+(u.last_sign_in_at?dmy(u.last_sign_in_at.slice(0,10)):"Chưa")+'</td></tr>').join("")+'</tbody></table></div>';
   h+='<div class="panel" style="margin-top:12px"><h2>Chuyển dữ liệu từ bản cũ</h2><div class="sub">Ở bản cũ trên Claude, vào Công ty bấm "Xuất toàn bộ dữ liệu (JSON)", rồi chọn file đó ở đây. Bản ghi trùng mã sẽ được ghi đè bằng bản trong file.</div><label class="btn" style="margin-top:8px;cursor:pointer">Chọn file JSON<input type="file" id="impJson" accept=".json,application/json" hidden></label><span class="sub" id="impJmsg" style="margin-left:8px"></span></div>';
@@ -481,9 +483,9 @@ async function importJson(file){
   const C=j.collections||{}; const rows=[], fins=[];
   COLS.forEach(col=>Object.entries(C[col]||{}).forEach(([id,d])=>{ if(!d||typeof d!=="object") return; if(col==="contracts"){ const {pub,fin}=finSplit(d); rows.push({col,id,data:pub}); fins.push({id,data:fin}); } else rows.push({col,id,data:d}); }));
   if(!rows.length){ m.textContent="File không có dữ liệu."; return; }
-  for(let i=0;i<rows.length;i+=200){ m.textContent="Đang ghi "+Math.min(i+200,rows.length)+"/"+rows.length+"…"; const {error}=await SB.from("docs").upsert(rows.slice(i,i+200)); if(error){ m.textContent="Lỗi: "+error.message; return; } }
+  for(let i=0;i<rows.length;i+=200){ m.textContent="Đang ghi "+Math.min(i+200,rows.length)+"/"+rows.length+"…"; const {error}=await SB.rpc("import_docs",{p_rows:rows.slice(i,i+200)}); if(error){ m.textContent="Lỗi: "+error.message; return; } }
   if(fins.length){ const {error}=await SB.from("contract_fin").upsert(fins); if(error){ m.textContent="Đã ghi dữ liệu, nhưng lỗi phần tài chính: "+error.message; return; } }
-  await loadAll(); m.textContent="Đã chuyển "+rows.length+" bản ghi."; render();
+  await logEv("import","nhập dữ liệu từ file "+file.name+": "+rows.length+" bản ghi"); await loadAll(); m.textContent="Đã chuyển "+rows.length+" bản ghi."; render();
 }
 
 function slugName(n){ const w=String(n||"").replace(/^(anh|chị|chi|em|ông|ong|bà|ba|cô|co|chú|chu)\s+/i,"").trim().split(/\s+/).pop()||"user"; return w.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/đ/g,"d").replace(/Đ/g,"D").toLowerCase().replace(/[^a-z0-9]/g,""); }
@@ -512,6 +514,63 @@ function openBulk(){
       $("#bkMsg").textContent="Đã tạo "+ok+"/"+todo.length+" tài khoản."; await loadAcc(); });
   }; draw(); }
 
+/* ---------- nhật ký hoạt động (owner, quản lý) ---------- */
+const LOG_ACT={login:["Đăng nhập","good"],open:["Mở ứng dụng",""],logout:["Đăng xuất",""],password:["Mật khẩu",""],create:["Thêm","good"],update:["Sửa","warn"],delete:["Xóa","bad"],finance:["Thanh toán","warn"],account:["Tài khoản","bad"],import:["Nhập file","bad"]};
+const LOG_COL={zones:"Vùng",people:"Nhân sự",tasks:"Việc",contracts:"Hợp đồng",daily:"Báo cáo",units:"Đơn vị",events:"Lịch",leaves:"Nghỉ phép",faqs:"FAQ",accounts:"Tài khoản"};
+const LG={t:0,p:"7",from:"",to:"",who:"",act:"",q:"",rows:null,n:200,err:""};
+function lgRange(){ const d0=new Date(); d0.setHours(0,0,0,0); let a=new Date(d0), b=null;
+  if(LG.p==="7") a.setDate(a.getDate()-6); else if(LG.p==="30") a.setDate(a.getDate()-29); else if(LG.p==="month") a.setDate(1);
+  else if(LG.p==="custom"){ if(LG.from) a=new Date(LG.from+"T00:00:00"); if(LG.to){ b=new Date(LG.to+"T00:00:00"); b.setDate(b.getDate()+1); } }
+  return [a,b]; }
+async function loadLogs(){ LG.rows=null; LG.err=""; const [a,b]=lgRange();
+  let q=SB.from("activity_log").select("*").gte("at",a.toISOString()).order("at",{ascending:false}).limit(2000); if(b) q=q.lt("at",b.toISOString());
+  const {data,error}=await q; LG.t=Date.now(); if(error){ LG.err=error.message; LG.rows=[]; } else LG.rows=data||[]; if(ui.view==="nhat-ky") render(); }
+function lgFilter(){ const q=LG.q.trim().toLowerCase();
+  return (LG.rows||[]).filter(r=>(!LG.who||(r.user_id||"sys")===LG.who)&&(!LG.act||(LG.act==="auth"?["login","open","logout","password"].includes(r.action):LG.act==="data"?["create","update","delete","finance","import"].includes(r.action):r.action===LG.act))&&(!q||((r.name||"")+" "+(r.title||"")+" "+(r.summary||"")).toLowerCase().includes(q))); }
+function lgTime(t){ return new Date(t).toLocaleTimeString("vi-VN",{hour:"2-digit",minute:"2-digit"}); }
+function lgDay(t){ const d=new Date(t); return d.toLocaleDateString("vi-VN",{weekday:"long",day:"2-digit",month:"2-digit",year:"numeric"}); }
+function vLog(){
+  if(!canManage()) return '<div class="alert bad">Chỉ owner và quản lý xem được nhật ký.</div>';
+  if(LG.rows!==null&&Date.now()-LG.t>120000) LG.rows=null;
+  if(LG.rows===null){ loadLogs(); return '<div class="empty">Đang tải nhật ký…</div>'; }
+  const rows=lgFilter(); const people={}; (LG.rows||[]).forEach(r=>{ const k=r.user_id||"sys"; if(!people[k]) people[k]=r.name||r.email||"Hệ thống"; });
+  let h='<div class="row between"><div><h1>Nhật ký hoạt động</h1><div class="sub">Tự ghi khi đăng nhập, thêm, sửa, xóa dữ liệu và quản lý tài khoản. Sửa liên tục cùng một mục trong 3 phút được gộp thành một dòng. Lưu 12 tháng.</div></div><button class="btn" id="lgRe">Làm mới</button></div>';
+  h+='<div class="panel" style="margin-top:12px"><div class="row" style="flex-wrap:wrap;gap:8px">'
+   +'<select id="lgP" aria-label="Thời gian">'+[["today","Hôm nay"],["7","7 ngày"],["30","30 ngày"],["month","Tháng này"],["custom","Từ ngày đến ngày"]].map(([v,l])=>'<option value="'+v+'"'+(LG.p===v?" selected":"")+'>'+l+'</option>').join("")+'</select>'
+   +(LG.p==="custom"?'<input type="date" id="lgF" value="'+esc(LG.from)+'" aria-label="Từ ngày"><input type="date" id="lgT" value="'+esc(LG.to)+'" aria-label="Đến ngày">':'')
+   +'<select id="lgW" aria-label="Người"><option value="">Mọi người</option>'+Object.entries(people).sort((a,b)=>a[1].localeCompare(b[1],"vi")).map(([k,n])=>'<option value="'+esc(k)+'"'+(LG.who===k?" selected":"")+'>'+esc(n)+'</option>').join("")+'</select>'
+   +'<select id="lgA" aria-label="Loại"><option value="">Mọi thao tác</option><option value="auth"'+(LG.act==="auth"?" selected":"")+'>Đăng nhập, đăng xuất</option><option value="data"'+(LG.act==="data"?" selected":"")+'>Thay đổi dữ liệu</option>'+["create","update","delete","finance","account"].map(a=>'<option value="'+a+'"'+(LG.act===a?" selected":"")+'>'+LOG_ACT[a][0]+'</option>').join("")+'</select>'
+   +'<input id="lgQ" placeholder="Tìm tên vùng, việc, nội dung…" value="'+esc(LG.q)+'" style="flex:1 1 180px;min-width:0"></div></div>';
+  if(LG.err) h+='<div class="alert bad" style="margin-top:8px">Không đọc được nhật ký: '+esc(LG.err)+'</div>';
+  // tổng hợp theo người
+  const sum={}; rows.forEach(r=>{ const k=r.user_id||"sys"; const o=sum[k]||(sum[k]={name:r.name||r.email||"Hệ thống",login:0,last:null,create:0,update:0,del:0,tot:0}); if(r.action==="login"||r.action==="open"){ o.login++; if(!o.last) o.last=r.at; } else if(r.action==="create") o.create++; else if(r.action==="update"||r.action==="finance") o.update++; else if(r.action==="delete") o.del++; if(!["login","open","logout"].includes(r.action)) o.tot++; });
+  const se=Object.entries(sum).sort((a,b)=>b[1].tot-a[1].tot);
+  if(se.length) h+='<div class="tw panel" style="margin-top:12px"><table><thead><tr><th>Người</th><th>Vào hệ thống gần nhất</th><th>Lượt vào</th><th>Thêm</th><th>Sửa</th><th>Xóa</th></tr></thead><tbody>'
+    +se.map(([k,o])=>'<tr data-lgw="'+esc(k)+'" style="cursor:pointer"><td><b>'+esc(o.name)+'</b></td><td class="sub">'+(o.last?lgTime(o.last)+' · '+new Date(o.last).toLocaleDateString("vi-VN"):'—')+'</td><td>'+o.login+'</td><td>'+o.create+'</td><td>'+o.update+'</td><td>'+(o.del?'<b style="color:var(--bad)">'+o.del+'</b>':0)+'</td></tr>').join("")+'</tbody></table></div>';
+  if(!rows.length) return h+'<div class="empty" style="margin-top:12px">Chưa có hoạt động nào trong khoảng này.</div>';
+  h+='<div class="panel" style="margin-top:12px">'; let day="";
+  rows.slice(0,LG.n).forEach(r=>{ const d=lgDay(r.at); if(d!==day){ day=d; h+='<h3 style="margin:14px 0 6px;text-transform:capitalize">'+esc(d)+'</h3>'; }
+    const A=LOG_ACT[r.action]||[r.action,""]; const can=r.col&&r.col!=="accounts"&&r.action!=="delete"&&S[r.col]&&S[r.col][r.doc_id];
+    h+='<div class="row" style="gap:8px;align-items:flex-start;padding:6px 0;border-top:1px solid var(--line)"><span class="mono sub" style="flex:0 0 44px">'+lgTime(r.at)+'</span><span class="pill '+A[1]+'" style="flex:0 0 auto">'+A[0]+'</span><div style="flex:1;min-width:0"><b>'+esc(r.name||r.email||"Hệ thống")+'</b> '
+     +(r.col?'<span class="sub">'+esc(LOG_COL[r.col]||r.col)+'</span> '+(can?'<a href="#" style="color:var(--brand)" data-lgo="'+esc(r.col)+'|'+esc(r.doc_id)+'">'+esc(r.title||r.doc_id)+'</a>':esc(r.title||r.doc_id||""))+': ':'')
+     +'<span>'+esc(r.summary||"")+'</span></div></div>'; });
+  h+='</div>'+(rows.length>LG.n?'<div class="row" style="justify-content:center;margin-top:8px"><button class="btn" id="lgMore">Xem thêm ('+(rows.length-LG.n)+' dòng)</button></div>':'');
+  return h; }
+function bindLog(A){
+  const re=()=>{ LG.n=200; render(); };
+  $("#lgRe")?.addEventListener("click",()=>{ loadLogs(); render(); });
+  $("#lgP")?.addEventListener("change",e=>{ LG.p=e.target.value; if(LG.p!=="custom") loadLogs(); render(); });
+  $("#lgF")?.addEventListener("change",e=>{ LG.from=e.target.value; loadLogs(); render(); });
+  $("#lgT")?.addEventListener("change",e=>{ LG.to=e.target.value; loadLogs(); render(); });
+  $("#lgW")?.addEventListener("change",e=>{ LG.who=e.target.value; re(); });
+  $("#lgA")?.addEventListener("change",e=>{ LG.act=e.target.value; re(); });
+  let qt=null; $("#lgQ")?.addEventListener("input",e=>{ LG.q=e.target.value; clearTimeout(qt); qt=setTimeout(()=>{ re(); const i=$("#lgQ"); if(i){ i.focus(); i.setSelectionRange(i.value.length,i.value.length); } },350); });
+  $("#lgMore")?.addEventListener("click",()=>{ LG.n+=300; render(); });
+  A.querySelectorAll("[data-lgw]").forEach(r=>r.addEventListener("click",()=>{ LG.who=LG.who===r.dataset.lgw?"":r.dataset.lgw; re(); }));
+  const OP={zones:openZone,tasks:id=>openTask(id),contracts:openContract,events:openEvent,units:openUnit,people:openPerson,faqs:openFaq,leaves:openLeave};
+  A.querySelectorAll("[data-lgo]").forEach(a=>a.addEventListener("click",e=>{ e.preventDefault(); const [c,id]=a.dataset.lgo.split("|"); const f=OP[c]; if(f) f(id); else toast("Mục này không mở chi tiết được"); }));
+}
+
 const stamp=()=>({updatedAt:new Date().toISOString(),updatedBy:me||""});
 
 /* ---------- shell ---------- */
@@ -522,7 +581,7 @@ function renderShell(){
 }
 function route(){
   const h=(location.hash||"").replace("#","");
-  ui.view=VIEWS.some(v=>v[0]===h)||h==="khach"||h==="tai-khoan"?h:"tong-quan";
+  ui.view=VIEWS.some(v=>v[0]===h)||h==="khach"||h==="tai-khoan"||h==="nhat-ky"?h:"tong-quan";
   document.querySelectorAll("[data-v]").forEach(a=>a.setAttribute("aria-current",a.dataset.v===(ui.view==="khach"?"cong-ty":ui.view)?"page":"false"));
   if(ready) render();
 }
@@ -543,6 +602,7 @@ function render(){
   else if(v==="faq") el.innerHTML=vFaq();
   else if(v==="thong-ke") el.innerHTML=vStats();
   else if(v==="tai-khoan") el.innerHTML=vAccounts();
+  else if(v==="nhat-ky") el.innerHTML=vLog();
   bindView();
   if(ui.drawer) ui.drawer();
 }
@@ -1604,6 +1664,7 @@ function bindView(){
   A.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click",()=>{ const [k,v]=b.dataset.go.split("="); Object.assign(ui.zf,{q:"",prov:"",ward:"",unit:"",grp:"",pri:"",step:"",owner:"",st:"",hidden:false}); ui.zf[k]=v; saveUi(); location.hash="vung"; }));
   A.querySelectorAll("[data-focus]").forEach(b=>b.addEventListener("click",()=>{ ui.focus=b.dataset.focus==="1"; saveUi(); render(); }));
   if(ui.view==="thong-ke") bindStats(A);
+  if(ui.view==="nhat-ky") bindLog(A);
   if(ui.view==="tai-khoan"){ $("#accAdd")?.addEventListener("click",()=>openAcc(null)); $("#accBulk")?.addEventListener("click",openBulk); A.querySelectorAll("[data-acc]").forEach(r=>r.addEventListener("click",()=>openAcc(r.dataset.acc))); $("#impJson")?.addEventListener("change",e=>{ const f=e.target.files[0]; e.target.value=""; if(f) importJson(f); }); }
   if(ui.view==="nhan-su") bindAtt(A);
   if(ui.view==="faq"){
