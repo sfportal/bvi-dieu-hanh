@@ -1,3 +1,6 @@
+alter table public.docs drop constraint if exists docs_col_check;
+alter table public.docs add constraint docs_col_check check (col = any (array['zones','people','tasks','contracts','daily','units','events','leaves','faqs','supports']));
+
 create table if not exists public.activity_log(
   id bigserial primary key,
   at timestamptz not null default now(),
@@ -33,6 +36,7 @@ create or replace function public.log_label(c text, k text) returns text languag
     when 'parent' then 'việc cha' when 'kind' then 'loại việc' when 'cat' then 'nhóm FAQ' when 'aud' then 'đối tượng'
     when 'ha' then 'diện tích (ha)' when 'plots' then 'số lô' when 'hh' then 'số hộ' when 'ordered' then 'đặt hàng'
     when 'checks' then 'checklist bước' when 'gates' then 'cổng kiểm soát' when 'files' then 'hồ sơ 19 phần'
+    when 'helper' then 'người hỗ trợ' when 'detail' then 'chi tiết' when 'result' then 'kết quả' when 'task' then 'việc gắn'
     when 'place' then 'địa điểm' when 'start' then 'thời gian' when 'end' then 'thời gian' when 'people' then 'người tham gia'
     else k end $$;
 
@@ -40,6 +44,8 @@ create or replace function public.log_change(c text, k text, ov jsonb, nv jsonb)
 declare t jsonb := '{"todo":"Chưa làm","doing":"Đang làm","wait":"Chờ người khác","done":"Xong","pending":"Chờ duyệt","approved":"Đã duyệt","rejected":"Từ chối","open":"Đang mở"}';
 begin
   if k='step' then return 'bước '||coalesce(ov#>>'{}','chưa rõ')||' → '||coalesce(nv#>>'{}','chưa rõ'); end if;
+  if k='status' and c='supports' then t:='{"wait":"Chờ hỗ trợ","doing":"Đang thực hiện","done":"Đã hoàn tất","declined":"Không hỗ trợ"}'; end if;
+  if k='updates' then return 'thêm trao đổi'; end if;
   if k='status' then return 'trạng thái: '||coalesce(t->>(ov#>>'{}'),ov#>>'{}','—')||' → '||coalesce(t->>(nv#>>'{}'),nv#>>'{}','—'); end if;
   if k in ('owner','R','A','person') then return case k when 'owner' then 'phụ trách' when 'R' then 'người làm' when 'A' then 'người duyệt' else 'người' end
        ||': '||coalesce(log_pn(ov#>>'{}'),'—')||' → '||coalesce(log_pn(nv#>>'{}'),'—'); end if;

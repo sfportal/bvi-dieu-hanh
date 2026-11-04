@@ -35,5 +35,8 @@ s=s.replace('Hãy mở trang khi đã đăng nhập claude.ai; nếu vẫn vậy
 R('Bạn chưa có quyền tải tệp lên trang này. Nhờ quản lý cấp quyền Contributor trở lên.','Tài khoản chỉ xem không tải tệp lên được.')
 # Drive direct upload needs Claude connector: hide in app (keep "Dán link")
 R('.faqq{','label:has(> input[data-drive]){display:none}\na.btn{color:inherit;text-decoration:none}\n.faqq{')
+# FarmBase import: owner only in app
+R("""(canManage()?'<label class="btn" style="cursor:pointer">Nhập từ FarmBase""","""(isOwner()?'<label class="btn" style="cursor:pointer">Nhập từ FarmBase""")
+R('async function startImport(file){','async function startImport(file){ if(!isOwner()){ toast("Chỉ owner được nhập từ FarmBase"); return; }')
 assert 'claude.use' not in s, [m.start() for m in re.finditer('claude.use',s)]
 open('index.html','w').write(s); print('built',len(s))
