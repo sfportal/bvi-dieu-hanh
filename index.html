@@ -756,7 +756,9 @@ function drawZone(id){
     +'<div class="f"><label>Tỉnh</label><input data-zf="province" value="'+esc(z.province||"")+'"></div>'
     +'<div class="f"><label>Xã / phường</label><input data-zf="ward" value="'+esc(z.ward||"")+'"></div>'
     +'<div class="f"><label>Mã vùng (nội địa / GACC)</label><input data-zf="code" value="'+esc(z.code||"")+'"></div>'
-    +'<div class="f"><label>Diện tích (ha)</label><input type="number" step="0.01" data-zf="ha" value="'+esc(z.ha||"")+'"></div></div>';
+    +'<div class="f"><label>Diện tích (ha)</label><input type="number" step="0.01" data-zf="ha" value="'+esc(z.ha||"")+'"></div>'
+    +'<div class="f"><label>Dự kiến có mã nội địa (báo khách)</label><input data-zf="eta" value="'+esc(z.eta||"")+'" placeholder="Ví dụ: 15–20/11/2026; để trống nếu chưa xác định"></div>'
+    +'<div class="f"><label>Xã đã kiểm tra thực địa</label>'+sel("inspected",z.inspected?"1":"",[["","Chưa"],["1","Đã kiểm tra"]])+'</div></div>';
   h+='<div class="f"><label>Việc tiếp theo</label><input data-zf="next" value="'+esc(z.next||"")+'"></div>'
     +'<div class="f"><label>Vướng mắc</label><textarea rows="2" data-zf="blocker">'+esc(z.blocker||"")+'</textarea></div>'
     +'<div class="f2"><div class="f"><label>Cần hỗ trợ từ</label>'+sel("needFrom",z.needFrom,[["","Không"],["Công ty","Công ty"],["Khách","Khách / đơn vị đứng mã"],["Xã","Xã"],["Nông hộ","Nông hộ"]])+'</div><div class="f"><label>Hiện trên trang</label>'+sel("active",z.active===false?"0":"1",[["1","Đang theo dõi"],["0","Ẩn (đã rà, không theo dõi)"]])+'</div></div>'
@@ -774,7 +776,7 @@ function drawZone(id){
   const L=$("#layer");
   L.querySelectorAll("[data-zf]").forEach(inp=>inp.addEventListener("change",async e=>{
     const k=inp.dataset.zf; let v=inp.value;
-    if(k==="ha") v=parseFloat(v)||0; if(k==="ordered") v=v==="1"; if(k==="active") v=v!=="0";
+    if(k==="ha") v=parseFloat(v)||0; if(k==="ordered"||k==="inspected") v=v==="1"; if(k==="active") v=v!=="0";
     if(k==="owner"&&v==="") v=null; if((k==="T"||k==="submitted")&&v==="") v=null;
     if(k==="unitId"){ v=v||null; await upd("zones",id,{unitId:v,unit:unitName(v),...stamp()}); toast("Đã lưu"); return; }
     await upd("zones",id,{[k]:v,...stamp()}); toast("Đã lưu");
@@ -876,7 +878,8 @@ function drawTask(id,preset){
   h+='<div class="f2"><div class="f"><label for="tstat">Trạng thái</label><select id="tstat">'+Object.entries(TSTAT).map(([k,l])=>'<option value="'+k+'"'+(t.status===k?" selected":"")+'>'+l+'</option>').join("")+'</select></div>'
     +'<div class="f"><label for="tdue">Hạn hoàn thành (T trong SMART)</label><input type="date" id="tdue" value="'+esc(t.due||"")+'"></div>'
     +'<div class="f"><label for="tteamf">Nhóm</label><select id="tteamf"><option value="">—</option>'+Object.entries(TEAMS).map(([k,l])=>'<option value="'+k+'"'+(t.team===k?" selected":"")+'>'+l+'</option>').join("")+'</select></div>'
-    +'<div class="f"><label for="tzone">Vùng trồng</label><select id="tzone">'+zopts+'</select></div></div>';
+    +'<div class="f"><label for="tzone">Vùng trồng</label><select id="tzone">'+zopts+'</select></div>'
+    +'<div class="f"><label for="tparty">Bên phụ trách (hiện ở báo cáo khách)</label><input id="tparty" value="'+esc(t.party||"")+'" placeholder="Ví dụ: Công ty, nông hộ"></div></div>';
   h+='<div class="panel"><h2>RACI</h2><div class="f2"><div class="f"><label for="tR">R · Người thực hiện</label><select id="tR">'+pOpt(t.R)+'</select></div><div class="f"><label for="tA">A · Chịu trách nhiệm cuối (một người)</label><select id="tA">'+pOpt(t.A)+'</select></div></div>'
     +'<div class="f" style="margin-top:8px"><label>C · Tham vấn</label>'+multi("tC",t.C)+'</div><div class="f" style="margin-top:8px"><label>I · Được thông báo</label>'+multi("tI",t.I)+'</div></div>';
   h+='<div class="panel"><h2>SMART</h2>'
@@ -902,7 +905,7 @@ function drawTask(id,preset){
   $("#tform").addEventListener("submit",async e=>{ e.preventDefault();
     const pick=n=>[...document.querySelectorAll('input[name="'+n+'"]:checked')].map(x=>x.value);
     const data={kind:t.kind,parent:t.parent||null,title:$("#tt").value.trim(),status:$("#tstat").value,due:$("#tdue").value||"",team:$("#tteamf").value,zone:$("#tzone").value||null,
-      R:$("#tR").value,A:$("#tA").value,C:pick("tC"),I:pick("tI"),smart:{s:$("#sS").value.trim(),m:$("#sM").value.trim(),a:$("#sA").value.trim(),r:$("#sR").value.trim()},note:$("#tnote").value.trim(),...stamp()};
+      R:$("#tR").value,A:$("#tA").value,C:pick("tC"),I:pick("tI"),smart:{s:$("#sS").value.trim(),m:$("#sM").value.trim(),a:$("#sA").value.trim(),r:$("#sR").value.trim()},note:$("#tnote").value.trim(),party:$("#tparty").value.trim(),...stamp()};
     if(!data.title){ $("#tmsg").textContent="Nhập tên việc."; return; }
     if(!data.A){ $("#tmsg").textContent="Chọn một người A (chịu trách nhiệm cuối)."; return; }
     if(!data.due){ $("#tmsg").textContent="Chọn hạn hoàn thành để việc đạt SMART."; return; }
@@ -1180,32 +1183,51 @@ function drawPerson(id){
 }
 
 /* ---------- customer report ---------- */
+const CGRP={gacc:"Đã có mã nội địa",ut1:"Ưu tiên 1",ut2:"Ưu tiên 2",tbd:"Chưa xác định"};
+const CGRP_CRIT={gacc:"Đã có mã nội địa, chờ phía TQ cấp mã GACC",ut1:"Xã đã kiểm tra, duyệt hồ sơ; sắp ra mã",ut2:"Đã đủ hoặc sắp đủ hồ sơ sổ đỏ",tbd:"Còn vướng hồ sơ đất hoặc chưa thu đủ giấy tờ"};
+function realCode(z){ return z.code&&!/^(DANGTHUCHIEN|TEST|YANNING)/.test(z.code)?z.code:""; }
+function cGrp(z){ if((z.step??-1)>=7||realCode(z)) return "gacc"; if(!z.eta) return "tbd"; return z.priority==="1"?"ut1":"ut2"; }
+function custIds(){ const ids=[ui.cust,...(ui.custAdd||[])].filter((k,i,a)=>k&&S.units[k]&&a.indexOf(k)===i); return ids; }
+function custZones(){ const ids=custIds(); const ord={gacc:0,ut1:1,ut2:2,tbd:3};
+  return activeZones().filter(([,z])=>ids.includes(z.unitId)).sort((a,b)=>ord[cGrp(a[1])]-ord[cGrp(b[1])]||ids.indexOf(a[1].unitId)-ids.indexOf(b[1].unitId)||(b[1].step??-1)-(a[1].step??-1)||a[1].name.localeCompare(b[1].name,"vi")); }
+function custName(){ return custIds().map(k=>S.units[k].name).join(" · "); }
+function custLegal(){ const ids=custIds(); return ids.length===1?(S.units[ids[0]].legal||S.units[ids[0]].name):custName(); }
+function grpEta(list){ const c={}; list.forEach(([,z])=>{ if(z.eta) c[z.eta]=(c[z.eta]||0)+1; }); return Object.entries(c).sort((a,b)=>b[1]-a[1])[0]?.[0]||""; }
+function etaShort(e){ return String(e||"").replace(/\/\d{4}$/,""); }
+function zShort(n){ let x=String(n||"").replace(/^\s*vùng\s+(trồng\s+)?sầu\s+riêng\s+/i,"").trim()||String(n||""); if(x===x.toLocaleUpperCase("vi")&&/[A-ZÀ-Ỹ]/.test(x)) x=x.toLocaleLowerCase("vi").replace(/(^|[\s('’])(\S)/g,(m,a,c)=>a+c.toLocaleUpperCase("vi")); return x; }
+function tTitle(t,z){ const i=t.title.indexOf(":"); if(i>1&&i<60){ const p=t.title.slice(0,i).toLocaleLowerCase("vi").trim(); const zn=(z?.name||"").toLocaleLowerCase("vi"); if(p&&zn.includes(p)){ const r=t.title.slice(i+1).trim(); return r.charAt(0).toLocaleUpperCase("vi")+r.slice(1); } } return t.title; }
+function zSubs(id,o){ o=o||{}; return Object.values(S.tasks).filter(t=>t.zone===id&&t.kind==="sub"&&t.status!=="done"&&(o.field?t.fieldVisit:!t.fieldVisit)).sort((a,b)=>(a.due||"9").localeCompare(b.due||"9")); }
+function zRemain(id){ const z=S.zones[id]; return zSubs(id).map(t=>tTitle(t,z)+(t.party?" ("+t.party+")":"")+(t.due?": "+dmy(t.due):"")); }
+function zFieldDone(id){ const f=Object.values(S.tasks).filter(t=>t.zone===id&&t.fieldVisit); return f.length?f.every(t=>t.status==="done"):null; }
+function zPlace(z,multi){ return [z.ward,multi?unitName(z.unitId):""].filter(Boolean).join(" · "); }
+function custData(){ const zs=custZones(); const G={gacc:[],ut1:[],ut2:[],tbd:[]}; zs.forEach(e=>G[cGrp(e[1])].push(e));
+  const ha=l=>l.reduce((a,[,z])=>a+(+z.ha||0),0); return {zs,G,ha,multi:custIds().length>1}; }
 function vCustomer(){
   const az=activeZones(); const units=unitList().filter(([k])=>az.some(([,z])=>z.unitId===k));
   if(!ui.cust||!S.units[ui.cust]) ui.cust=units[0]?.[0]||"";
-  const cu=S.units[ui.cust]||{};
-  let h='<div class="row between"><div><a href="#cong-ty" class="sub">← Công ty</a><h1>Báo cáo tiến độ cho khách</h1><div class="sub">Trang khách xem được: chỉ vùng của một đơn vị, không có CCCD, số điện thoại nông hộ, chi phí nội bộ hay KPI.</div></div><div class="row" style="max-width:100%;min-width:0;flex-wrap:wrap"><select id="custSel" aria-label="Chọn khách" style="max-width:100%;min-width:0">'+units.map(([k,u])=>'<option value="'+k+'"'+(k===ui.cust?" selected":"")+'>'+esc(u.name)+'</option>').join("")+'</select><button class="btn pri" id="docxRep">Xuất file Word</button><button class="btn" id="copyRep">Sao chép tóm tắt</button></div></div>';
+  ui.custAdd=(ui.custAdd||[]).filter(k=>k!==ui.cust&&S.units[k]);
+  let h='<div class="row between"><div><a href="#cong-ty" class="sub">← Công ty</a><h1>Báo cáo tiến độ cho khách</h1><div class="sub">Không có CCCD, số điện thoại nông hộ, chi phí nội bộ hay tên nhân sự. Có thể gộp nhiều đơn vị vào một báo cáo.</div></div><div class="row" style="max-width:100%;min-width:0;flex-wrap:wrap"><select id="custSel" aria-label="Chọn khách" style="max-width:100%;min-width:0">'+units.map(([k,u])=>'<option value="'+k+'"'+(k===ui.cust?" selected":"")+'>'+esc(u.name)+'</option>').join("")+'</select><button class="btn pri" id="docxRep">Xuất file Word</button><button class="btn" id="copyRep">Sao chép tóm tắt</button></div></div>';
   if(!ui.cust) return h+'<div class="empty">Chưa có đơn vị liên kết nào.</div>';
-  const zs=az.filter(([,z])=>z.unitId===ui.cust).sort((a,b)=>(b[1].step??-1)-(a[1].step??-1));
-  const ha=zs.reduce((a,[,z])=>a+(+z.ha||0),0);
-  const coded=zs.filter(([,z])=>z.step>=7||(z.code&&!/^(DANGTHUCHIEN|TEST|YANNING)/.test(z.code))).length;
-  const w5=zs.filter(([,z])=>z.step===5).length, w4=zs.filter(([,z])=>z.step===4).length;
-  const need=zs.filter(([,z])=>z.needFrom==="Khách");
-  h+='<div class="panel custhead" style="margin-top:12px"><div class="sub">Kính gửi</div><h2 style="font-size:18px">'+esc(cu.legal||cu.name)+'</h2><div class="sub">Công ty CP BVI · Nền tảng FarmBase · Báo cáo ngày '+dmy(todayStr())+'</div></div>';
-  h+='<div class="grid kpis" style="margin-top:12px">'+tile("Tổng số vùng",zs.length,fmtHa(ha)+" ha","","")+tile("Đã có mã",coded,"nội địa hoặc GACC","good","")+tile("Đang chờ xã kiểm tra",w5,"Bước 5","","")+tile("Đang ký hồ sơ",w4,"Bước 4","","")+tile("Việc cần anh/chị phối hợp",need.length,"xem bên dưới",need.length?"warn":"","")+'</div>';
-  h+='<div class="panel" style="margin-top:12px"><h2>Việc cần anh/chị phối hợp</h2>'+(need.map(([,z])=>'<div style="padding:4px 0"><b>'+esc(z.name)+'</b>: '+esc(z.next||z.blocker||"")+'</div>').join("")||'<div class="sub">Hiện chưa có việc nào cần phía anh/chị.</div>')+'</div>';
-  h+='<div class="panel" style="margin-top:12px"><h2>Vùng của anh/chị đang ở đâu trên quy trình 9 bước</h2><div class="legend" style="margin-bottom:8px"><span><i class="sw" style="background:var(--done)"></i>Đã xong</span><span><i class="sw" style="background:var(--doing)"></i>Đang làm</span><span><i class="sw" style="background:var(--todo)"></i>Chưa tới</span></div><div class="tw"><table><thead><tr><th>Vùng trồng</th><th class="n">DT (ha)</th><th>Tiến độ</th><th>Mốc tiếp theo · dự kiến</th><th>Trạng thái</th></tr></thead><tbody>';
-  zs.forEach(([,z])=>{ const s=zstatus(z); const m=s.m; const ct=z.step>=7?(z.step===7?"Chờ phía Trung Quốc":"Đã có mã"):z.needFrom==="Khách"?"Chờ anh/chị phối hợp":s.k==="bad"||s.k==="warn"?"Chậm hơn kế hoạch":s.k==="ok"?"Đúng kế hoạch":m.wait?"Chờ cơ quan nhà nước":"Đang xác định kế hoạch";
-    h+='<tr><td><b>'+esc(z.name)+'</b>'+(z.custNote?'<div class="sub">'+esc(z.custNote)+'</div>':'')+'</td><td class="n">'+fmtHa(z.ha)+'</td><td>'+bar9(z.step)+'<div class="sub">'+(z.step!=null?esc(STEPS[z.step].name):"")+'</div></td><td>'+esc(m.label)+(m.date?' · '+rangeText(m.date):'')+'</td><td>'+esc(ct)+'</td></tr>'; });
-  h+='</tbody></table></div></div>';
-  h+='<div class="sub" style="margin-top:10px">Các mốc là dự kiến, không phải cam kết. Thời gian cấp mã nội địa do cơ quan nhà nước xét duyệt (thường 10–15 ngày sau khi nộp hồ sơ online); mã phía Trung Quốc do phía Trung Quốc phê duyệt.</div>';
+  const others=units.filter(([k])=>k!==ui.cust);
+  if(others.length) h+='<details class="panel" style="margin-top:10px"'+((ui.custAdd||[]).length?" open":"")+'><summary style="cursor:pointer"><b>Gộp thêm đơn vị vào báo cáo</b>'+((ui.custAdd||[]).length?' <span class="pill">'+ui.custAdd.length+' đơn vị</span>':'')+'</summary><div class="multi" style="margin-top:8px">'+others.map(([k,u])=>'<label><input type="checkbox" data-custadd="'+k+'"'+((ui.custAdd||[]).includes(k)?" checked":"")+'>'+esc(u.name)+'</label>').join("")+'</div></details>';
+  const {zs,G,ha,multi}=custData();
+  h+='<div class="panel custhead" style="margin-top:12px"><h2 style="font-size:18px">Báo cáo tiến độ mã số vùng trồng</h2><div><b>'+esc(custLegal())+'</b></div><div class="sub">Số liệu cập nhật '+dmy(todayStr())+' · Công ty CP BVI</div></div>';
+  h+='<div class="row" style="flex-wrap:wrap;gap:6px;margin-top:10px"><span class="pill">'+zs.length+' vùng · '+fmtHa(ha(zs))+' ha</span>'+(G.gacc.length?'<span class="pill good">'+G.gacc.length+' đã có mã nội địa</span>':'')+(G.ut1.length?'<span class="pill info">Ưu tiên 1: '+G.ut1.length+' vùng'+(grpEta(G.ut1)?', có mã '+esc(etaShort(grpEta(G.ut1))):'')+'</span>':'')+(G.ut2.length?'<span class="pill warn">Ưu tiên 2: '+G.ut2.length+' vùng'+(grpEta(G.ut2)?', có mã '+esc(etaShort(grpEta(G.ut2))):'')+'</span>':'')+(G.tbd.length?'<span class="pill bad">'+G.tbd.length+' chưa xác định ngày</span>':'')+'</div>';
+  h+='<div class="panel tw" style="margin-top:12px"><h2>Tổng quan theo mức ưu tiên</h2><table><thead><tr><th>Nhóm</th><th class="n">Vùng</th><th class="n">Ha</th><th>Dự kiến mã nội địa</th><th>Vùng</th></tr></thead><tbody>'
+    +Object.keys(CGRP).filter(g=>G[g].length).map(g=>'<tr><td style="min-width:130px"><b>'+CGRP[g]+'</b><div class="sub">'+CGRP_CRIT[g]+'</div></td><td class="n">'+G[g].length+'</td><td class="n">'+fmtHa(ha(G[g]))+'</td><td>'+(g==="gacc"?"Đã có":g==="tbd"?"Chưa xác định":esc(grpEta(G[g])))+'</td><td style="min-width:220px">'+G[g].map(([,z])=>esc(zShort(z.name))).join(", ")+'</td></tr>').join("")+'</tbody></table></div>';
+  h+='<div class="panel tw" style="margin-top:12px"><h2>Chi tiết từng vùng</h2><table><thead><tr><th>Vùng / địa bàn</th><th class="n">Ha</th><th>Nhóm</th><th>Tiến độ</th><th>Vướng mắc</th><th>Việc còn lại (phụ trách)</th></tr></thead><tbody>';
+  zs.forEach(([id,z])=>{ const g=cGrp(z), rm=zRemain(id);
+    h+='<tr><td style="min-width:140px"><b>'+esc(zShort(z.name))+'</b><div class="sub">'+esc(zPlace(z,multi))+'</div></td><td class="n">'+fmtHa(z.ha)+'</td><td>'+CGRP[g]+(g==="gacc"&&realCode(z)?'<div class="sub mono">'+esc(realCode(z))+'</div>':z.eta?'<div class="sub">'+esc(z.eta)+'</div>':'')+'</td><td style="min-width:200px">'+esc(z.custNote||"")+'</td><td style="min-width:180px">'+esc(z.blocker||"")+'</td><td style="min-width:240px">'+(rm.length?rm.map(x=>'<div>• '+esc(x)+'</div>').join(""):(g==="tbd"&&z.next?esc(z.next):'<span class="sub">—</span>'))+'</td></tr>'; });
+  h+='</tbody></table></div>';
+  h+='<div class="sub" style="margin-top:10px">Việc còn lại lấy từ việc con chưa xong có ghi "Bên phụ trách". Ngày dự kiến sửa ở ô "Dự kiến có mã nội địa" trong hồ sơ vùng. Các mốc là dự kiến, mã nội địa do cơ quan nhà nước xét duyệt, mã GACC do phía Trung Quốc phê duyệt.</div>';
   return h;
 }
 function custSummary(){
-  const zs=activeZones().filter(([,z])=>z.unitId===ui.cust); const cu=S.units[ui.cust]||{};
-  let t="BÁO CÁO TIẾN ĐỘ MÃ SỐ VÙNG TRỒNG\nKính gửi: "+(cu.legal||cu.name||"")+"\nNgày "+dmy(todayStr())+" · Công ty CP BVI\n\n";
-  zs.forEach(([,z])=>{const s=zstatus(z); t+="• "+z.name+" ("+fmtHa(z.ha)+" ha): Bước "+(z.step??"?")+(z.step!=null?" – "+STEPS[z.step].name:"")+(s.m.label?". Tiếp theo: "+s.m.label+(s.m.date?" ("+rangeText(s.m.date)+")":""):"")+"\n";});
-  return t+"\nCác mốc là dự kiến, không phải cam kết.";
+  const {zs,G,ha}=custData();
+  let t="BÁO CÁO TIẾN ĐỘ MÃ SỐ VÙNG TRỒNG SẦU RIÊNG\n"+custLegal()+" | Số liệu cập nhật "+dmy(todayStr())+"\n"+zs.length+" vùng · "+fmtHa(ha(zs))+" ha\n";
+  Object.keys(CGRP).forEach(g=>{ if(!G[g].length) return; t+="\n"+CGRP[g]+(g==="ut1"||g==="ut2"?" (có mã "+(grpEta(G[g])||"cập nhật sau")+")":"")+": "+G[g].length+" vùng, "+fmtHa(ha(G[g]))+" ha\n";
+    G[g].forEach(([id,z])=>{ t+="• "+zShort(z.name)+" ("+fmtHa(z.ha)+" ha): "+(z.custNote||"")+(z.blocker?" Vướng: "+z.blocker:"")+"\n"; }); });
+  return t+"\nCác mốc là dự kiến; mã nội địa do cơ quan nhà nước xét duyệt, mã GACC do phía Trung Quốc phê duyệt.";
 }
 
 /* ---------- units (công ty, HTX) ---------- */
@@ -1375,41 +1397,74 @@ async function buildDocx(bodyXml){
 }
 function custStatus(z){ const s=zstatus(z), m=s.m; return z.step>=7?(z.step===7?"Chờ phía TQ":"Đã có mã"):z.needFrom==="Khách"?"Cần khách hỗ trợ":s.k==="bad"?"Trễ nặng":s.k==="warn"?"Trễ nhẹ":s.k==="ok"?"Đúng tiến độ":m.wait?"Chờ cơ quan nhà nước":"Đang xác định kế hoạch"; }
 function custDocxBody(){
-  const cu=S.units[ui.cust]||{}; const zs=activeZones().filter(([,z])=>z.unitId===ui.cust).sort((a,b)=>(b[1].step??-1)-(a[1].step??-1));
-  const ha=zs.reduce((a,[,z])=>a+(+z.ha||0),0), coded=zs.filter(([,z])=>z.step>=7||(z.code&&!/^(DANGTHUCHIEN|TEST|YANNING)/.test(z.code))).length;
-  const w5=zs.filter(([,z])=>z.step===5).length, w4=zs.filter(([,z])=>z.step===4).length, need=zs.filter(([,z])=>z.needFrom==="Khách");
-  const W=14838; let b='';
-  b+=wP("CÔNG TY CỔ PHẦN BVI · NỀN TẢNG FARMBASE",{b:true,sz:20,color:"1F5130",after:40});
-  b+=wP("BÁO CÁO TIẾN ĐỘ MÃ SỐ VÙNG TRỒNG",{b:true,sz:34,align:"center",before:120,after:80});
-  b+=wP([{t:"Kính gửi: ",b:true},cu.legal||cu.name||""],{align:"center",after:40});
-  b+=wP("Ngày lập: "+dmy(todayStr())+" · Người lập: "+(pname(me)||"……………")+" · Liên hệ: ……………",{align:"center",sz:21,i:true,after:160});
-  b+=wH("1. Tóm tắt nhanh");
-  b+=wTable([["Tổng số vùng","Tổng diện tích","Đã có mã","Đang chờ xã kiểm tra","Đang ký hồ sơ","Việc cần anh/chị phối hợp"],[{t:zs.length,align:"center",b:true,sz:24},{t:fmtHa(ha)+" ha",align:"center",b:true,sz:24},{t:coded,align:"center",b:true,sz:24},{t:w5,align:"center",b:true,sz:24},{t:w4,align:"center",b:true,sz:24},{t:need.length,align:"center",b:true,sz:24}]],Array(6).fill(Math.floor(W/6)));
-  const byStep={}; zs.forEach(([,z])=>{ const k=z.step==null?"chưa rõ bước":"Bước "+z.step; byStep[k]=(byStep[k]||0)+1; });
-  b+=wP([{t:"Điểm chính: ",b:true},Object.entries(byStep).map(([k,n])=>n+" vùng ở "+k).join(", ")+". "+(need.length?need.length+" vùng đang chờ phía quý công ty phối hợp (mục 3).":"Hiện chưa có việc nào cần quý công ty phối hợp.")+" [Bổ sung 1–2 câu nếu cần]"]);
-  b+=wH("2. Vùng của anh/chị đang ở đâu trên quy trình");
-  b+=wP("Quy trình gồm 9 bước (0–8). Ô xanh đậm: bước đã xong · ô vàng: bước đang làm · ô trắng: chưa tới.",{sz:21,i:true});
-  const sw=320, fixed=[3000,800,2400,2800,1500], rest=W-fixed.reduce((a,c)=>a+c,0)-9*sw;
-  const head=["Vùng trồng","DT (ha)",...Array.from({length:9},(_,i)=>({t:i,align:"center"})),"Đang ở bước","Mốc tiếp theo · dự kiến","Trạng thái","Ghi chú"];
-  const rows=[head]; zs.forEach(([,z])=>{ const s=zstatus(z), m=s.m; const cells=Array.from({length:9},(_,i)=>({t:"",fill:z.step==null?"FFFFFF":i<z.step?"2F6B45":i===z.step?"E3A82B":"FFFFFF"}));
-    rows.push([{t:z.name,b:true},{t:fmtHa(z.ha),align:"right"},...cells,z.step==null?"Chưa rõ":z.step+" · "+STEPS[z.step].name,(m.label||"")+(m.date?" · "+rangeText(m.date):""),custStatus(z),z.custNote||""]); });
-  b+=wTable(rows,[fixed[0],fixed[1],...Array(9).fill(sw),fixed[2],fixed[3],fixed[4],rest]);
-  b+=wH("3. Việc cần anh/chị phối hợp");
-  b+=wTable([["#","Việc cần làm","Vùng","Vì sao cần","Hạn"],...(need.length?need.map(([,z],i)=>[String(i+1),z.next||"",z.name,z.blocker||"",""]):[["1","","","",""]])],[600,5200,3000,4438,1600]);
-  b+=wH("4. Vướng mắc và hướng xử lý của BVI");
-  const bl=zs.filter(([,z])=>z.blocker&&z.needFrom!=="Khách");
-  b+=wTable([["Vùng","Vướng mắc","Hướng xử lý","Người xử lý","Hạn"],...(bl.length?bl.map(([,z])=>[z.name,z.blocker,z.next||"",pname(z.owner)||"",zstatus(z).m.date?dmy(zstatus(z).m.date):""]):[["","","","",""]])],[3000,4600,4000,1800,1438]);
-  b+=wH("5. Kế hoạch 2 tuần tới");
-  const t=todayStr(), e2=addDays(t,14); const up=zs.map(([,z])=>({z,m:zstatus(z).m})).filter(x=>x.m.date&&!x.m.wait&&x.m.date>=t&&x.m.date<=e2).sort((a,b)=>a.m.date.localeCompare(b.m.date));
-  b+=wTable([["Thời gian","Vùng","Việc chính"],...(up.length?up.map(x=>[rangeText(x.m.date),x.z.name,x.m.label]):[["","",""]])],[2400,4400,8038]);
-  b+=wP("Lưu ý: Các mốc là dự kiến, không phải cam kết. Thời gian cấp mã nội địa do cơ quan nhà nước xét duyệt (thường 10–15 ngày sau khi nộp hồ sơ online); mã phía Trung Quốc do phía Trung Quốc phê duyệt.",{sz:20,i:true,before:160});
-  b+=wTable([[{t:"ĐẠI DIỆN CÔNG TY CP BVI",align:"center",b:true,fill:"FFFFFF"},{t:"NGƯỜI LẬP",align:"center",b:true,fill:"FFFFFF"}],[{t:" ",fill:"FFFFFF"},{t:pname(me)||"",align:"center",fill:"FFFFFF"}]],[7419,7419]);
+  const {zs,G,ha,multi}=custData(); const W=14838; let b='';
+  const zcell=z=>({t:zShort(z.name)+(zPlace(z,multi)?" · "+zPlace(z,multi):""),b:false});
+  b+=wP("BÁO CÁO TIẾN ĐỘ MÃ SỐ VÙNG TRỒNG SẦU RIÊNG",{b:true,sz:32,align:"center",color:"1F5130",after:60});
+  b+=wP([{t:custLegal(),b:true}," | Số liệu cập nhật "+dmy(todayStr())],{align:"center",after:160});
+  const k=[[zs.length+"","vùng · "+fmtHa(ha(zs))+" ha"]];
+  if(G.gacc.length) k.push([G.gacc.length+" vùng","đã có mã nội địa"]);
+  if(G.ut1.length) k.push([G.ut1.length+" vùng","Ưu tiên 1: có mã "+(etaShort(grpEta(G.ut1))||"sắp tới")]);
+  if(G.ut2.length) k.push([G.ut2.length+" vùng","Ưu tiên 2: có mã "+(etaShort(grpEta(G.ut2))||"sắp tới")]);
+  if(G.tbd.length) k.push([G.tbd.length+" vùng","chưa xác định ngày"]);
+  const kw=Math.floor(W/k.length);
+  b+=wTable([k.map(x=>({t:x[0],align:"center",b:true,sz:28,fill:"E8EFE6"})),k.map(x=>({t:x[1],align:"center",sz:19,fill:"FFFFFF"}))],Array(k.length).fill(kw));
+  let sec=0; const H=t=>wH((++sec)+". "+t);
+  b+=H("Tổng quan theo mức ưu tiên");
+  const ov=[["Nhóm","Tiêu chí","Số vùng / ha","Dự kiến mã nội địa","Vùng"]];
+  Object.keys(CGRP).filter(g=>G[g].length).forEach(g=>ov.push([{t:CGRP[g],b:true},CGRP_CRIT[g],G[g].length+" / "+fmtHa(ha(G[g])),g==="gacc"?"Đã có":g==="tbd"?"Chưa xác định":grpEta(G[g]),G[g].map(([,z])=>zShort(z.name)).join(", ")]));
+  ov.push([{t:"Tổng",b:true},"",{t:zs.length+" / "+fmtHa(ha(zs)),b:true},"",""]);
+  b+=wTable(ov,[2000,3800,1600,2000,W-9400]);
+  if(G.gacc.length){
+    b+=H("Vùng đã có mã nội địa · "+G.gacc.length+" vùng · "+fmtHa(ha(G.gacc))+" ha");
+    b+=wTable([["TT","Vùng / địa bàn","DT (ha)","Mã nội địa","Hiện trạng","Việc còn lại để xin mã GACC"],...G.gacc.map(([id,z],i)=>[String(i+1),zcell(z),{t:fmtHa(z.ha),align:"right"},realCode(z)||"",z.custNote||"",zRemain(id).join(". ")||z.next||""])],[500,2600,900,2600,3600,W-10200]);
+  }
+  const grpTable=(g,intro)=>{ const L=G[g]; if(!L.length) return;
+    const e=grpEta(L);
+    b+=H(CGRP[g]+(e?" · có mã nội địa "+e:"")+" · "+L.length+" vùng · "+fmtHa(ha(L))+" ha");
+    if(intro) b+=wP(intro,{sz:21,i:true});
+    b+=wTable([["TT","Vùng / địa bàn","DT (ha)","Tiến độ","Vướng mắc","Việc còn lại (phụ trách)","Minh chứng"],...L.map(([id,z],i)=>[String(i+1),zcell(z),{t:fmtHa(z.ha),align:"right"},z.custNote||"",z.blocker||"",zRemain(id).join("; ")||z.next||"",z.drive?"Có (Drive)":""])],[500,2400,800,3000,3000,W-11200,1500]);
+  };
+  grpTable("ut1","Vùng xã đã kiểm tra thực địa, hồ sơ sắp nộp hoặc chờ ký biên bản để nộp Cổng DVC.");
+  grpTable("ut2","Vùng đã đủ hoặc sắp đủ hồ sơ sổ đỏ, cần ký hồ sơ, nộp xã và qua kiểm tra thực địa.");
+  if(G.tbd.length){
+    b+=H("Chưa xác định ngày ra mã · "+G.tbd.length+" vùng · "+fmtHa(ha(G.tbd))+" ha");
+    b+=wTable([["TT","Vùng / địa bàn","DT (ha)","Tiến độ","Vướng mắc","Điều kiện để chốt ngày"],...G.tbd.map(([id,z],i)=>[String(i+1),zcell(z),{t:fmtHa(z.ha),align:"right"},z.custNote||"",z.blocker||"",z.next||zRemain(id).join("; ")])],[500,2600,900,3600,3600,W-11200]);
+  }
+  const fz=zs.filter(([id,z])=>cGrp(z)!=="gacc"||Object.values(S.tasks).some(t=>t.zone===id&&t.fieldVisit));
+  if(fz.length){
+    b+=H("Lịch đi thực địa: bay flycam, đặt bẫy côn trùng, chụp kho thuốc");
+    b+=wP("Mỗi vùng đi một lượt, làm cả 3 việc trong ngày. Điền ngày đi và đánh dấu ☑ khi xong.",{sz:21,i:true});
+    const short={gacc:"Có mã",ut1:"UT 1",ut2:"UT 2",tbd:"Chưa xác định"};
+    b+=wTable([["Ngày đi","Vùng","Ưu tiên","Bay flycam","Bẫy côn trùng","Ảnh kho thuốc","Ghi chú"],...fz.map(([id,z])=>{ const d=zFieldDone(id); const f=Object.values(S.tasks).filter(t=>t.zone===id&&t.fieldVisit); const due=f.map(t=>t.due).filter(Boolean).sort()[0]; const ck=d?"☑":"☐";
+      return [d&&f[0].doneAt?dmy(f[0].doneAt.slice(0,10)):"……/……/"+todayStr().slice(0,4),zcell(z),short[cGrp(z)],{t:ck,align:"center"},{t:ck,align:"center"},{t:ck,align:"center"},due&&!d?"Dự kiến trước "+dmy(due):""]; })],[1700,4000,1500,1500,1500,1500,W-11700]);
+  }
+  const pz=[...G.ut1,...G.ut2];
+  if(pz.length){
+    b+=H("Hình ảnh minh chứng vùng Ưu tiên 1 và 2");
+    b+=wP('Dán hình ảnh hoặc link Google Drive vào cột "Hình ảnh / link".',{sz:21,i:true});
+    b+=wTable([["TT","Vùng","Ưu tiên","Hình ảnh / link Google Drive","Ghi chú"],...pz.map(([id,z],i)=>[String(i+1),zcell(z),CGRP[cGrp(z)],z.drive||"",""])],[500,3800,1500,6000,W-11800]);
+  }
+  b+=H("Việc cần làm trong 2 tuần tới");
+  const t0=todayStr(), e2=addDays(t0,14); let any=0;
+  Object.keys(CGRP).forEach(g=>G[g].forEach(([id,z])=>{ const ts=zSubs(id).filter(t=>t.due&&t.due<=e2); if(!ts.length) return; any++;
+    b+=wP([{t:"• "+CGRP[g]+" – "+zShort(z.name)+(multi?" ("+unitName(z.unitId)+")":"")+": ",b:true},ts.map(t=>tTitle(t,z)+(t.party?" ["+t.party+"]":"")+" ("+dmy(t.due)+")").join("; ")+"."],{sz:22}); }));
+  if(!any) b+=wP("• ……………………………………",{sz:22});
+  b+=wH("Phụ lục. Danh sách vùng trồng theo công ty");
+  b+=wP('Dự kiến xong là ngày có mã nội địa. Vùng chưa rõ ngày ghi "Cập nhật sau".',{sz:21,i:true});
+  const ap=[["TT","Vùng trồng","Địa bàn","DT (ha)","Bước","Mã nội địa","Dự kiến xong","Vướng mắc"]]; let n=0;
+  custIds().forEach(uk=>{ const L=zs.filter(([,z])=>z.unitId===uk); if(!L.length) return;
+    ap.push([{t:"",fill:"F3F6F2"},{t:(S.units[uk].legal||S.units[uk].name)+" · "+L.length+" vùng · "+fmtHa(ha(L))+" ha",b:true,fill:"F3F6F2"},{t:"",fill:"F3F6F2"},{t:"",fill:"F3F6F2"},{t:"",fill:"F3F6F2"},{t:"",fill:"F3F6F2"},{t:"",fill:"F3F6F2"},{t:"",fill:"F3F6F2"}]);
+    L.forEach(([,z])=>{ const g=cGrp(z); ap.push([String(++n),zShort(z.name),z.ward||"",{t:fmtHa(z.ha),align:"right"},z.step!=null?String(z.step):"",realCode(z),g==="gacc"?"Đã có":z.eta||"Cập nhật sau",z.blocker||""]); }); });
+  ap.push(["",{t:"Tổng",b:true},"",{t:fmtHa(ha(zs)),align:"right",b:true},"","","",""]);
+  b+=wTable(ap,[500,2800,1800,900,600,2600,1600,W-10800]);
+  b+=wP("Lưu ý: Các mốc là dự kiến, không phải cam kết. Mã nội địa do cơ quan nhà nước xét duyệt (thường 10–15 ngày sau khi nộp hồ sơ online); mã GACC do phía Trung Quốc phê duyệt.",{sz:20,i:true,before:160});
+  b+=wTable([[{t:"NGƯỜI BÁO CÁO",align:"center",b:true,fill:"FFFFFF"},{t:"ĐẠI DIỆN CÔNG TY",align:"center",b:true,fill:"FFFFFF"}],[{t:"(Ký, ghi rõ họ tên)",align:"center",fill:"FFFFFF"},{t:"(Ký, ghi rõ họ tên)",align:"center",fill:"FFFFFF"}],[{t:" ",fill:"FFFFFF"},{t:" ",fill:"FFFFFF"}],[{t:" ",fill:"FFFFFF"},{t:" ",fill:"FFFFFF"}]],[7419,7419]);
   return b;
 }
 async function exportCustDocx(){
   try{
-    const cu=S.units[ui.cust]||{}; const blob=await buildDocx(custDocxBody());
-    const fn="BaoCao_TienDo_"+(cu.name||"KhachHang").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/đ/g,"d").replace(/Đ/g,"D").replace(/[^A-Za-z0-9]+/g,"")+"_"+todayStr().split("-").reverse().join("-")+".docx";
+    const blob=await buildDocx(custDocxBody());
+    const fn="BaoCaoTienDo_MVT_"+(custIds().map(k=>S.units[k].name).join("-")||"KhachHang").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/đ/g,"d").replace(/Đ/g,"D").replace(/[^A-Za-z0-9-]+/g,"")+"_"+todayStr().split("-").reverse().join("-")+".docx";
     if(dlNs){ try{ await dlNs.save({filename:fn,data:blob}); toast("Đã lưu file Word"); }catch(e){ if(e?.code!=="declined") toast("Không lưu được file: "+(e?.message||e?.code||"")); } return; }
     const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=fn; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
   }catch(e){ toast(e.message||"Không tạo được file Word"); }
@@ -1814,6 +1869,7 @@ function bindView(){
   if(ui.view==="khach"){
     $("#docxRep")?.addEventListener("click",exportCustDocx);
     $("#custSel")?.addEventListener("change",e=>{ui.cust=e.target.value;render();});
+    document.querySelectorAll("[data-custadd]").forEach(c=>c.addEventListener("change",()=>{ const k=c.dataset.custadd; const a=new Set(ui.custAdd||[]); c.checked?a.add(k):a.delete(k); ui.custAdd=[...a]; render(); }));
     $("#copyRep")?.addEventListener("click",()=>{ const t=custSummary(); navigator.clipboard.writeText(t).then(()=>toast("Đã sao chép tóm tắt"),()=>{ showDrawer('<div class="dh"><h2>Tóm tắt gửi khách</h2><button class="btn sm" data-close>Đóng</button></div><div class="db"><textarea rows="18" style="width:100%">'+esc(t)+'</textarea><div class="sub">Chọn toàn bộ rồi sao chép.</div></div>'); ui.drawer=()=>{}; }); });
   }
 }
