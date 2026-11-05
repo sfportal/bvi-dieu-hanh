@@ -363,12 +363,12 @@ function errMsg(e){ const m=(e?.message||e?.code||"")+""; if(/row-level security
 async function put(col,id,data){
   try{ if(col==="contracts"){ const {pub,fin}=finSplit(data); const {error}=await SB.from("docs").upsert({col,id,data:pub}); if(error) throw error; RAW.contracts={...RAW.contracts,[id]:pub};
       if(canFin()&&["owner","manager"].includes(PROFILE.role)){ const {error:e2}=await SB.from("contract_fin").upsert({id,data:fin}); if(e2) throw e2; FIN[id]=fin; } rebuild("contracts"); softRender(); return true; }
-    const {error}=await SB.from("docs").upsert({col,id,data}); if(error) throw error; RAW[col]={...RAW[col],[id]:data}; rebuild(col); softRender(); return true;
+    const {error}=await SB.from("docs").upsert({col,id,data}); if(error) throw error; RAW[col]={...RAW[col],[id]:data}; rebuild(col); softRender(); if(col==="tasks"&&typeof evSyncSoon==="function") evSyncSoon(); return true;
   }catch(e){ toast(errMsg(e)); return false; } }
 async function upd(col,id,patch){
   try{ if(col==="contracts"&&(patch.items||patch.payments)){ const cur=S.contracts[id]||{}; return await put(col,id,{...cur,...patch}); }
     const {error}=await SB.rpc("doc_merge",{p_col:col,p_id:id,p_patch:patch}); if(error) throw error;
-    RAW[col]={...RAW[col],[id]:{...(RAW[col]?.[id]||{}),...patch}}; rebuild(col); softRender(); return true;
+    RAW[col]={...RAW[col],[id]:{...(RAW[col]?.[id]||{}),...patch}}; rebuild(col); softRender(); if(col==="tasks"&&typeof evSyncSoon==="function") evSyncSoon(); return true;
   }catch(e){ toast(errMsg(e)); return false; } }
 async function del(col,id){
   try{ const {error}=await SB.from("docs").delete().eq("col",col).eq("id",id); if(error) throw error; if(col==="contracts"&&canFin()) await SB.from("contract_fin").delete().eq("id",id);
@@ -607,6 +607,7 @@ $("#meBtn").addEventListener("click",()=>{ if(PROFILE) openMe(); });
 
 function render(){
   renderMe();
+  if(ready&&!window.__evInit&&me&&canManage()){ window.__evInit=1; setTimeout(evSyncAll,3000); }
   const cp=canPlan(); document.querySelectorAll('[data-v="ke-hoach"]').forEach(a=>a.style.display=cp?"":"none");
   const v=ui.view, el=$("#app");
   if(v==="tong-quan") el.innerHTML=vOverview();
@@ -1373,14 +1374,14 @@ function drawUnit(id){
 
 /* ---------- calendar: công tác + sự kiện ---------- */
 const EKIND={congtac:"Công tác",sukien:"Sự kiện"};
-const ESTAT={plan:"Kế hoạch",done:"Đã xong",cancel:"Hủy"};
+const ESTAT={draft:"Nháp (tự tạo)",plan:"Kế hoạch",done:"Đã xong",cancel:"Hủy"};
 const WD=["CN","T2","T3","T4","T5","T6","T7"];
 function evMissing(e){ if(e.kind!=="sukien"||e.status==="cancel") return []; const m=[]; if(!(e.photos||[]).length) m.push("ảnh"); if(!(e.signs||[]).length) m.push("danh sách ký"); if(!(e.report?.summary)) m.push("tóm tắt"); return m; }
-function evNeedsReport(e){ return e.status!=="cancel" && (e.date||"")<=todayStr() && (e.kind==="sukien"?evMissing(e).length>0:!(e.report?.summary)); }
+function evNeedsReport(e){ return e.status!=="cancel" && e.status!=="draft" && (e.date||"")<=todayStr() && (e.kind==="sukien"?evMissing(e).length>0:!(e.report?.summary)); }
 function evRow(id,e){
   const d=e.date?new Date(e.date+"T00:00:00"):null; const ppl=(e.people||[]).map(pname).filter(Boolean);
   const miss=evNeedsReport(e);
-  return '<button class="ev" data-ev="'+id+'"><span class="dt">'+(d?WD[d.getDay()]:"")+'<b>'+(e.date?e.date.slice(8,10):"?")+'</b>'+(e.date?e.date.slice(5,7):"")+'</span><span style="min-width:0"><div class="nm">'+esc(e.title||"(chưa có tên)")+'</div><div class="meta"><span>'+esc(EKIND[e.kind]||"")+'</span>'+(e.time?'<span>'+esc(e.time)+'</span>':'')+(e.place?'<span>'+esc(e.place)+'</span>':'')+(ppl.length?'<span>'+esc(ppl.join(", "))+'</span>':'')+(e.unitId?'<span>'+esc(unitName(e.unitId))+'</span>':'')+'</div></span><span class="rt">'+(miss?'<span class="pill bad">Thiếu báo cáo</span>':'<span class="pill '+(e.status==="done"?"good":e.status==="cancel"?"":"info")+'">'+esc(ESTAT[e.status||"plan"])+'</span>')+'</span></button>';
+  return '<button class="ev" data-ev="'+id+'"><span class="dt">'+(d?WD[d.getDay()]:"")+'<b>'+(e.date?e.date.slice(8,10):"?")+'</b>'+(e.date?e.date.slice(5,7):"")+'</span><span style="min-width:0"><div class="nm">'+esc(e.title||"(chưa có tên)")+'</div><div class="meta"><span>'+esc(EKIND[e.kind]||"")+'</span>'+(e.time?'<span>'+esc(e.time)+'</span>':'')+(e.place?'<span>'+esc(e.place)+'</span>':'')+(ppl.length?'<span>'+esc(ppl.join(", "))+'</span>':'')+(e.unitId?'<span>'+esc(unitName(e.unitId))+'</span>':'')+'</div></span><span class="rt">'+(miss?'<span class="pill bad">Thiếu báo cáo</span>':'<span class="pill '+(e.status==="done"?"good":e.status==="cancel"?"":e.status==="draft"?"warn":"info")+'">'+esc(ESTAT[e.status||"plan"])+'</span>')+'</span></button>';
 }
 function calPanel(){
   const t=todayStr(), end=addDays(t,7);
@@ -1396,10 +1397,11 @@ function vCal(){
   if(f.when==="up") es=es.filter(([,e])=>(e.date||"")>=t);
   else if(f.when==="past") es=es.filter(([,e])=>(e.date||"")<t);
   else if(f.when==="miss") es=es.filter(([,e])=>evNeedsReport(e));
+  else if(f.when==="draft") es=es.filter(([,e])=>e.status==="draft");
   es.sort((a,b)=>(a[1].date+(a[1].time||"")).localeCompare(b[1].date+(b[1].time||""))); if(f.when!=="up") es.reverse();
   const miss=Object.values(S.events).filter(evNeedsReport).length;
-  let h='<div class="row between"><div><h1>Lịch công tác và sự kiện</h1><div class="sub">Ghi lịch trước khi đi. Sự kiện xong phải có ảnh, danh sách ký tên và tóm tắt kết quả.</div></div><div class="row"><button class="btn" data-newev="congtac">Thêm lịch công tác</button><button class="btn pri" data-newev="sukien">Thêm sự kiện</button></div></div>';
-  h+='<div class="filters"><div class="focusbar" role="group" aria-label="Thời gian">'+[["up","Sắp tới"],["past","Đã qua"],["miss","Thiếu báo cáo · "+miss],["all","Tất cả"]].map(([k,l])=>'<button data-ewhen="'+k+'" aria-pressed="'+(f.when===k)+'">'+l+'</button>').join("")+'</div>'
+  let h='<div class="row between"><div><h1>Lịch công tác và sự kiện</h1><div class="sub">Ghi lịch trước khi đi. Sự kiện xong phải có ảnh, danh sách ký tên và tóm tắt kết quả. Lịch "Nháp" được tạo tự động từ công việc họp dân, sự kiện, thực địa: kiểm tra rồi bấm Xác nhận.</div></div><div class="row"><button class="btn" data-newev="congtac">Thêm lịch công tác</button><button class="btn pri" data-newev="sukien">Thêm sự kiện</button></div></div>';
+  h+='<div class="filters"><div class="focusbar" role="group" aria-label="Thời gian">'+[["up","Sắp tới"],["draft","Nháp · "+Object.values(S.events).filter(e=>e.status==="draft").length],["past","Đã qua"],["miss","Thiếu báo cáo · "+miss],["all","Tất cả"]].map(([k,l])=>'<button data-ewhen="'+k+'" aria-pressed="'+(f.when===k)+'">'+l+'</button>').join("")+'</div>'
     +'<select id="ekind" aria-label="Loại"><option value="">Công tác và sự kiện</option><option value="congtac"'+(f.kind==="congtac"?" selected":"")+'>Chỉ công tác</option><option value="sukien"'+(f.kind==="sukien"?" selected":"")+'>Chỉ sự kiện</option></select>'
     +'<label class="row sub"><input type="checkbox" id="emine"'+(f.mine?" checked":"")+'> Lịch của tôi</label></div>';
   if(!es.length) return h+'<div class="empty">Không có lịch nào ở mục này.</div>';
@@ -1407,6 +1409,34 @@ function vCal(){
   es.forEach(([k,e])=>{ if(e.date!==last){ last=e.date; const d=e.date?new Date(e.date+"T00:00:00"):null; h+='<div class="dayh">'+(d?WD[d.getDay()]+" · "+dmy(e.date):"Chưa có ngày")+(e.date===t?" · Hôm nay":"")+'</div>'; } h+='<div style="margin-bottom:8px">'+evRow(k,e)+'</div>'; });
   return h;
 }
+const EV_SK=/\b(hop dan|to chuc ky|to chuc hop|su kien|hoi thao|hoi nghi|tap huan)\b/, EV_NOT=/\b(tai lieu|soan|xay dung|kpi)\b/;
+const EV_CT=/\b(thuc dia|flycam|khao sat|dat bay|bay con trung|kho thuoc|di xa|cong tac|thu bia|ky lai|ky ho so|lam viec voi|nop ho so cung|nop truc tiep|gui ho so de dan|gap xa|gap phong)\b/;
+function evKind(t){ const n=pNorm(t.title||""); if(EV_NOT.test(n)) return ""; if(EV_SK.test(n)) return "sukien"; if(t.fieldVisit||EV_CT.test(n)) return "congtac"; return ""; }
+function evDesired(){ const t0=todayStr(), lim=addDays(t0,31), soon=addDays(t0,7), G={};
+  Object.entries(S.tasks).forEach(([id,t])=>{ if(t.kind==="epic"||t.status==="done"||/khong can nua/.test(pNorm(t.title))||!pInTree(id)||Object.values(S.tasks).some(x=>x.parent===id&&x.status!=="done")) return;
+    const d=t.planDate&&t.planDate>=t0&&t.planDate<=lim?t.planDate:(!t.planDate&&t.due&&t.due>=t0&&t.due<=soon?t.due:""); if(!d) return; const k=evKind(t); if(!k) return; const ses=t.planDate?(t.planSes||""):"";
+    const z=t.zone&&S.zones[t.zone]; const place=z?(z.ward||zShort(z.name)):"";
+    const key=k==="sukien"?"evd-"+d+"-"+(ses||"d")+"-"+id+"-sukien":"evd-"+d+"-"+(ses||"d")+"-"+(t.R||"x")+"-"+(pNorm(place).replace(/ /g,"_")||id)+"-congtac";
+    (G[key]=G[key]||{k,d,ses,place,zones:[],ids:[]}).ids.push(id); if(t.zone&&!G[key].zones.includes(t.zone)) G[key].zones.push(t.zone); });
+  const out={}; Object.entries(G).forEach(([key,g])=>{ const T=g.ids.map(i=>S.tasks[i]);
+    const strip=x=>{ const c=x.indexOf(":"); return c>=0&&c<45?x.slice(c+1).trim():x; };
+    const item=x=>{ const z=x.zone&&S.zones[x.zone]; return (z?zShort(z.name)+": ":"")+strip(x.title); };
+    const z0=g.zones[0]&&S.zones[g.zones[0]];
+    const title=(g.k==="sukien"?T[0].title:("Công tác "+(g.place||"")+": "+T.map(item).join("; "))).slice(0,180);
+    const ppl=[...new Set(T.flatMap(x=>[x.R].filter(Boolean)))];
+    out[key]={kind:g.k,title,date:g.d,end:"",time:g.ses==="am"?"7:30–11:30":g.ses==="pm"?"13:30–17:00":"",place:z0?[z0.ward,z0.province].filter(Boolean).join(", "):"",zoneId:g.zones.length===1?g.zones[0]:"",unitId:g.zones.length===1?(z0?.unitId||""):"",lead:ppl[0]||"",people:ppl,purpose:"Tạo tự động từ công việc: "+T.map(x=>x.title).join("; "),status:"draft",auto:true,taskIds:g.ids.slice().sort()}; });
+  return out; }
+let EV_BUSY=false, EV_T=null;
+function evSyncSoon(){ clearTimeout(EV_T); EV_T=setTimeout(evSyncAll,1500); }
+async function evSyncAll(){ if(EV_BUSY||!me) return; EV_BUSY=true; try{ const D=evDesired(), t0=todayStr(); let n=0;
+  for(const [k,e] of Object.entries(D)){ const o=S.events[k];
+    if(!o){ if(await put("events",k,{...e,report:{},photos:[],signs:[],createdAt:new Date().toISOString(),createdBy:me||"",...stamp()})) n++; continue; }
+    if(o.status!=="draft") continue;
+    const same=o.date===e.date&&JSON.stringify(o.taskIds||[])===JSON.stringify(e.taskIds)&&JSON.stringify(o.people||[])===JSON.stringify(e.people);
+    if(!same||(!o.edited&&(o.title!==e.title||o.time!==e.time))){ const patch=o.edited?{date:e.date,taskIds:e.taskIds,people:e.people,lead:o.lead||e.lead,purpose:e.purpose}:{...e}; await upd("events",k,{...patch,...stamp()}); } }
+  for(const [k,o] of Object.entries(S.events)){ if(o.auto&&o.status==="draft"&&!D[k]&&(o.date||"")>=t0&&!o.edited) await del("events",k); }
+  if(n&&ui.view!=="lich") toast("Đã tạo "+n+" lịch nháp từ công việc, xem ở trang Lịch");
+ }catch(e){} EV_BUSY=false; }
 function openEvent(id,preset){ ui.drawer=()=>drawEvent(id,preset); drawEvent(id,preset); }
 function drawEvent(id,preset){
   const e=id?S.events[id]:{kind:preset?.kind||"congtac",title:"",date:todayStr(),end:"",time:"",place:"",unitId:"",zoneId:"",people:me?[me]:[],lead:me||"",purpose:"",status:"plan",report:{},photos:[],signs:[]};
@@ -1415,6 +1445,7 @@ function drawEvent(id,preset){
   const zs=activeZones().sort((a,b)=>a[1].name.localeCompare(b[1].name,"vi"));
   const isEv=e.kind==="sukien"; const r=e.report||{};
   let h='<div class="dh"><div style="min-width:0"><div class="row"><span class="pill">'+esc(EKIND[e.kind])+'</span>'+(id&&evNeedsReport(e)?'<span class="pill bad">Thiếu báo cáo</span>':'')+'</div><h2 style="margin-top:6px;overflow-wrap:anywhere">'+(id?esc(e.title):(isEv?"Thêm sự kiện":"Thêm lịch công tác"))+'</h2></div><button class="btn sm" data-close>Đóng</button></div><div class="db"><form id="eform" class="grid" style="gap:10px">';
+  if(e.status==="draft") h+='<div class="alert" style="margin-bottom:4px">Lịch nháp tạo tự động từ công việc'+((e.taskIds||[]).length?': '+(e.taskIds||[]).filter(k=>S.tasks[k]).map(k=>'<a href="#" data-evt="'+k+'">'+esc(S.tasks[k].title)+'</a>').join("; "):'')+'. Kiểm tra giờ, địa điểm, người đi rồi bấm <b>Xác nhận lịch</b>. Khi việc đổi ngày, lịch nháp tự đổi theo.</div>';
   h+='<div class="f"><label for="e_title">'+(isEv?'Tên sự kiện (họp dân, tập huấn, ký hồ sơ…)':'Nội dung công tác')+'</label><input id="e_title" value="'+esc(e.title)+'" required></div>'
     +'<div class="f2"><div class="f"><label for="e_date">Ngày</label><input type="date" id="e_date" value="'+esc(e.date||"")+'" required></div><div class="f"><label for="e_end">Đến ngày (nếu nhiều ngày)</label><input type="date" id="e_end" value="'+esc(e.end||"")+'"></div>'
     +'<div class="f"><label for="e_time">Giờ</label><input id="e_time" value="'+esc(e.time||"")+'" placeholder="7:30–11:00"></div><div class="f"><label for="e_place">Địa điểm</label><input id="e_place" value="'+esc(e.place||"")+'" placeholder="UBND xã, nhà văn hóa thôn…"></div>'
@@ -1428,7 +1459,7 @@ function drawEvent(id,preset){
     +'<div class="f"><label for="e_sum">'+(isEv?'Tóm tắt kết quả':'Kết quả chuyến công tác')+'</label><textarea id="e_sum" rows="3">'+esc(r.summary||"")+'</textarea></div>'
     +(isEv?'<div class="f2"><div class="f"><label for="e_att">Số người tham dự</label><input type="number" id="e_att" value="'+esc(r.attendees||"")+'"></div><div class="f"><label for="e_hh">Số hộ ký / đăng ký</label><input type="number" id="e_hh" value="'+esc(r.signed||"")+'"></div></div>':'')
     +'<div class="f"><label for="e_next">Việc tiếp theo</label><input id="e_next" value="'+esc(r.next||"")+'"></div></div>';
-  h+='<div class="row"><button class="btn pri">Lưu</button>'+(id?'<button type="button" class="btn" id="edel">Xóa</button>':'')+'<span class="sub" id="emsg"></span></div></form>';
+  h+='<div class="row"><button class="btn pri">Lưu</button>'+(id&&e.status==="draft"?'<button type="button" class="btn pri" id="econf">Xác nhận lịch</button>':'')+(id?'<button type="button" class="btn" id="edel">Xóa</button>':'')+'<span class="sub" id="emsg"></span></div></form>';
   if(id){
     const fileBlock=(key,label,accept,hint)=>{ const arr=e[key]||[]; return '<div class="panel"><div class="row between"><h2>'+label+' ('+arr.length+')</h2>'+(assetsNs?'<label class="btn sm">Tải lên<input type="file" data-up="'+key+'" accept="'+accept+'" multiple hidden></label>':'')+'</div><div class="sub" style="margin-bottom:6px">'+hint+'</div><div class="thumbs">'+arr.map((a,i)=>'<figure>'+(/^image\//.test(a.type||"")?'<a href="'+esc(a.url)+'" target="_blank" rel="noopener"><img src="'+esc(a.url)+'" alt="'+esc(a.name||label)+'" loading="lazy"></a>':'<a class="doc" href="'+esc(a.url)+'" target="_blank" rel="noopener">'+esc(a.name||"Tệp")+'</a>')+(assetsNs?'<button type="button" data-rm="'+key+'|'+i+'">Bỏ</button>':'')+'</figure>').join("")+'</div>'+(!assetsNs?'<div class="sub">Tài khoản chỉ xem không tải tệp lên được.</div>':'')+'<div class="sub" id="up_'+key+'"></div></div>'; };
     if(isEv){ h+=fileBlock("photos","Ảnh sự kiện","image/*,application/pdf","Tối thiểu 3 ảnh: toàn cảnh, người trình bày, bà con ký hoặc nghe. Ảnh hoặc PDF, mỗi file tối đa 3 MB."); h+=fileBlock("signs","Danh sách ký tên","image/*,application/pdf","Chụp rõ từng trang danh sách ký hoặc tải bản PDF. Mỗi file tối đa 3 MB."); h+=fileBlock("docs","Báo cáo, tài liệu kèm theo","image/*,application/pdf","Không bắt buộc: biên bản, báo cáo PDF. Mỗi file tối đa 3 MB."); }
@@ -1446,8 +1477,11 @@ function drawEvent(id,preset){
     if(data.status==="done"&&data.kind==="congtac"&&!data.report.summary){ $("#emsg").textContent="Ghi kết quả công tác trước khi đánh dấu xong."; return; }
     if(!id) data.createdAt=new Date().toISOString();
     const eid=id||("e"+uid());
+    if(id&&S.events[id]?.auto&&data.status==="draft"){ const o=S.events[id]; if(data.title!==o.title||data.time!==o.time||data.place!==o.place||data.date!==o.date) data.edited=true; }
     if(await put("events",eid,id?{...S.events[id],...data,photos:S.events[id]?.photos||[],signs:S.events[id]?.signs||[],docs:S.events[id]?.docs||[]}:data)){ toast("Đã lưu"); if(!id){ setTimeout(()=>openEvent(eid),300); } }
   });
+  L.querySelectorAll("[data-evt]").forEach(a=>a.addEventListener("click",ev=>{ ev.preventDefault(); openTask(a.dataset.evt); }));
+  $("#econf")?.addEventListener("click",async()=>{ $("#e_status").value="plan"; $("#eform").requestSubmit(); });
   $("#edel")?.addEventListener("click",async()=>{ const b=$("#edel"); if(b.dataset.c!=="1"){b.dataset.c="1";b.textContent="Bấm lần nữa để xóa";return;} if(await del("events",id)){toast("Đã xóa");closeDrawer();} });
   L.querySelectorAll("[data-up]").forEach(inp=>inp.addEventListener("change",async()=>{
     const key=inp.dataset.up, files=[...inp.files]; if(!files.length) return; const msg=$("#up_"+key);
