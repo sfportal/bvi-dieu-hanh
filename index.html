@@ -301,6 +301,7 @@ function activeZones(){ return Object.entries(S.zones).filter(([,z])=>z.active!=
 function isFocus(z){ return z.priority==="1"||z.priority==="2"; }
 function focusZones(){ return activeZones().filter(([,z])=>!ui.focus||isFocus(z)); }
 function focusBar(){ const all=activeZones(), n=all.filter(([,z])=>isFocus(z)).length; return '<div class="focusbar" role="group" aria-label="Phạm vi xem"><button data-focus="1" aria-pressed="'+ui.focus+'">Ưu tiên 1–2 · '+n+'</button><button data-focus="0" aria-pressed="'+(!ui.focus)+'">Tất cả · '+all.length+'</button></div>'; }
+function canPlan(){ return (typeof isOwner==='function'&&isOwner())||!!(me&&S.people[me]&&S.people[me].canPlan===true); }
 function canManage(){ return !!PROFILE&&["owner","manager"].includes(PROFILE.role); }
 function unitName(id){ return id&&S.units[id]?S.units[id].name:""; }
 function unitList(){ return Object.entries(S.units).sort((a,b)=>a[1].name.localeCompare(b[1].name,"vi")); }
@@ -458,8 +459,8 @@ function vAccounts(){
   if(!isOwner()) return '<div class="alert bad">Chỉ owner quản lý tài khoản.</div>';
   if(ACC===null){ loadAcc(); return '<div class="empty">Đang tải danh sách tài khoản…</div>'; }
   let h='<div class="row between"><div><h1>Tài khoản, phân quyền</h1><div class="sub">'+ACC.length+' tài khoản. Owner: toàn quyền, cấp tài khoản. Quản lý: sửa mọi dữ liệu, duyệt phép, FAQ. Nhân viên: ghi việc, vùng, lịch, báo cáo. Chỉ xem: không sửa. Tài chính bật riêng từng người.</div></div><div class="row"><a class="btn" href="#nhat-ky">Nhật ký</a><button class="btn" id="accBulk">Tạo tài khoản cho nhân sự</button><button class="btn pri" id="accAdd">Thêm tài khoản</button></div></div>';
-  h+='<div class="tw panel" style="margin-top:12px"><table><thead><tr><th>Tài khoản</th><th>Nhân sự</th><th>Vai trò</th><th>Tài chính</th><th>Trạng thái</th><th>Đăng nhập gần nhất</th></tr></thead><tbody>'
-   +ACC.map(u=>'<tr data-acc="'+u.id+'" style="cursor:pointer"><td><b>'+esc(u.name||"")+'</b><div class="sub">'+esc(u.email)+'</div></td><td>'+esc(pname(u.person_id)||"—")+'</td><td>'+ROLE_L[u.role]+'</td><td>'+(u.role==="owner"||u.can_finance?'<span class="pill good">Được xem</span>':'<span class="pill">Không</span>')+'</td><td>'+(u.active?(u.must_change_pw?'<span class="pill warn">Chờ đổi mật khẩu</span>':'<span class="pill good">Hoạt động</span>'):'<span class="pill bad">Đã khóa</span>')+'</td><td class="sub">'+(u.last_sign_in_at?dmy(u.last_sign_in_at.slice(0,10)):"Chưa")+'</td></tr>').join("")+'</tbody></table></div>';
+  h+='<div class="tw panel" style="margin-top:12px"><table><thead><tr><th>Tài khoản</th><th>Nhân sự</th><th>Vai trò</th><th>Tài chính</th><th>Kế hoạch</th><th>Trạng thái</th><th>Đăng nhập gần nhất</th></tr></thead><tbody>'
+   +ACC.map(u=>'<tr data-acc="'+u.id+'" style="cursor:pointer"><td><b>'+esc(u.name||"")+'</b><div class="sub">'+esc(u.email)+'</div></td><td>'+esc(pname(u.person_id)||"—")+'</td><td>'+ROLE_L[u.role]+'</td><td>'+(u.role==="owner"||u.can_finance?'<span class="pill good">Được xem</span>':'<span class="pill">Không</span>')+'</td><td>'+(u.role==="owner"||(u.person_id&&S.people[u.person_id]?.canPlan)?'<span class="pill good">Được dùng</span>':'<span class="pill">Không</span>')+'</td><td>'+(u.active?(u.must_change_pw?'<span class="pill warn">Chờ đổi mật khẩu</span>':'<span class="pill good">Hoạt động</span>'):'<span class="pill bad">Đã khóa</span>')+'</td><td class="sub">'+(u.last_sign_in_at?dmy(u.last_sign_in_at.slice(0,10)):"Chưa")+'</td></tr>').join("")+'</tbody></table></div>';
   h+='<div class="panel" style="margin-top:12px"><h2>Chuyển dữ liệu từ bản cũ</h2><div class="sub">Ở bản cũ trên Claude, vào Công ty bấm "Xuất toàn bộ dữ liệu (JSON)", rồi chọn file đó ở đây. Bản ghi trùng mã sẽ được ghi đè bằng bản trong file.</div><label class="btn" style="margin-top:8px;cursor:pointer">Chọn file JSON<input type="file" id="impJson" accept=".json,application/json" hidden></label><span class="sub" id="impJmsg" style="margin-left:8px"></span></div>';
   return h;
 }
@@ -472,6 +473,7 @@ function accForm(u){
    +'<div class="f"><label for="a_p">Gắn với nhân sự (để thấy việc của mình)</label><select id="a_p"><option value="">— Chưa gắn —</option>'+people.map(([k,p])=>'<option value="'+k+'"'+(u?.person_id===k?" selected":"")+'>'+esc(p.name)+'</option>').join("")+'</select></div>'
    +'<div class="f2"><div class="f"><label for="a_r">Vai trò</label><select id="a_r"'+(isSelf?" disabled":"")+'>'+Object.entries(ROLE_L).filter(([k])=>k!=="owner"||u?.role==="owner").map(([k,l])=>'<option value="'+k+'"'+((u?.role||"staff")===k?" selected":"")+'>'+l+'</option>').join("")+'</select></div>'
    +'<div class="f"><label>Tài chính</label><label class="chk"><input type="checkbox" id="a_f"'+(u?.can_finance||u?.role==="owner"?" checked":"")+(isSelf?" disabled":"")+'><span>Được xem số tiền hợp đồng</span></label></div></div>'
+   +'<div class="f"><label>Tính năng</label><label class="chk"><input type="checkbox" id="a_pl"'+(u?.role==="owner"||(u?.person_id&&S.people[u.person_id]?.canPlan)?" checked":"")+(u?.role==="owner"?" disabled":"")+'><span>Kế hoạch tuần: dán lịch, bảng tuần, rà soát công việc</span></label><div class="sub">Cần gắn với nhân sự. Người không có quyền vẫn thấy "Lịch hôm nay của tôi" ở Tổng quan.</div></div>'
    +(u?'':'<div class="f"><label for="a_pw">Mật khẩu cấp lần đầu (để trống: hệ thống tự tạo)</label><input id="a_pw" minlength="8" autocomplete="off"></div>')
    +'<div class="row"><button class="btn pri">'+(u?"Lưu":"Tạo tài khoản")+'</button><span class="sub" id="accM"></span></div></form>'
    +(u&&!isSelf?'<div class="panel" style="margin-top:12px"><div class="row" style="flex-wrap:wrap"><button class="btn" id="accPw">Đặt lại mật khẩu</button><button class="btn" id="accAct">'+(u.active?"Ngừng kích hoạt":"Kích hoạt lại")+'</button><button class="btn" id="accDel">Xóa tài khoản</button></div><div id="accOut" style="margin-top:8px"></div></div>':'')
@@ -485,6 +487,8 @@ function openAcc(id){
     const body={name:$("#a_nm").value.trim(),person_id:$("#a_p").value||null,role:$("#a_r").value,can_finance:$("#a_f").checked};
     const r=u?await callAdmin({action:"update",id:u.id,...body}):await callAdmin({action:"create",email:$("#a_em").value.trim(),password:$("#a_pw").value.trim()||undefined,...body});
     if(r.error){ m.textContent=/already/i.test(r.error)?"Email này đã có tài khoản.":r.error; return; }
+    const pid=body.person_id, pl=$("#a_pl")?.checked; if(pid&&S.people[pid]&&!!S.people[pid].canPlan!==!!pl&&body.role!=="owner") await upd("people",pid,{canPlan:!!pl});
+    if(u?.person_id&&u.person_id!==pid&&S.people[u.person_id]?.canPlan&&!ACC.some(x=>x.id!==u.id&&x.person_id===u.person_id)) await upd("people",u.person_id,{canPlan:false});
     m.textContent="Đã lưu"; if(!u){ $("#accF").insertAdjacentHTML("afterend",pwBox(r.email,r.password)); bindCp(L); $("#accF").querySelector("button").disabled=true; } await loadAcc(); });
   $("#accPw")?.addEventListener("click",async()=>{ const r=await callAdmin({action:"reset_password",id:u.id}); if(r.error){ toast(r.error); return; } $("#accOut").innerHTML=pwBox(u.email,r.password); bindCp(L); loadAcc(); });
   $("#accAct")?.addEventListener("click",async()=>{ const r=await callAdmin({action:"set_active",id:u.id,active:!u.active}); if(r.error){ toast(r.error); return; } toast(u.active?"Đã khóa tài khoản":"Đã kích hoạt lại"); closeDrawer(); loadAcc(); });
@@ -603,6 +607,7 @@ $("#meBtn").addEventListener("click",()=>{ if(PROFILE) openMe(); });
 
 function render(){
   renderMe();
+  const cp=canPlan(); document.querySelectorAll('[data-v="ke-hoach"]').forEach(a=>a.style.display=cp?"":"none");
   const v=ui.view, el=$("#app");
   if(v==="tong-quan") el.innerHTML=vOverview();
   else if(v==="vung") el.innerHTML=vZones();
@@ -616,7 +621,7 @@ function render(){
   else if(v==="lien-he") el.innerHTML=vContacts();
   else if(v==="ho-tro") el.innerHTML=vSupport();
   else if(v==="bao-cao") el.innerHTML=vReports();
-  else if(v==="ke-hoach") el.innerHTML=vPlan();
+  else if(v==="ke-hoach") el.innerHTML=cp?vPlan():'<div class="empty">Bạn chưa được cấp quyền dùng Kế hoạch tuần. Lịch hôm nay của bạn vẫn hiện ở Tổng quan. Cần dùng thì nhờ Owner bật quyền trong Tài khoản, phân quyền.</div>';
   else if(v==="huong-dan") el.innerHTML=vGuide();
   else if(v==="thong-ke") el.innerHTML=vStats();
   else if(v==="tai-khoan") el.innerHTML=vAccounts();
@@ -2308,14 +2313,14 @@ function myPlanToday(){ if(!me) return ''; const t0=todayStr(); const L=Object.e
 function vPlan(){ const P=ui.pl, a=addDays(wkStart(todayStr()),7*(+P.wk||0)), b=addDays(a,6), t0=todayStr();
   let L=planItems(a,b); if(P.who) L=L.filter(([,t])=>t.R===P.who);
   const dn=L.filter(([,t])=>t.status==="done").length, late=L.filter(([,t])=>t.status!=="done"&&t.planDate<t0).length, moved=Object.values(S.tasks).filter(t=>(t.planLog||[]).some(x=>x.from>=a&&x.from<=b)).length;
-  let h='<div class="row between" style="flex-wrap:wrap;gap:8px"><div><h1>Kế hoạch tuần</h1><div class="sub">Lịch làm việc theo từng buổi. Bảng chỉ hiện việc đã được xếp ngày và buổi, việc có hạn tuần này mà chưa xếp nằm ở khung vàng. Tick ở đây là xong ở trang Công việc.</div></div><div class="row" style="gap:8px;flex-wrap:wrap">'+(canManage()?'<button class="btn pri" id="plPaste">Dán lịch tuần</button>':'')+'<button class="btn" id="plCmp">Kế hoạch so với thực tế</button></div></div>';
-  if(canManage()){ const nI=auditIssues().total; h+='<div class="tabs" style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap"><button class="btn sm'+(P.tab!=="rs"?' pri':'')+'" id="plTabL">Lịch tuần</button><button class="btn sm'+(P.tab==="rs"?' pri':'')+'" id="plTabR">Rà soát công việc'+(nI?' <span class="pill" style="background:var(--bad);color:#fff;margin-left:4px">'+nI+'</span>':'')+'</button></div>';
+  let h='<div class="row between" style="flex-wrap:wrap;gap:8px"><div><h1>Kế hoạch tuần</h1><div class="sub">Lịch làm việc theo từng buổi. Bảng chỉ hiện việc đã được xếp ngày và buổi, việc có hạn tuần này mà chưa xếp nằm ở khung vàng. Tick ở đây là xong ở trang Công việc.</div></div><div class="row" style="gap:8px;flex-wrap:wrap">'+(canPlan()?'<button class="btn pri" id="plPaste">Dán lịch tuần</button>':'')+'<button class="btn" id="plCmp">Kế hoạch so với thực tế</button></div></div>';
+  if(canPlan()){ const nI=auditIssues().total; h+='<div class="tabs" style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap"><button class="btn sm'+(P.tab!=="rs"?' pri':'')+'" id="plTabL">Lịch tuần</button><button class="btn sm'+(P.tab==="rs"?' pri':'')+'" id="plTabR">Rà soát công việc'+(nI?' <span class="pill" style="background:var(--bad);color:#fff;margin-left:4px">'+nI+'</span>':'')+'</button></div>';
     if(P.tab==="rs") return h+vAudit(); }
   h+=myPlanToday();
   const ps=Object.entries(S.people).filter(([,p])=>p.active!==false).sort((x,y)=>(x[1].order||99)-(y[1].order||99));
   h+='<div class="filters" style="margin-top:12px"><button class="btn sm" id="plPrev">‹ Tuần trước</button><b>'+dm(a)+' – '+dmy(b)+'</b><button class="btn sm" id="plNext">Tuần sau ›</button>'+(P.wk?'<button class="btn sm" id="plNow">Tuần này</button>':'')+'<select id="plWho"><option value="">Mọi người</option>'+ps.map(([k,p])=>'<option value="'+k+'"'+(P.who===k?" selected":"")+'>'+esc(p.name)+'</option>').join("")+'</select><span class="sub">'+L.length+' việc · '+dn+' xong · <span style="color:var(--bad)">'+late+' quá ngày chưa xong</span> · '+moved+' lần dời</span></div>';
   h+=pUnplanned(a,b,P.who);
-  if(!L.length) return h+'<div class="empty" style="margin-top:12px">Tuần này chưa có việc nào được xếp vào buổi. '+(canManage()?'Bấm "Xếp lịch" ở các việc trên, hoặc "Dán lịch tuần" để nhập cả tuần.':'Bấm "Xếp lịch" ở việc của mình, hoặc chờ điều phối nhập lịch tuần.')+'</div>';
+  if(!L.length) return h+'<div class="empty" style="margin-top:12px">Tuần này chưa có việc nào được xếp vào buổi. '+(canPlan()?'Bấm "Xếp lịch" ở các việc trên, hoặc "Dán lịch tuần" để nhập cả tuần.':'Bấm "Xếp lịch" ở việc của mình, hoặc chờ điều phối nhập lịch tuần.')+'</div>';
   const days=[0,1,2,3,4,5,6].map(i=>addDays(a,i)).filter(d=>L.some(([,t])=>t.planDate===d)||d===t0);
   h+='<div style="display:grid;gap:10px;margin-top:12px">'+days.map(d=>{ const D=L.filter(([,t])=>t.planDate===d); const ses=["am","pm",""].filter(k=>D.some(([,t])=>(t.planSes||"")===k));
     return '<div class="panel" style="margin:0;'+(d===t0?'border-color:var(--info);border-width:2px':'')+'"><div class="row between"><h2 style="margin:0">'+wdName(d)+' '+dmy(d)+(d===t0?' · <span style="color:var(--info)">Hôm nay</span>':'')+'</h2><span class="sub">'+D.filter(([,t])=>t.status==="done").length+'/'+D.length+' xong</span></div>'
@@ -2329,12 +2334,12 @@ function pUnplanned(a,b,who){ const t0=todayStr(), cur=t0>=a&&t0<=b;
   U.sort((x,y)=>x[1].due.localeCompare(y[1].due)||(x[1].zone||"").localeCompare(y[1].zone||""));
   const open=ui.pl.un!==false;
   return '<details class="panel" style="margin-top:12px;border-left:4px solid var(--warn)"'+(open?' open':'')+' id="plUn"><summary style="cursor:pointer"><b>Việc trong trang Công việc có hạn tuần này, chưa xếp buổi ('+U.length+')</b></summary><div class="sub" style="margin:6px 0">Các việc này có hạn trong tuần nhưng chưa được đặt vào ngày và buổi cụ thể nên chưa nằm trên bảng bên dưới. Bấm "Xếp lịch" để đưa vào.</div>'
-   +U.map(([id,t])=>{ const late=t.due<t0; const can=canManage()||t.R===me;
+   +U.map(([id,t])=>{ const late=t.due<t0; const can=canPlan()||t.R===me;
      return '<div class="row" style="gap:6px;flex-wrap:nowrap;align-items:flex-start;padding:4px 0;border-top:1px solid var(--line)"><span class="pill" style="flex:0 0 auto;'+(late?'color:var(--bad)':'')+'">'+(late?'Quá hạn ':'Hạn ')+dm(t.due)+'</span><a href="#" data-otask="'+id+'" style="flex:1;min-width:0;color:inherit;text-decoration:none;overflow-wrap:anywhere">'+(t.zone&&S.zones[t.zone]?'<b>'+esc(zShort(S.zones[t.zone].name))+'</b>: ':'')+esc(t.title)+'</a><span class="pill" style="flex:0 0 auto">'+esc(pname(t.R)||"?")+'</span>'+(can?'<button class="btn sm" data-pplan="'+id+'" style="flex:0 0 auto">Xếp lịch</button>':'')+'</div>'; }).join("")+'</details>'; }
 function openSched(id){ const t=S.tasks[id]; if(!t) return; ui.drawer=null; const t0=todayStr(); const d0=t.due&&t.due>=t0?t.due:t0;
   const ps=Object.entries(S.people).filter(([,p])=>p.active!==false).sort((x,y)=>(x[1].order||99)-(y[1].order||99));
   showDrawer('<div class="dh"><div><h2>Xếp lịch</h2><div class="sub">'+esc(t.title)+'</div></div><button class="btn sm" data-close>Đóng</button></div><form class="db" id="scF"><div class="f2"><div class="f"><label for="scD">Ngày làm</label><input type="date" id="scD" value="'+d0+'" required></div><div class="f"><label for="scS">Buổi</label><select id="scS"><option value="am">Sáng</option><option value="pm">Chiều</option><option value="">Trong ngày</option></select></div></div>'
-   +(canManage()?'<div class="f"><label for="scR">Người làm</label><select id="scR">'+ps.map(([k,p])=>'<option value="'+k+'"'+(t.R===k?" selected":"")+'>'+esc(p.name)+'</option>').join("")+'</select></div>':'')
+   +(canPlan()?'<div class="f"><label for="scR">Người làm</label><select id="scR">'+ps.map(([k,p])=>'<option value="'+k+'"'+(t.R===k?" selected":"")+'>'+esc(p.name)+'</option>').join("")+'</select></div>':'')
    +'<label class="row"><input type="checkbox" id="scDue"'+(t.due&&t.due<d0?' checked':'')+'> Đổi hạn việc thành ngày này</label><div class="row" style="margin-top:8px"><button class="btn pri">Xếp vào lịch</button><span class="sub" id="scM"></span></div></form>');
   $("#scF").addEventListener("submit",async e=>{ e.preventDefault(); const d=$("#scD").value; if(!d){ $("#scM").textContent="Chọn ngày."; return; }
     const ch={planDate:d,planSes:$("#scS").value,...stamp()}; if($("#scR")) ch.R=$("#scR").value; if($("#scDue").checked) ch.due=d;
