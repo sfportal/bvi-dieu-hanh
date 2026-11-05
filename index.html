@@ -199,6 +199,10 @@ a.btn{color:inherit;text-decoration:none}
 .faqq{display:flex;gap:10px;align-items:center;width:100%;padding:12px 14px;background:none;border:0;color:inherit;font:inherit;cursor:pointer}
 .faqc{display:block;width:100%;cursor:pointer;font:inherit;color:inherit}
 .cp[aria-pressed=true]{border-color:var(--brand);color:var(--brand);font-weight:600;background:var(--chip)}
+.hsc{display:inline-flex;gap:2px}.hsc i{font:700 10px/1 ui-monospace,monospace;font-style:normal;width:15px;height:15px;display:inline-grid;place-items:center;border-radius:4px;background:var(--sunk);color:var(--muted)}.hsc i.good{background:var(--good);color:#fff}.hsc i.warn{background:var(--warn);color:#fff}
+.hsb{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:5px 6px;cursor:pointer;display:grid;gap:3px;justify-items:center;min-width:58px}.hsb:hover{border-color:var(--brand)}.hsh{font-size:10.5px;color:var(--muted);max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hsg td,.hsg th{padding:6px 5px;vertical-align:middle}.hsg th{font-size:12px;white-space:nowrap}.hsg td:first-child{min-width:150px;position:sticky;left:0;background:var(--surface);z-index:1}.hsg th:first-child{position:sticky;left:0;background:var(--surface);z-index:1}
+.hsrow{border:1px solid var(--line);border-radius:10px;padding:10px;display:grid;gap:6px;background:var(--surface)}.hsrow.foc{border-color:var(--brand);box-shadow:0 0 0 2px var(--chip)}.hsrow .ctl{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .docbar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--sunk);margin:6px 0 2px}
 .docbar span{display:block;height:100%}
 .chk-list{display:grid;gap:4px;margin-top:6px}
@@ -249,8 +253,8 @@ const MIL=[["Chốt danh sách (T)",0],["Khảo sát xong",10],["Chốt sổ l�
 const TEAMS={lead:"Lãnh đạo",dieuphoi:"Điều phối",hientruong:"Hiện trường",hoso:"Hồ sơ và hệ thống",vanphong:"Văn phòng",kinhdoanh:"Kinh doanh",thuengoai:"Thuê ngoài"};
 const TSTAT={todo:"Chưa làm",doing:"Đang làm",wait:"Chờ người khác",done:"Xong"};
 const PRI={"1":"Ưu tiên 1","2":"Ưu tiên 2","3":"Ưu tiên 3","GACC":"Chờ GACC / có mã"};
-const VIEWS=[["tong-quan","Tổng quan"],["vung","Vùng trồng"],["cong-viec","Công việc"],["ke-hoach","Kế hoạch"],["bao-cao","Báo cáo"],["ho-tro","Hỗ trợ"],["lich","Lịch"],["hop-dong","Hợp đồng"],["nhan-su","Nhân sự"],["cong-ty","Công ty"],["lien-he","Liên hệ"],["faq","FAQ"],["thong-ke","Thống kê"],["huong-dan","Hướng dẫn"]];
-const ICONS={"ke-hoach":'<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M7 13h4M7 17h4M14 13l1.5 1.5L18 12"/>',"huong-dan":'<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5v.01"/>',"bao-cao":'<path d="M5 3h10l4 4v14H5z"/><path d="M9 12h6M9 16h6M9 8h3"/><circle cx="17.5" cy="17.5" r="0"/>',"lien-he":'<rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M7.5 17a4.5 4.5 0 0 1 9 0M2 7h2M2 12h2M2 17h2"/>',"ho-tro":'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M5.6 5.6l3.6 3.6M14.8 14.8l3.6 3.6M18.4 5.6l-3.6 3.6M9.2 14.8l-3.6 3.6"/>',"tong-quan":'<path d="M3 13h8V3H3zM13 21h8V11h-8zM3 21h8v-6H3zM13 3v6h8V3z"/>',"vung":'<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>',"cong-viec":'<path d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/>',"hop-dong":'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>',"nhan-su":'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M17 11a3 3 0 1 0-1-5.8M18 20h3.5a5 5 0 0 0-4-4.9"/>',"lich":'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',"khach":'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',"thong-ke":'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',"faq":'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.6v.6M12 17h.01"/>',"cong-ty":'<path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 10h.01M15 10h.01M9 13.5h.01M15 13.5h.01"/>'};
+const VIEWS=[["tong-quan","Tổng quan"],["vung","Vùng trồng"],["ho-so","Hồ sơ"],["cong-viec","Công việc"],["ke-hoach","Kế hoạch"],["bao-cao","Báo cáo"],["ho-tro","Hỗ trợ"],["lich","Lịch"],["hop-dong","Hợp đồng"],["nhan-su","Nhân sự"],["cong-ty","Công ty"],["lien-he","Liên hệ"],["faq","FAQ"],["thong-ke","Thống kê"],["huong-dan","Hướng dẫn"]];
+const ICONS={"ho-so":'<path d="M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M9 13l2 2 4-4"/>',"ke-hoach":'<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M7 13h4M7 17h4M14 13l1.5 1.5L18 12"/>',"huong-dan":'<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5v.01"/>',"bao-cao":'<path d="M5 3h10l4 4v14H5z"/><path d="M9 12h6M9 16h6M9 8h3"/><circle cx="17.5" cy="17.5" r="0"/>',"lien-he":'<rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M7.5 17a4.5 4.5 0 0 1 9 0M2 7h2M2 12h2M2 17h2"/>',"ho-tro":'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M5.6 5.6l3.6 3.6M14.8 14.8l3.6 3.6M18.4 5.6l-3.6 3.6M9.2 14.8l-3.6 3.6"/>',"tong-quan":'<path d="M3 13h8V3H3zM13 21h8V11h-8zM3 21h8v-6H3zM13 3v6h8V3z"/>',"vung":'<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>',"cong-viec":'<path d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/>',"hop-dong":'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>',"nhan-su":'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M17 11a3 3 0 1 0-1-5.8M18 20h3.5a5 5 0 0 0-4-4.9"/>',"lich":'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',"khach":'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',"thong-ke":'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',"faq":'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.6v.6M12 17h.01"/>',"cong-ty":'<path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 10h.01M15 10h.01M9 13.5h.01M15 13.5h.01"/>'};
 
 /* ---------- state ---------- */
 const S={zones:{},people:{},tasks:{},contracts:{},daily:{},units:{},events:{},leaves:{},faqs:{},supports:{},contacts:{}};
@@ -603,7 +607,7 @@ document.addEventListener("toggle",e=>taFitIn(e.target),true);
 window.addEventListener("resize",()=>document.querySelectorAll("textarea").forEach(taFit));
 new MutationObserver(ms=>{ ms.forEach(m=>m.addedNodes.forEach(taFitIn)); }).observe(document.documentElement,{childList:true,subtree:true});
 /* ---------- shell ---------- */
-const NAV=[["g-tq","Tổng quan","Tổng",["tong-quan"]],["g-viec","Công việc","Việc",["cong-viec","ke-hoach","lich","ho-tro"]],["g-bc","Báo cáo","Báo cáo",["bao-cao","thong-ke"]],["g-vung","Vùng, khách hàng","Vùng",["vung","hop-dong","cong-ty"]],["g-doi","Đội ngũ","Đội ngũ",["nhan-su","lien-he"]],["g-tg","Trợ giúp","Trợ giúp",["huong-dan","faq"]],["g-qt","Quản trị","Quản trị",["tai-khoan","nhat-ky"]]];
+const NAV=[["g-tq","Tổng quan","Tổng",["tong-quan"]],["g-viec","Công việc","Việc",["cong-viec","ke-hoach","lich","ho-tro"]],["g-bc","Báo cáo","Báo cáo",["bao-cao","thong-ke"]],["g-vung","Vùng, khách hàng","Vùng",["vung","ho-so","hop-dong","cong-ty"]],["g-doi","Đội ngũ","Đội ngũ",["nhan-su","lien-he"]],["g-tg","Trợ giúp","Trợ giúp",["huong-dan","faq"]],["g-qt","Quản trị","Quản trị",["tai-khoan","nhat-ky"]]];
 const VLAB={"tai-khoan":"Tài khoản","nhat-ky":"Nhật ký"}; const GICON={"g-qt":'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'};
 function navOk(v){ if(v==="ke-hoach") return canPlan(); if(v==="tai-khoan"||v==="nhat-ky") return typeof isOwner==="function"&&isOwner(); return VIEWS.some(x=>x[0]===v); }
 function navGroup(v){ v=v==="khach"?"cong-ty":v; return NAV.find(g=>g[3].includes(v))||NAV[0]; }
@@ -634,6 +638,7 @@ function render(){
   const v=ui.view, el=$("#app");
   if(v==="tong-quan") el.innerHTML=vOverview();
   else if(v==="vung") el.innerHTML=vZones();
+  else if(v==="ho-so") el.innerHTML=vHs();
   else if(v==="cong-viec") el.innerHTML=vTasks();
   else if(v==="hop-dong") el.innerHTML=vContracts();
   else if(v==="nhan-su") el.innerHTML=vPeople();
@@ -649,8 +654,109 @@ function render(){
   else if(v==="thong-ke") el.innerHTML=vStats();
   else if(v==="tai-khoan") el.innerHTML=vAccounts();
   else if(v==="nhat-ky") el.innerHTML=vLog();
-  bindView();
+  bindView(); if(v==="ho-so") bindHs(el);
   if(ui.drawer) ui.drawer();
+}
+
+/* ---------- Hồ sơ chính của vùng: bản cứng, ai giữ, Drive, FarmBase ---------- */
+const HS=[["cccd","CCCD","CCCD",["16","17"]],["sodo","Sổ đỏ","Sổ đỏ",["17"]],["uq","Giấy ủy quyền","Ủy quyền",["16"]],["nq36","Giấy đăng ký vùng trồng NQ36","NQ36",["01"]],["lk","Hồ sơ liên kết đơn vị thu mua với hộ dân","Liên kết",["11"]],["ks","Hồ sơ khảo sát Trung Quốc","Khảo sát TQ",["19"]],["fly","Flycam","Flycam",["09","19"]],["kho","Hình kho, thùng thuốc, bẫy","Kho, bẫy",["19","14"]],["nk","5 bộ nhật ký canh tác","Nhật ký",["13"]],["xa","Văn bản xác nhận của xã kiểm tra vùng trồng","Xã xác nhận",[]]];
+const HSHARD={"":"Chưa có",part:"Thiếu",ok:"Đủ",na:"Không cần"};
+const HSHOLD=[["_vp","Tủ hồ sơ văn phòng"],["_kh","Khách, HTX đứng mã"],["_ho","Nông hộ đang giữ"],["_xa","Xã, Phòng Kinh tế"]];
+function hsHolder(v){ if(!v) return ""; const s=HSHOLD.find(x=>x[0]===v); return s?s[1]:pname(v)||v; }
+function hsHolderS(v){ return {_vp:"VP",_kh:"Khách",_ho:"Hộ",_xa:"Xã"}[v]||(pname(v)||v||"").split(" ").slice(-1)[0]; }
+function hsItem(z,k){ return (z.hs||{})[k]||{}; }
+function hsDone(x){ return (x.hard==="ok"||x.hard==="na")&&(x.hard==="na"||(x.drive&&x.fb)); }
+function hsStat(z){ let ok=0,hard=0,drive=0,fb=0; HS.forEach(([k])=>{ const x=hsItem(z,k); if(hsDone(x))ok++; if(x.hard==="ok"||x.hard==="na")hard++; if(x.drive||x.hard==="na")drive++; if(x.fb||x.hard==="na")fb++; }); return {ok,hard,drive,fb,n:HS.length}; }
+function hsCell(x){ const c=(on,part)=>on?"good":part?"warn":""; return '<span class="hsc"><i class="'+c(x.hard==="ok"||x.hard==="na",x.hard==="part")+'" title="Bản cứng">C</i><i class="'+c(x.drive||x.hard==="na")+'" title="Drive">D</i><i class="'+c(x.fb||x.hard==="na")+'" title="FarmBase">F</i></span>'; }
+function hsZones(){ const f=ui.hs; const q=norm(f.q||"");
+  return Object.entries(S.zones).filter(([,z])=>{ if(z.active===false) return false;
+    if(f.pri==="12"&&!(z.priority==="1"||z.priority==="2")) return false; if(f.pri&&f.pri!=="12"&&f.pri!=="all"&&z.priority!==f.pri) return false;
+    if(f.owner&&z.owner!==f.owner) return false;
+    if(q&&!norm(z.name+" "+(z.ward||"")+" "+(z.code||"")+" "+(z.unit||"")).includes(q)) return false;
+    if(f.miss){ if(f.item){ if(hsDone(hsItem(z,f.item))) return false; } else if(hsStat(z).ok===HS.length) return false; }
+    if(f.hold){ if(!HS.some(([k])=>hsItem(z,k).holder===f.hold)) return false; }
+    return true; }).sort((a,b)=>(a[1].priority||"9").localeCompare(b[1].priority||"9")||a[1].name.localeCompare(b[1].name,"vi")); }
+function vHs(){ ui.hs=ui.hs||{q:"",pri:"12",owner:"",item:"",miss:false,qm:"",qh:"",hold:""}; const f=ui.hs, zs=hsZones();
+  const opt=(arr,val)=>arr.map(([v,l])=>'<option value="'+esc(v)+'"'+(String(val)===String(v)?" selected":"")+'>'+esc(l)+'</option>').join("");
+  const ppl=Object.entries(S.people).filter(([,p])=>p.active!==false).sort((a,b)=>a[1].name.localeCompare(b[1].name,"vi"));
+  const holdOpts=[...HSHOLD,...ppl.map(([k,p])=>[k,p.name])];
+  let h='<div><h1>Hồ sơ vùng trồng</h1><div class="sub">Biết từng bộ hồ sơ chính của vùng đang ra sao: bản cứng đủ chưa, ai đang giữ, đã scan lưu Drive và nhập FarmBase chưa. Chỉ ghi trạng thái, không ghi số CCCD, số sổ đỏ ở đây.</div></div>';
+  // tổng hợp theo loại
+  const N=zs.length||1; const T=HS.map(([k,l])=>{ let ok=0,part=0,dr=0,fb=0,done=0; const hc={}; zs.forEach(([,z])=>{ const x=hsItem(z,k); if(x.hard==="ok"||x.hard==="na")ok++; else if(x.hard==="part")part++; if(x.drive||x.hard==="na")dr++; if(x.fb||x.hard==="na")fb++; if(hsDone(x))done++; if(x.holder&&x.hard&&x.hard!=="na") hc[x.holder]=(hc[x.holder]||0)+1; });
+    return [k,l,ok,part,dr,fb,done,Object.entries(hc).sort((a,b)=>b[1]-a[1])]; });
+  const pc=(n,c)=>'<span class="pill '+(n>=N&&zs.length?"good":n?"warn":"")+'">'+n+'/'+zs.length+'</span>';
+  if(f.sum==null) f.sum=innerWidth>700;
+  h+='<details class="panel" style="margin-top:12px"'+(f.sum?' open':'')+' id="hssum"><summary style="cursor:pointer"><b>Tổng hợp theo loại hồ sơ ('+zs.length+' vùng đang lọc)</b> <span class="sub">· bấm tên loại để xem vùng còn thiếu loại đó</span></summary><div class="tw hsg" style="margin-top:6px"><table><thead><tr><th>Loại hồ sơ</th><th>Bản cứng đủ</th><th>Thiếu một phần</th><th>Đã lên Drive</th><th>Đã nhập FarmBase</th><th>Hoàn tất</th><th>Bản cứng đang ở</th></tr></thead><tbody>'
+    +T.map(([k,l,ok,part,dr,fb,done,hc])=>'<tr><td><a href="#" data-hsitem="'+k+'" title="'+esc(l)+'"'+(f.item===k?' style="font-weight:700"':'')+'>'+esc(innerWidth>700?l:HS.find(x=>x[0]===k)[2])+'</a></td><td>'+pc(ok)+'</td><td>'+(part?'<span class="pill warn">'+part+'</span>':'<span class="sub">0</span>')+'</td><td>'+pc(dr)+'</td><td>'+pc(fb)+'</td><td>'+pc(done)+'</td><td class="sub">'+(hc.slice(0,3).map(([p,n])=>esc(hsHolder(p))+' '+n).join(", ")||"Chưa ghi")+'</td></tr>').join("")+'</tbody></table></div></details>';
+  // bộ lọc
+  h+='<div class="filters"><input type="search" id="hsq" placeholder="Tìm vùng, xã, mã (gõ không dấu được)" value="'+esc(f.q)+'" aria-label="Tìm vùng">'
+   +'<select id="hspri" aria-label="Ưu tiên">'+opt([["12","Ưu tiên 1 và 2"],["all","Mọi ưu tiên"],...Object.entries(PRI)],f.pri)+'</select>'
+   +'<select id="hsown" aria-label="Người phụ trách vùng"><option value="">Mọi người phụ trách</option>'+opt(ppl.map(([k,p])=>[k,p.name]),f.owner)+'</select>'
+   +'<select id="hsitem" aria-label="Loại hồ sơ"><option value="">Tất cả loại hồ sơ</option>'+opt(HS.map(x=>[x[0],x[1]]),f.item)+'</select>'
+   +'<select id="hshold" aria-label="Bản cứng ai giữ"><option value="">Ai giữ bản cứng: tất cả</option>'+opt(holdOpts,f.hold)+'</select>'
+   +'<label class="row sub"><input type="checkbox" id="hsmiss"'+(f.miss?" checked":"")+'> Chỉ vùng còn thiếu</label><button class="btn sm" id="hsclr">Bỏ lọc</button></div>';
+  // ghi nhanh
+  h+='<div class="panel"><div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><b>Ghi nhanh:</b><div class="focusbar" role="group" aria-label="Chế độ ghi nhanh">'+[["","Xem chi tiết"],["hard","Bản cứng"],["drive","Drive"],["fb","FarmBase"],["holder","Người giữ"]].map(([k,l])=>'<button data-hsqm="'+k+'" aria-pressed="'+(f.qm===k)+'">'+l+'</button>').join("")+'</div>'
+   +(f.qm==="holder"?'<select id="hsqh" aria-label="Người giữ để ghi"><option value="">Chọn người giữ…</option>'+opt(holdOpts,f.qh)+'</select>':'')+'</div>'
+   +'<div class="sub" style="margin-top:6px">'+({"":"Bấm ô để mở hồ sơ của vùng tại loại đó. Mỗi ô có 3 chấm: C bản cứng, D Drive, F FarmBase. Xanh là xong, vàng là thiếu một phần.",hard:"Bấm ô để đổi bản cứng: Chưa có → Đủ → Thiếu → Chưa có.",drive:"Bấm ô để bật, tắt Đã scan lưu Drive.",fb:"Bấm ô để bật, tắt Đã nhập FarmBase.",holder:"Chọn người giữ rồi bấm ô để ghi bản cứng đang ở người đó."}[f.qm])+'</div></div>';
+  // bảng vùng
+  const cols=f.item?HS.filter(x=>x[0]===f.item):HS;
+  h+='<div class="tw hsg"><table><thead><tr><th>Vùng</th><th>Xong</th>'+cols.map(x=>'<th title="'+esc(x[1])+'">'+esc(x[2])+'</th>').join("")+'</tr></thead><tbody>'
+   +(zs.map(([id,z])=>{ const s=hsStat(z); return '<tr><td><a href="#" data-hsz="'+id+'"><b>'+esc(z.name)+'</b></a><div class="sub">'+esc([z.driveCode,z.ward,pname(z.owner)].filter(Boolean).join(" · "))+(z.drive?' · <a href="'+esc(z.drive)+'" target="_blank" rel="noopener">Drive</a>':'')+'</div></td><td><span class="pill '+(s.ok===s.n?"good":s.ok?"warn":"")+'">'+s.ok+'/'+s.n+'</span></td>'
+      +cols.map(([k,l])=>{ const x=hsItem(z,k); return '<td><button type="button" class="hsb" data-hsc="'+id+'|'+k+'" title="'+esc(l+": bản cứng "+HSHARD[x.hard||""]+(x.holder?", "+hsHolder(x.holder)+" giữ":"")+(x.drive?", đã lên Drive":"")+(x.fb?", đã nhập FarmBase":""))+'">'+hsCell(x)+(x.holder&&x.hard!=="na"?'<span class="hsh">'+esc(hsHolderS(x.holder))+'</span>':'')+'</button></td>'; }).join("")+'</tr>'; }).join("")||'<tr><td colspan="12" class="sub">Không có vùng khớp bộ lọc.</td></tr>')
+   +'</tbody></table></div>';
+  return h; }
+async function hsSet(id,k,patch){ const z=S.zones[id]; if(!z) return false; const cur=z.hs||{}; const nx={...cur,[k]:{...(cur[k]||{}),...patch,by:me||"",at:new Date().toISOString()}}; return upd("zones",id,{hs:nx,...stamp()}); }
+function bindHs(A){ const f=ui.hs; const rr=()=>render();
+  $("#hsq")?.addEventListener("input",e=>{ f.q=e.target.value; clearTimeout(window.__hsT); window.__hsT=setTimeout(()=>{ rr(); const i=$("#hsq"); if(i){ i.focus(); i.setSelectionRange(i.value.length,i.value.length);} },250); });
+  [["hspri","pri"],["hsown","owner"],["hsitem","item"],["hshold","hold"],["hsqh","qh"]].forEach(([i,k])=>$("#"+i)?.addEventListener("change",e=>{ f[k]=e.target.value; rr(); }));
+  $("#hssum")?.addEventListener("toggle",e=>{ f.sum=e.target.open; });
+  $("#hsmiss")?.addEventListener("change",e=>{ f.miss=e.target.checked; rr(); });
+  $("#hsclr")?.addEventListener("click",()=>{ Object.assign(f,{q:"",pri:"12",owner:"",item:"",miss:false,hold:""}); rr(); });
+  A.querySelectorAll("[data-hsitem]").forEach(a=>a.addEventListener("click",e=>{ e.preventDefault(); const k=a.dataset.hsitem; if(f.item===k){ f.item=""; f.miss=false; } else { f.item=k; f.miss=true; } rr(); }));
+  A.querySelectorAll("[data-hsqm]").forEach(b=>b.addEventListener("click",()=>{ f.qm=b.dataset.hsqm; rr(); }));
+  A.querySelectorAll("[data-hsz]").forEach(a=>a.addEventListener("click",e=>{ e.preventDefault(); openHs(a.dataset.hsz); }));
+  A.querySelectorAll("[data-hsc]").forEach(b=>b.addEventListener("click",async()=>{ const [id,k]=b.dataset.hsc.split("|"); const x=hsItem(S.zones[id]||{},k);
+    if(!f.qm) return openHs(id,k);
+    if(f.qm==="hard") await hsSet(id,k,{hard:{"":"ok",ok:"part",part:"",na:""}[x.hard||""]});
+    else if(f.qm==="drive") await hsSet(id,k,{drive:!x.drive});
+    else if(f.qm==="fb") await hsSet(id,k,{fb:!x.fb});
+    else if(f.qm==="holder"){ if(!f.qh){ toast("Chọn người giữ trước"); return; } await hsSet(id,k,{holder:x.holder===f.qh?"":f.qh, hard:x.hard||"ok"}); }
+  })); }
+function openHs(id,focus){ ui.drawer=()=>drawHs(id,focus); drawHs(id,focus); }
+function drawHs(id,focus){ const z=S.zones[id]; if(!z){ closeDrawer(); return; } const s=hsStat(z), dd=z.docs||{};
+  const ppl=Object.entries(S.people).filter(([,p])=>p.active!==false).sort((a,b)=>a[1].name.localeCompare(b[1].name,"vi"));
+  const holdOpts=[["","Chưa ghi ai giữ"],...HSHOLD,...ppl.map(([k,p])=>[k,p.name])];
+  let h='<div class="dh"><div style="min-width:0"><span class="pill '+(s.ok===s.n?"good":s.ok?"warn":"")+'">Hồ sơ chính '+s.ok+'/'+s.n+' hoàn tất</span><h2 style="margin-top:6px;overflow-wrap:anywhere">'+esc(z.name)+'</h2><div class="sub">'+esc([z.ward,z.unit,z.code].filter(Boolean).join(" · "))+' · bản cứng '+s.hard+'/'+s.n+' · Drive '+s.drive+'/'+s.n+' · FarmBase '+s.fb+'/'+s.n+'</div></div><button class="btn sm" data-close>Đóng</button></div><div class="db">';
+  h+='<div class="f"><label>Thư mục Google Drive của vùng</label><div class="row" style="flex-wrap:nowrap"><input id="hsdrive" value="'+esc(z.drive||"")+'" placeholder="https://drive.google.com/drive/folders/…" style="flex:1;min-width:0">'+(z.drive?'<a class="btn sm" href="'+esc(z.drive)+'" target="_blank" rel="noopener">Mở Drive</a>':'')+'</div>'+(z.driveScan||z.driveSodo?'<div class="row" style="gap:6px;margin-top:6px">'+(z.driveCode?'<span class="pill">'+esc(z.driveCode)+'</span>':'')+(z.driveScan?'<a class="cp" href="'+esc(z.driveScan)+'" target="_blank" rel="noopener">01 Hồ sơ scan</a>':'')+(z.driveSodo?'<a class="cp" href="'+esc(z.driveSodo)+'" target="_blank" rel="noopener">02 Hồ sơ sổ đỏ</a>':'')+'</div>':'')+'</div>';
+  h+='<div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn sm" data-hsall="hard|ok">Tất cả: bản cứng đủ</button><button class="btn sm" data-hsall="drive|1">Tất cả: đã lên Drive</button><button class="btn sm" data-hsall="fb|1">Tất cả: đã nhập FarmBase</button><select id="hsallh" aria-label="Đặt người giữ cho tất cả" style="max-width:220px"><option value="">Đặt người giữ cho tất cả…</option>'+holdOpts.slice(1).map(([v,l])=>'<option value="'+esc(v)+'">'+esc(l)+'</option>').join("")+'</select></div>';
+  h+=HS.map(([k,l,,rel])=>{ const x=hsItem(z,k); const done=hsDone(x);
+    return '<div class="hsrow'+(focus===k?' foc':'')+'" id="hs_'+k+'"><div class="row between" style="gap:6px"><b>'+esc(l)+'</b>'+(done?'<span class="pill good">Hoàn tất</span>':'')+'</div>'
+      +(rel.length?'<div class="sub">Thuộc bộ 19 thành phần: '+rel.map(n=>{ const d=dd[n]||{}; return '<span class="pill '+(d.st==="ok"?"good":d.st==="fix"?"warn":"")+'" title="'+esc(DOCS.find(q=>q[0]===n)[1]+" · "+DST[d.st||"none"])+'">'+n+'</span>'; }).join(" ")+'</div>':'')
+      +'<div class="ctl"><span class="sub" style="min-width:64px">Bản cứng</span><span class="dst" role="group" aria-label="Bản cứng '+esc(l)+'">'+[["","none","Chưa có"],["part","fix","Thiếu"],["ok","ok","Đủ"],["na","none","Không cần"]].map(([v,c,t])=>'<button type="button" class="'+c+'" data-hsh="'+k+'|'+v+'" aria-pressed="'+((x.hard||"")===v)+'">'+t+'</button>').join("")+'</span></div>'
+      +'<div class="ctl"><span class="sub" style="min-width:64px">Ai giữ</span><select data-hsho="'+k+'" style="flex:1;min-width:0">'+holdOpts.map(([v,t])=>'<option value="'+esc(v)+'"'+((x.holder||"")===v?" selected":"")+'>'+esc(t)+'</option>').join("")+'</select></div>'
+      +'<div class="ctl"><button type="button" class="cp" data-hst="'+k+'|drive" aria-pressed="'+(!!x.drive)+'">'+(x.drive?"✓ ":"")+'Đã scan lưu Drive</button><button type="button" class="cp" data-hst="'+k+'|fb" aria-pressed="'+(!!x.fb)+'">'+(x.fb?"✓ ":"")+'Đã nhập FarmBase</button>'+(x.link?'<a class="cp" href="'+esc(x.link)+'" target="_blank" rel="noopener">Mở file</a>':'')+'</div>'
+      +'<div class="ctl"><input data-hsl="'+k+'" value="'+esc(x.link||"")+'" placeholder="Link Drive của loại này (không bắt buộc)" style="flex:1;min-width:0;border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--surface)"></div>'
+      +'<div class="ctl"><input data-hsn="'+k+'" value="'+esc(x.note||"")+'" placeholder="Ghi chú: thiếu hộ nào, hẹn ngày bổ sung (không ghi số CCCD, số sổ)" style="flex:1;min-width:0;border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--surface)"></div>'
+      +(x.by?'<div class="sub">'+esc(pname(x.by))+' · '+dmy((x.at||"").slice(0,10))+'</div>':'')+'</div>'; }).join("");
+  h+='<div class="panel"><h2>Liên kết bộ 19 thành phần</h2><div class="sub">Khi các loại hồ sơ chính của một thành phần đã hoàn tất (bản cứng đủ, đã lên Drive), bấm nút dưới để đánh dấu thành phần đó Đã có và có Scan trong bộ hồ sơ mã vùng.</div><div class="row" style="margin-top:8px;gap:6px"><button class="btn sm" id="hssync">Cập nhật bộ 19 thành phần</button><button class="btn sm" id="hszone">Mở chi tiết vùng</button><span class="sub" id="hsmsg"></span></div></div>';
+  h+='</div>'; showDrawer(h);
+  const L=$("#layer");
+  if(focus){ const el=L.querySelector("#hs_"+focus); if(el) setTimeout(()=>el.scrollIntoView({block:"center"}),30); }
+  L.querySelector("#hsdrive")?.addEventListener("change",async e=>{ const v=e.target.value.trim(); if(v&&!/^https:\/\/(drive|docs)\.google\.com\//.test(v)){ toast("Link cần là drive.google.com"); return; } await upd("zones",id,{drive:v,...stamp()}); toast("Đã lưu"); });
+  L.querySelectorAll("[data-hsh]").forEach(b=>b.addEventListener("click",()=>{ const [k,v]=b.dataset.hsh.split("|"); hsSet(id,k,{hard:v}); }));
+  L.querySelectorAll("[data-hsho]").forEach(s=>s.addEventListener("change",()=>{ const k=s.dataset.hsho, x=hsItem(S.zones[id],k); hsSet(id,k,{holder:s.value,...(s.value&&!x.hard?{hard:"ok"}:{})}); }));
+  L.querySelectorAll("[data-hst]").forEach(b=>b.addEventListener("click",()=>{ const [k,fl]=b.dataset.hst.split("|"); hsSet(id,k,{[fl]:!hsItem(S.zones[id],k)[fl]}); }));
+  L.querySelectorAll("[data-hsl]").forEach(i=>i.addEventListener("change",()=>{ const v=i.value.trim(); if(v&&!/^https:\/\/(drive|docs)\.google\.com\//.test(v)){ toast("Link cần là drive.google.com"); return; } hsSet(id,i.dataset.hsl,{link:v,...(v?{drive:true}:{})}); }));
+  L.querySelectorAll("[data-hsn]").forEach(i=>i.addEventListener("change",()=>hsSet(id,i.dataset.hsn,{note:i.value.trim()})));
+  L.querySelectorAll("[data-hsall]").forEach(b=>b.addEventListener("click",async()=>{ const [fl,v]=b.dataset.hsall.split("|"); const cur=S.zones[id].hs||{}, at=new Date().toISOString(), nx={}; HS.forEach(([k])=>{ const x=cur[k]||{}; nx[k]=fl==="hard"?(x.hard==="na"?x:{...x,hard:"ok",by:me||"",at}):{...x,[fl]:true,by:me||"",at}; }); if(await upd("zones",id,{hs:nx,...stamp()})) toast("Đã cập nhật 10 loại hồ sơ"); }));
+  L.querySelector("#hsallh")?.addEventListener("change",async e=>{ const v=e.target.value; if(!v) return; const cur=S.zones[id].hs||{}, at=new Date().toISOString(), nx={}; HS.forEach(([k])=>{ const x=cur[k]||{}; nx[k]=x.hard==="na"?x:{...x,holder:v,hard:x.hard||"ok",by:me||"",at}; }); if(await upd("zones",id,{hs:nx,...stamp()})) toast("Đã ghi "+hsHolder(v)+" giữ bản cứng"); });
+  L.querySelector("#hszone")?.addEventListener("click",()=>openZone(id));
+  L.querySelector("#hssync")?.addEventListener("click",async()=>{ const zz=S.zones[id], cur=zz.docs||{}, at=new Date().toISOString(); const nd={...cur}; const ch=[];
+    const nums=[...new Set(HS.flatMap(x=>x[3]))];
+    nums.forEach(n=>{ const its=HS.filter(x=>x[3].includes(n)); const ok=its.every(([k])=>{ const x=hsItem(zz,k); return x.hard==="na"||(x.hard==="ok"&&x.drive); }); if(ok&&!(cur[n]?.st==="ok"&&cur[n]?.scan)){ nd[n]={...(cur[n]||{}),st:"ok",scan:true,by:me||"",at}; ch.push(n); } });
+    if(!ch.length){ $("#hsmsg").textContent="Chưa có thành phần nào đủ điều kiện, hoặc đã cập nhật rồi."; return; }
+    if(await upd("zones",id,{docs:nd,...stamp()})) toast("Đã cập nhật thành phần "+ch.join(", ")); });
 }
 
 /* ---------- overview ---------- */
@@ -820,6 +926,7 @@ function drawZone(id){
   h+='<div class="grid" style="gap:6px">'+Object.entries(GATES).map(([k,gt])=>'<label class="gate chk"><input type="checkbox" data-gate="'+k+'"'+(z.gates?.[k]?" checked":"")+'><span><b>'+gt.name+'</b> (sau Bước '+gt.after+'): '+esc(gt.txt)+'</span></label>').join("")+'</div>';
   // checklist for current step
   if(st!=null){ const done=z.checks?.["s"+st]||[]; h+='<div class="panel"><h2>Checklist Bước '+st+'</h2>'+STEPS[st].ck.map((c,i)=>'<label class="chk"><input type="checkbox" data-ck="'+i+'"'+(done[i]?" checked":"")+'><span>'+esc(c)+'</span></label>').join("")+'</div>'; }
+  { const hs=hsStat(z); h+='<div class="panel"><div class="row between"><h2>Hồ sơ chính ('+hs.ok+'/'+hs.n+' hoàn tất)</h2><button type="button" class="btn sm" data-hs-open>Mở hồ sơ chính</button></div><div class="row" style="gap:4px;flex-wrap:wrap;margin-top:6px">'+HS.map(([k,l,sh])=>'<span class="cp" title="'+esc(l)+'" style="display:inline-flex;gap:6px;align-items:center">'+esc(sh)+hsCell(hsItem(z,k))+'</span>').join("")+'</div><div class="sub" style="margin-top:4px">C bản cứng · D đã lên Drive · F đã nhập FarmBase</div></div>'; }
   // bộ hồ sơ
   { const dd=z.docs||{}, ds=docStats(z), seg=(n,c)=>n?'<span style="width:'+(n/ds.n*100)+'%;background:'+c+'"></span>':'';
     h+='<div class="panel"><div class="row between"><h2>Bộ hồ sơ vùng ('+ds.ok+'/'+ds.n+' đã có)</h2><button type="button" class="btn sm" data-docs-toggle>'+(ui.docsOpen?'Thu gọn':'Mở danh sách')+'</button></div>'
@@ -880,6 +987,7 @@ function drawZone(id){
   }));
   L.querySelectorAll("[data-gate]").forEach(c=>c.addEventListener("change",async()=>{ const gs={...(z.gates||{})}; gs[c.dataset.gate]=c.checked; await upd("zones",id,{gates:gs,...stamp()}); }));
   L.querySelectorAll("[data-ck]").forEach(c=>c.addEventListener("change",async()=>{ const ch={...(z.checks||{})}; const arr=[...(ch["s"+st]||[])]; arr[+c.dataset.ck]=c.checked; ch["s"+st]=arr; await upd("zones",id,{checks:ch,...stamp()}); }));
+  L.querySelector("[data-hs-open]")?.addEventListener("click",()=>openHs(id));
   L.querySelector("[data-docs-toggle]")?.addEventListener("click",()=>{ ui.docsOpen=!ui.docsOpen; drawZone(id); });
   const setDoc=async(k,patch)=>{ const cur=S.zones[id]?.docs||{}; const nd={...cur,[k]:{...(cur[k]||{}),...patch,by:me||"",at:new Date().toISOString()}}; await upd("zones",id,{docs:nd,...stamp()}); };
   L.querySelectorAll("[data-dq]").forEach(b=>b.addEventListener("click",()=>{ const k=b.dataset.dq; const cur=((S.zones[id]?.docs||{})[k]||{}).st||"none"; setDoc(k,{st:{none:"ok",ok:"fix",fix:"none"}[cur]}); }));
@@ -2170,6 +2278,13 @@ const GUIDE=[
   "Không kịp thì bấm \"Dời\", chọn ngày mới và ghi lý do. Lý do tự vào báo cáo cuối ngày.",
   "\"Kế hoạch so với thực tế\": chọn ngày, bấm Sao chép để gửi nhóm Zalo (chỉ có tên việc, vùng).",
   "Tab \"Rà soát công việc\" (điều phối, quản lý): ai đang trễ và ảnh hưởng vùng nào; việc trùng, bị ẩn, lệch hạn cha con, thiếu người, thiếu hạn, dời nhiều lần."]},
+ {k:"hoso",t:"Hồ sơ vùng trồng: bản cứng, ai giữ, Drive, FarmBase",s:[
+  "Vào Vùng, khách hàng › Hồ sơ. Mỗi vùng theo dõi 10 bộ hồ sơ chính: CCCD, sổ đỏ, giấy ủy quyền, giấy đăng ký vùng trồng NQ36, hồ sơ liên kết đơn vị thu mua với hộ dân, khảo sát Trung Quốc, flycam, hình kho, thùng thuốc, bẫy, 5 bộ nhật ký canh tác, văn bản xã xác nhận kiểm tra vùng trồng.",
+  "Mỗi ô có 3 chấm: C bản cứng, D đã scan lưu Drive, F đã nhập FarmBase. Xanh là xong, vàng là bản cứng còn thiếu một phần. Chữ nhỏ dưới ô là người hoặc nơi đang giữ bản cứng.",
+  "Ghi nhanh: chọn chế độ Bản cứng, Drive, FarmBase hoặc Người giữ rồi bấm lần lượt các ô, không cần mở từng vùng. Chế độ Xem chi tiết thì bấm ô để mở hồ sơ của vùng.",
+  "Bảng Tổng hợp cho biết mỗi loại hồ sơ đủ bao nhiêu vùng, bản cứng đang ở đâu. Bấm tên loại để chỉ xem vùng còn thiếu loại đó. Lọc Ai giữ bản cứng để biết một người đang cầm hồ sơ của những vùng nào.",
+  "Mỗi vùng đã gắn sẵn thư mục Drive (mã Z, thư mục 01 Hồ sơ scan, 02 Hồ sơ sổ đỏ). Nút Cập nhật bộ 19 thành phần đánh dấu Đã có và Scan cho các thành phần mà hồ sơ chính đã đủ bản cứng và đã lên Drive.",
+  "Chỉ ghi trạng thái. Không ghi số CCCD, số sổ đỏ, số điện thoại bà con vào ghi chú."]},
  {k:"zone",t:"Theo dõi tiến độ mã vùng trồng",s:[
   "Mỗi vùng đi qua 9 bước (0 đến 8): mở quan hệ xã, gom dân, khảo sát lô, thu giấy tờ, tập huấn và ký hồ sơ, xã kiểm tra, nộp hồ sơ chờ mã nội địa, phía Trung Quốc bổ sung, mã GACC và duy trì.",
   "Thanh 9 ô trên mỗi vùng: ô đậm là bước đã xong, ô vàng là bước đang làm. Trạng thái: Đúng tiến độ (lệch ≤ 2 ngày), Trễ nhẹ (3 đến 7 ngày), Trễ nặng (trên 7 ngày), Chờ cơ quan.",
