@@ -239,8 +239,8 @@ const MIL=[["Chốt danh sách (T)",0],["Khảo sát xong",10],["Chốt sổ l�
 const TEAMS={lead:"Lãnh đạo",dieuphoi:"Điều phối",hientruong:"Hiện trường",hoso:"Hồ sơ và hệ thống",vanphong:"Văn phòng",kinhdoanh:"Kinh doanh",thuengoai:"Thuê ngoài"};
 const TSTAT={todo:"Chưa làm",doing:"Đang làm",wait:"Chờ người khác",done:"Xong"};
 const PRI={"1":"Ưu tiên 1","2":"Ưu tiên 2","3":"Ưu tiên 3","GACC":"Chờ GACC / có mã"};
-const VIEWS=[["tong-quan","Tổng quan"],["vung","Vùng trồng"],["cong-viec","Công việc"],["bao-cao","Báo cáo"],["ho-tro","Hỗ trợ"],["lich","Lịch"],["hop-dong","Hợp đồng"],["nhan-su","Nhân sự"],["cong-ty","Công ty"],["lien-he","Liên hệ"],["faq","FAQ"],["thong-ke","Thống kê"],["huong-dan","Hướng dẫn"]];
-const ICONS={"huong-dan":'<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5v.01"/>',"bao-cao":'<path d="M5 3h10l4 4v14H5z"/><path d="M9 12h6M9 16h6M9 8h3"/><circle cx="17.5" cy="17.5" r="0"/>',"lien-he":'<rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M7.5 17a4.5 4.5 0 0 1 9 0M2 7h2M2 12h2M2 17h2"/>',"ho-tro":'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M5.6 5.6l3.6 3.6M14.8 14.8l3.6 3.6M18.4 5.6l-3.6 3.6M9.2 14.8l-3.6 3.6"/>',"tong-quan":'<path d="M3 13h8V3H3zM13 21h8V11h-8zM3 21h8v-6H3zM13 3v6h8V3z"/>',"vung":'<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>',"cong-viec":'<path d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/>',"hop-dong":'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>',"nhan-su":'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M17 11a3 3 0 1 0-1-5.8M18 20h3.5a5 5 0 0 0-4-4.9"/>',"lich":'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',"khach":'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',"thong-ke":'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',"faq":'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.6v.6M12 17h.01"/>',"cong-ty":'<path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 10h.01M15 10h.01M9 13.5h.01M15 13.5h.01"/>'};
+const VIEWS=[["tong-quan","Tổng quan"],["vung","Vùng trồng"],["cong-viec","Công việc"],["ke-hoach","Kế hoạch"],["bao-cao","Báo cáo"],["ho-tro","Hỗ trợ"],["lich","Lịch"],["hop-dong","Hợp đồng"],["nhan-su","Nhân sự"],["cong-ty","Công ty"],["lien-he","Liên hệ"],["faq","FAQ"],["thong-ke","Thống kê"],["huong-dan","Hướng dẫn"]];
+const ICONS={"ke-hoach":'<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M7 13h4M7 17h4M14 13l1.5 1.5L18 12"/>',"huong-dan":'<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5v.01"/>',"bao-cao":'<path d="M5 3h10l4 4v14H5z"/><path d="M9 12h6M9 16h6M9 8h3"/><circle cx="17.5" cy="17.5" r="0"/>',"lien-he":'<rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M7.5 17a4.5 4.5 0 0 1 9 0M2 7h2M2 12h2M2 17h2"/>',"ho-tro":'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M5.6 5.6l3.6 3.6M14.8 14.8l3.6 3.6M18.4 5.6l-3.6 3.6M9.2 14.8l-3.6 3.6"/>',"tong-quan":'<path d="M3 13h8V3H3zM13 21h8V11h-8zM3 21h8v-6H3zM13 3v6h8V3z"/>',"vung":'<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>',"cong-viec":'<path d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/>',"hop-dong":'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>',"nhan-su":'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M17 11a3 3 0 1 0-1-5.8M18 20h3.5a5 5 0 0 0-4-4.9"/>',"lich":'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',"khach":'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',"thong-ke":'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',"faq":'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.6v.6M12 17h.01"/>',"cong-ty":'<path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 10h.01M15 10h.01M9 13.5h.01M15 13.5h.01"/>'};
 
 /* ---------- state ---------- */
 const S={zones:{},people:{},tasks:{},contracts:{},daily:{},units:{},events:{},leaves:{},faqs:{},supports:{},contacts:{}};
@@ -611,6 +611,7 @@ function render(){
   else if(v==="lien-he") el.innerHTML=vContacts();
   else if(v==="ho-tro") el.innerHTML=vSupport();
   else if(v==="bao-cao") el.innerHTML=vReports();
+  else if(v==="ke-hoach") el.innerHTML=vPlan();
   else if(v==="huong-dan") el.innerHTML=vGuide();
   else if(v==="thong-ke") el.innerHTML=vStats();
   else if(v==="tai-khoan") el.innerHTML=vAccounts();
@@ -666,7 +667,8 @@ function quickPrefill(){ const t0=todayStr();
   const doing=Object.entries(S.tasks).filter(([id,t])=>t.kind!=="epic"&&!tOpenKids(id)&&t.R===me&&t.status==="doing"&&dOf(t.updatedAt)===t0).map(([,t])=>t).map(t=>"• Đang làm: "+t.title);
   const next=myOpen(me).slice(0,3).map(([,t])=>"• "+t.title+(t.due?" (hạn "+dm(t.due)+")":""));
   const late=myOpen(me).filter(([,t])=>tLate(t)).map(([,t])=>"• Quá hạn: "+t.title+" (hạn "+dm(t.due)+"). Lý do: ");
-  return {done:[...done,...doing].join("\n"),next:next.join("\n"),block:late.slice(0,3).join("\n")}; }
+  const mv=Object.values(S.tasks).filter(t=>t.R===me).flatMap(t=>(t.planLog||[]).filter(x=>dOf(x.at)===t0&&x.by===me).map(x=>"• Dời: "+t.title+" sang "+dm(x.to)+". Lý do: "+x.reason));
+  return {done:[...done,...doing].join("\n"),next:next.join("\n"),block:[...mv,...late.slice(0,3)].join("\n")}; }
 function maybeNudge(){ try{ if(!me||!isReporter(me)||S.daily[todayStr()+"_"+me]||ui.drawer) return; if(new Date().getHours()<17) return; const k="bvi_nudge_"+todayStr()+"_"+me; if(localStorage.getItem(k)) return; localStorage.setItem(k,"1"); setTimeout(()=>{ if(!S.daily[todayStr()+"_"+me]&&!ui.drawer) openQuick(); },800); }catch(e){} }
 
 function vOverview(){
@@ -678,7 +680,7 @@ function vOverview(){
   const g={A:0,B:0,C:0}; zs.forEach(x=>g[grp(x.z)]++);
   let h='<div class="row between"><div><h1>Tổng quan</h1><div class="sub">Hôm nay '+dmy(todayStr())+' · '+zs.length+' vùng '+(ui.focus?'ưu tiên 1–2':'đang theo dõi')+' · cập nhật trực tiếp</div></div>'+(typeof isOwner==="function"&&isOwner()?'<div class="row" style="gap:8px"><button class="btn" id="expBtn">Xuất dữ liệu</button>'+focusBar()+'</div>':focusBar())+'</div>'+(()=>{ const t=todayStr(); const off=Object.values(S.leaves).filter(l=>leaveOn(l,t)&&l.status!=="pending"&&l.status!=="rejected"); const pend=Object.values(S.leaves).filter(l=>(l.status||"pending")==="pending").length; return (off.length||(pend&&canManage()))?'<div class="row" style="margin-top:8px">'+(off.length?'<span class="pill">Hôm nay nghỉ: '+off.map(l=>esc(pname(l.person))+(l.type==="early"?" (về sớm "+esc(l.time||"")+")":"")).join(", ")+'</span>':'')+(pend&&canManage()?'<a class="pill warn" href="#nhan-su">'+pend+' đơn nghỉ chờ duyệt</a>':'')+'</div>':''; })()+(me?quickBar():'<div class="alert" style="margin-top:8px">Chọn tên của bạn ở góc trên để thấy việc của mình và gửi báo cáo nhanh.</div>');
   { const sp=spMine().length; if(sp) h+='<div class="row" style="margin-top:8px"><a class="pill warn" href="#ho-tro">'+sp+' yêu cầu hỗ trợ đang chờ bạn</a></div>'; }
-  h+=todayPanel()+teamWatch();
+  h+=myPlanToday()+todayPanel()+teamWatch();
   { const fp=faqPending().length; if(fp&&canManage()) h+='<div class="row" style="margin-top:8px"><a class="pill warn" href="#faq">'+fp+' FAQ chờ duyệt</a></div>'; }
   h+='<div class="grid kpis" style="margin-top:12px">'
    +tile("Tổng vùng",zs.length,fmtHa(ha)+" ha","","")
@@ -1239,7 +1241,7 @@ function openQuick(){
     +'<div class="f"><label for="q1">Hôm nay hoàn thành gì?</label><textarea id="q1" rows="3" placeholder="Ví dụ: Khảo sát xong 12 lô vùng Cuôr Đăng; nộp DVC vùng Sình Thời">'+esc(r.done||"")+'</textarea></div>'
     +'<div class="f"><label for="q2">Đang vướng gì? Cần ai gỡ?</label><textarea id="q2" rows="2" placeholder="Để trống nếu không vướng">'+esc(r.block||"")+'</textarea></div>'
     +'<div class="f"><label for="q3">Dự kiến hoàn thiện gì, khi nào?</label><textarea id="q3" rows="2" placeholder="Ví dụ: 06/11 xong thu giấy tờ 8 hộ còn thiếu">'+esc(r.next||"")+'</textarea></div>'
-    +(()=>{ const nd=nextWorkday(todayStr()), fp=fieldPlan(me,nd), sug=r.loc||(fp.length?"Thực địa: "+fp.map(x=>x.where).join(", "):""); return '<div class="f"><label for="q4">'+wdName(nd)+' ('+dm(nd)+') làm ở đâu? Đi công tác thì ghi xã, vùng</label><input id="q4" value="'+esc(sug)+'" placeholder="Ví dụ: Văn phòng; hoặc Thực địa Xã Ea M\'Droh, vùng Quyết Tiến 1" list="q4l"><datalist id="q4l"><option value="Văn phòng"><option value="Làm việc tại nhà"><option value="Nghỉ phép"></datalist>'+(fp.length&&!r.loc?'<div class="sub">Điền sẵn từ việc thực địa có hạn '+dm(nd)+'.</div>':'')+'</div>'; })()
+    +(()=>{ const nd=nextWorkday(todayStr()), fp=fieldPlan(me,nd), sug=r.loc||(fp.length?"Thực địa: "+[...new Set(fp.map(x=>x.where))].join(", "):""); return '<div class="f"><label for="q4">'+wdName(nd)+' ('+dm(nd)+') làm ở đâu? Đi công tác thì ghi xã, vùng</label><input id="q4" value="'+esc(sug)+'" placeholder="Ví dụ: Văn phòng; hoặc Thực địa Xã Ea M\'Droh, vùng Quyết Tiến 1" list="q4l"><datalist id="q4l"><option value="Văn phòng"><option value="Làm việc tại nhà"><option value="Nghỉ phép"></datalist>'+(fp.length&&!r.loc?'<div class="sub">Điền sẵn từ việc thực địa có hạn '+dm(nd)+'.</div>':'')+'</div>'; })()
     +'<div class="row"><button class="btn pri">Gửi</button><span class="sub" id="qmsg"></span></div><div class="sub" style="margin-top:8px"><a href="#bao-cao" data-close>Xem báo cáo của cả đội</a></div></form>');
   $("#qform").addEventListener("submit",async e=>{e.preventDefault(); const d={person:me,date:todayStr(),done:$("#q1").value.trim(),block:$("#q2").value.trim(),next:$("#q3").value.trim(),loc:$("#q4").value.trim(),at:new Date().toISOString()}; if(!d.done){$("#qmsg").textContent="Ghi ít nhất phần hoàn thành.";return;} if(await put("daily",todayStr()+"_"+me,d)){toast("Đã gửi báo cáo nhanh");closeDrawer();}});
 }
@@ -2006,7 +2008,7 @@ document.addEventListener("click",e=>{ if(e.target.closest&&e.target.closest("#e
 function nextWorkday(d){ let x=addDays(d,1); while(new Date(x+"T00:00:00").getDay()===0) x=addDays(x,1); return x; }
 function prevWorkday(d){ let x=addDays(d,-1); while(new Date(x+"T00:00:00").getDay()===0) x=addDays(x,-1); return x; }
 function wdName(d){ return ["Chủ nhật","Thứ 2","Thứ 3","Thứ 4","Thứ 5","Thứ 6","Thứ 7"][new Date(d+"T00:00:00").getDay()]; }
-function fieldPlan(pid,d){ return Object.entries(S.tasks).filter(([,t])=>t.fieldVisit&&t.R===pid&&t.status!=="done"&&t.due===d).map(([id,t])=>{ const z=S.zones[t.zone]; return {id,t,where:z?(zShort(z.name)+(z.ward?" ("+z.ward+")":"")):t.title}; }); }
+function fieldPlan(pid,d){ return Object.entries(S.tasks).filter(([,t])=>t.R===pid&&(t.planDate===d||(!t.planDate&&t.fieldVisit&&t.due===d&&t.status!=="done"))&&t.zone).map(([id,t])=>{ const z=S.zones[t.zone]; return {id,t,where:z?(zShort(z.name)+(z.ward?" ("+z.ward+")":"")):t.title}; }); }
 function onLeave(pid,d){ return Object.values(S.leaves).some(l=>l.person===pid&&l.type!=="early"&&attKind(l)&&attKind(l)!=="pend"&&leaveDaySes(l,d).length); }
 function repWhere(pid,d){ const prev=S.daily[prevWorkday(d)+"_"+pid]; const fp=fieldPlan(pid,d);
   if(onLeave(pid,d)) return {txt:"Nghỉ phép",c:"warn"};
@@ -2178,6 +2180,127 @@ function bindGuide(A){ const G=ui.gd;
   $("#gWho")?.addEventListener("change",e=>{ G.who=e.target.value; render(); });
   bindTaskLinks(A); }
 
+/* ---------- kế hoạch tuần ---------- */
+const PSES={am:"Sáng",pm:"Chiều","":"Trong ngày"};
+function pNorm(x){ return String(x??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/đ/g,"d").replace(/Đ/g,"D").toLowerCase().replace(/[^a-z0-9]+/g," ").replace(/\s+/g," ").trim(); }
+function zAliases(){ const A=[]; const add=(k,id)=>{ k=pNorm(k); if(k.length>=5&&k.split(" ").length>=2) A.push([k,id]); };
+  activeZones().forEach(([id,z])=>{ const s=zShort(z.name); add(s,id); add(z.name,id); const w=pNorm(z.ward||"").replace(/^(xa|phuong|thi tran)\s+/,""); if(w){ const k=pNorm(s); if(k.endsWith(" "+w)) add(k.slice(0,-(w.length+1)),id); }
+    Object.values(S.tasks).forEach(t=>{ if(t.zone===id&&t.title&&t.title.includes(":")) add(t.title.split(":")[0],id); }); });
+  const seen={}; return A.filter(([k,id])=>{ const kk=k+"|"+id; if(seen[kk]) return false; seen[kk]=1; return true; }).sort((a,b)=>b[0].length-a[0].length); }
+function zFind(text,AL){ let s=" "+pNorm(text)+" "; const out=[]; AL.forEach(([k,id])=>{ const i=s.indexOf(" "+k+" "); if(i>=0){ if(!out.includes(id)) out.push(id); s=s.slice(0,i)+" "+"_".repeat(k.length)+" "+s.slice(i+k.length+2); } }); return out; }
+function parsePlan(text){ const AL=zAliases(), items=[]; let day=null, ses="", hdr=[], hdrLabel="", yr=todayStr().slice(0,4);
+  const push=(zs,txt,label)=>{ txt=String(txt||"").replace(/^[\s:–\-•·*]+/,"").replace(/\s+/g," ").trim(); if(!txt||!day) return; if(!zs.length) items.push({date:day,ses,zone:"",label:label||"",text:txt}); else zs.forEach(z=>items.push({date:day,ses,zone:z,label:label||"",text:txt})); };
+  String(text||"").split(/\r?\n/).forEach(raw=>{ const line=raw.replace(/ /g," ").trim(); if(!line) return;
+    const dm_=line.match(/(th[ứu]\s*(hai|ba|t[ưu]|n[ăa]m|s[áa]u|b[ảa]y|[2-7])|ch[ủu]\s*nh[ậa]t)[^()]*\(\s*(\d{1,2})\s*\/\s*(\d{1,2})(?:\s*\/\s*(\d{4}))?\s*\)/i);
+    if(dm_){ day=(dm_[5]||yr)+"-"+String(dm_[4]).padStart(2,"0")+"-"+String(dm_[3]).padStart(2,"0"); ses=""; hdr=[]; hdrLabel=""; return; }
+    const sm=line.match(/^bu[ổo]i\s+(s[áa]ng|chi[ềe]u|t[ốo]i)\s*[–\-:]*\s*(.*)$/i);
+    if(sm){ ses=/^s/i.test(sm[1])?"am":"pm"; hdr=[]; hdrLabel=""; let rest=sm[2].trim(); if(!rest) return;
+      const ci=rest.indexOf(":"); if(ci>=0){ const a=rest.slice(0,ci).trim(), b=rest.slice(ci+1).trim(); const za=zFind(a,AL), zb=zFind(b,AL);
+        if(za.length){ hdr=za; hdrLabel=a; if(b) push(za,b,a); } else if(zb.length){ push(zb,a,b); } else { hdrLabel=a; if(b) push([],a+": "+b); } }
+      else { const z=zFind(rest,AL); hdr=z; hdrLabel=rest; } return; }
+    const isB=/^[•\-\*·●▪◦]/.test(line)||/^\t/.test(raw);
+    if(isB){ const t=line.replace(/^[•\-\*·●▪◦]\s*/,""); const own=zFind(t,AL); push(own.length?own:hdr,t,hdrLabel); return; }
+    const ci=line.indexOf(":"); if(ci>=0){ const a=line.slice(0,ci).trim(), b=line.slice(ci+1).trim(); const za=zFind(a,AL);
+      if(za.length){ hdr=za; hdrLabel=a; if(b) push(za,b,a); return; }
+      const zl=zFind(line,AL); hdr=[]; hdrLabel=a; if(b) push(zl,b,a); return; }
+    const z=zFind(line,AL); if(z.length&&line.length<60){ hdr=z; hdrLabel=line; return; } push(z.length?z:hdr,line,hdrLabel); });
+  return items; }
+const P_STOP=new Set("va cua cac de phuc vu hoan thien thu thap lai theo da cho voi ve vung nhung mot tai len trong cap nhat thong tin ho so dan xong".split(" "));
+function pTok(x){ return new Set(pNorm(x).split(" ").filter(w=>w.length>=2&&!P_STOP.has(w))); }
+function pLeaf(id){ return !Object.values(S.tasks).some(x=>x.parent===id&&x.status!=="done"); }
+function pCands(zone){ if(!zone) return []; return Object.entries(S.tasks).filter(([id,t])=>t.zone===zone&&t.kind!=="epic"&&t.status!=="done"&&pLeaf(id)); }
+function pBest(it){ const A=pTok(it.text); let best=null, bs=0; pCands(it.zone).forEach(([id,t])=>{ let tt=String(t.title||"").replace(/\([^)]*\)/g," "); const ci=tt.indexOf(":"); if(ci>=0&&ci<40) tt=tt.slice(ci+1); const B=pTok(tt); let n=0; A.forEach(w=>{ if(B.has(w)) n++; }); const sc=n/Math.max(1,Math.min(A.size,B.size)); if((n>=2||(A.size<=2&&n>=1&&n===A.size))&&sc>bs){ bs=sc; best=id; } }); return bs>=0.5?best:""; }
+function pDefR(zone){ if(!zone) return ""; const ts=Object.values(S.tasks).filter(t=>t.zone===zone&&t.status!=="done"); return (ts.find(t=>t.fieldVisit)||{}).R||(ts.find(t=>t.kind==="task")||{}).R||S.zones[zone]?.owner||""; }
+function pParent(zone){ if(!zone) return ""; const L=Object.entries(S.tasks).filter(([,t])=>t.zone===zone&&t.kind==="task"&&t.status!=="done"&&S.tasks[t.parent]); L.sort((a,b)=>prRank(a[1])-prRank(b[1])||(a[1].due||"9").localeCompare(b[1].due||"9")); return L[0]?.[0]||""; }
+ui.pl=ui.pl||{wk:0,who:"",day:""};
+let PL_DRAFT=null;
+function openPlanPaste(){ PL_DRAFT=null; ui.drawer=null; drawPlanPaste(); }
+function drawPlanPaste(){
+  if(!PL_DRAFT){ showDrawer('<div class="dh"><div><h2>Dán lịch tuần</h2><div class="sub">Dán nguyên văn lịch đã thống nhất. Hệ thống tách theo ngày, buổi, vùng và từng dòng việc, rồi khớp với việc đang có.</div></div><button class="btn sm" data-close>Đóng</button></div><div class="db"><div class="f"><label for="plTxt">Lịch tuần</label><textarea id="plTxt" rows="14" placeholder="1. THỨ NĂM (05/11/2026)&#10;Buổi sáng – Xom Sin Farm:&#10;• Thu bìa, ký lại hồ sơ&#10;• Bay flycam, đặt bẫy côn trùng&#10;Buổi chiều – Tân Lập, Buôn Lang:&#10;• Tổ chức ký hồ sơ"></textarea></div><div class="sub">Mẫu nhận được: dòng ngày có (dd/mm/yyyy), dòng "Buổi sáng – tên vùng", các dòng gạch đầu dòng là từng việc. Dòng "Tên vùng: việc" cũng được.</div><div class="row" style="margin-top:8px"><button class="btn pri" id="plParse">Tách lịch</button><span class="sub" id="plMsg"></span></div></div>');
+    $("#plParse").addEventListener("click",()=>{ const its=parsePlan($("#plTxt").value); if(!its.length){ $("#plMsg").textContent="Không tách được dòng việc nào. Kiểm tra dòng ngày có dạng (05/11/2026)."; return; }
+      const groups={}; its.forEach(it=>{ it.act=pBest(it); it.on=true; it.R=""; const g=it.date+"|"+it.ses; (groups[g]=groups[g]||{R:""}); });
+      Object.keys(groups).forEach(g=>{ const c={}; its.filter(it=>it.date+"|"+it.ses===g).forEach(it=>{ const r=pDefR(it.zone); if(r) c[r]=(c[r]||0)+1; }); groups[g].R=Object.entries(c).sort((a,b)=>b[1]-a[1])[0]?.[0]||""; });
+      PL_DRAFT={its,groups}; drawPlanPaste(); }); return; }
+  const {its,groups}=PL_DRAFT; const ppl=Object.entries(S.people).filter(([,p])=>p.active!==false).sort((a,b)=>(a[1].order||99)-(b[1].order||99));
+  const zs=activeZones().sort((a,b)=>zShort(a[1].name).localeCompare(zShort(b[1].name),"vi"));
+  const pOpt=(v,blank)=>'<option value="">'+blank+'</option>'+ppl.map(([k,p])=>'<option value="'+k+'"'+(v===k?" selected":"")+'>'+esc(p.name)+'</option>').join("");
+  let h='<div class="dh"><div><h2>Duyệt lịch tuần ('+its.length+' dòng việc)</h2><div class="sub">Kiểm tra vùng, chọn gắn vào việc có sẵn hay tạo việc con mới, chọn người đi. Bỏ tick dòng không cần.</div></div><button class="btn sm" data-close>Đóng</button></div><div class="db">';
+  const keys=[...new Set(its.map(it=>it.date+"|"+it.ses))].sort();
+  keys.forEach(g=>{ const [d,s]=g.split("|"); h+='<div class="panel" style="padding:10px"><div class="row between" style="flex-wrap:wrap;gap:6px"><b>'+wdName(d)+' '+dmy(d)+' · '+PSES[s]+'</b><label class="row" style="gap:6px"><span class="sub">Người đi</span><select data-pg="'+g+'">'+pOpt(groups[g].R,"Chọn người")+'</select></label></div>';
+    its.forEach((it,i)=>{ if(it.date+"|"+it.ses!==g) return; const cands=pCands(it.zone);
+      h+='<div style="border-top:1px solid var(--line);padding:8px 0;display:grid;gap:6px"><label class="row" style="gap:8px;flex-wrap:nowrap;align-items:flex-start"><input type="checkbox" data-pon="'+i+'"'+(it.on?" checked":"")+' style="margin-top:4px"><input data-ptx="'+i+'" value="'+esc(it.text)+'" style="flex:1;min-width:0"></label>'
+       +'<div class="f2" style="gap:6px"><select data-pz="'+i+'" aria-label="Vùng"><option value="">Không gắn vùng'+(it.label?' ('+esc(it.label.slice(0,30))+')':'')+'</option>'+zs.map(([k,z])=>'<option value="'+k+'"'+(it.zone===k?" selected":"")+'>'+esc(zShort(z.name))+'</option>').join("")+'</select>'
+       +'<select data-pa="'+i+'" aria-label="Cách làm"><option value="">Tạo việc con mới</option>'+cands.map(([k,t])=>'<option value="'+k+'"'+(it.act===k?" selected":"")+'>Gắn vào: '+esc(t.title.slice(0,60))+(t.due?' (hạn '+dm(t.due)+')':'')+'</option>').join("")+'</select>'
+       +'<select data-pr="'+i+'" aria-label="Người làm">'+pOpt(it.R,"Theo người đi của buổi")+'</select></div></div>'; });
+    h+='</div>'; });
+  const nNew=its.filter(it=>it.on&&!it.act).length, nLink=its.filter(it=>it.on&&it.act).length;
+  h+='<div class="row" style="flex-wrap:wrap;gap:8px"><button class="btn pri" id="plSave">Lưu: gắn '+nLink+' việc, tạo '+nNew+' việc con</button><button class="btn" id="plBack">Dán lại</button><span class="sub" id="plMsg"></span></div><div class="sub" style="margin-top:6px">Việc được gắn sẽ đổi hạn thành đúng ngày trong lịch. Việc mới nằm trong việc chính của vùng, hoặc trong mục "Việc theo kế hoạch tuần" nếu không gắn vùng.</div></div>';
+  showDrawer(h);
+  const L=$("#layer");
+  L.querySelectorAll("[data-pg]").forEach(x=>x.addEventListener("change",()=>{ groups[x.dataset.pg].R=x.value; }));
+  L.querySelectorAll("[data-pon]").forEach(x=>x.addEventListener("change",()=>{ its[+x.dataset.pon].on=x.checked; drawPlanPaste(); }));
+  L.querySelectorAll("[data-ptx]").forEach(x=>x.addEventListener("input",()=>{ its[+x.dataset.ptx].text=x.value; }));
+  L.querySelectorAll("[data-pz]").forEach(x=>x.addEventListener("change",()=>{ const it=its[+x.dataset.pz]; it.zone=x.value; it.act=pBest(it); drawPlanPaste(); }));
+  L.querySelectorAll("[data-pa]").forEach(x=>x.addEventListener("change",()=>{ its[+x.dataset.pa].act=x.value; drawPlanPaste(); }));
+  L.querySelectorAll("[data-pr]").forEach(x=>x.addEventListener("change",()=>{ its[+x.dataset.pr].R=x.value; }));
+  $("#plBack").addEventListener("click",()=>{ PL_DRAFT=null; drawPlanPaste(); });
+  $("#plSave").addEventListener("click",async()=>{ const b=$("#plSave"), m=$("#plMsg"); b.disabled=true; let ok=0, fail=0; const now=new Date().toISOString();
+    const todo=its.filter(it=>it.on&&it.text.trim());
+    let holder=null; const needHolder=todo.some(it=>!it.act&&!pParent(it.zone));
+    if(needHolder){ const wk=wkStart(todo[0].date); holder="plan-"+wk; if(!S.tasks[holder]){ const ep=S.tasks.e7?"e7":Object.keys(S.tasks).find(k=>S.tasks[k].kind==="epic"); await put("tasks",holder,{kind:"task",parent:ep||null,title:"Việc theo kế hoạch tuần "+dm(wk)+" (chưa gắn vùng)",status:"todo",R:me||"",A:me||"",C:[],I:[],due:addDays(wk,6),team:"dieuphoi",zone:null,smart:{},note:"Tự tạo khi dán lịch tuần.",prio:"",createdAt:now,createdBy:me||"",...stamp()}); } }
+    for(const it of todo){ m.textContent="Đang lưu "+(ok+fail+1)+"/"+todo.length+"…"; const R=it.R||groups[it.date+"|"+it.ses].R||"";
+      const patch={planDate:it.date,planSes:it.ses,due:it.date,...stamp()}; if(R) patch.R=R;
+      let r; if(it.act){ r=await upd("tasks",it.act,patch); }
+      else { const par=pParent(it.zone)||holder, P=S.tasks[par]||{}; const txt=it.text.trim(); r=await put("tasks","t"+uid(),{kind:"sub",parent:par,title:txt.charAt(0).toUpperCase()+txt.slice(1),status:"todo",R:R||P.R||"",A:P.A||me||"",C:[],I:[],team:it.zone?"hientruong":(P.team||""),zone:it.zone||null,smart:{},note:"Từ kế hoạch tuần"+(it.label?" ("+it.label+")":"")+".",prio:P.prio||"",party:"",fieldVisit:!!it.zone,createdAt:now,createdBy:me||"",...patch}); }
+      r?ok++:fail++; }
+    m.textContent=""; toast("Đã lưu "+ok+" việc"+(fail?", lỗi "+fail:"")); PL_DRAFT=null; closeDrawer(); ui.pl.wk=Math.round((new Date(wkStart(todo[0].date))-new Date(wkStart(todayStr())))/(7*864e5)); location.hash="ke-hoach"; render(); });
+}
+function planItems(a,b){ return Object.entries(S.tasks).filter(([,t])=>t.planDate&&t.planDate>=a&&t.planDate<=b); }
+function pItem(id,t,opts){ const late=t.status!=="done"&&t.planDate<todayStr(); const c=t.status==="done"?"var(--good)":late?"var(--bad)":t.status==="doing"?"var(--doing)":"var(--muted)";
+  return '<div class="row" style="gap:6px;flex-wrap:nowrap;align-items:flex-start;padding:3px 0"><input type="checkbox" data-tdone="'+id+'"'+(t.status==="done"?" checked":"")+' aria-label="Xong" style="margin-top:3px"><span style="width:8px;height:8px;border-radius:50%;background:'+c+';flex:0 0 8px;margin-top:7px"></span><a href="#" data-otask="'+id+'" style="flex:1;min-width:0;color:inherit;text-decoration:none;overflow-wrap:anywhere'+(t.status==="done"?';text-decoration:line-through;opacity:.7':'')+'">'+esc(t.title)+'</a>'+(opts&&opts.who?'<span class="pill" style="flex:0 0 auto">'+esc(pname(t.R)||"?")+'</span>':'')+(t.status!=="done"?'<button class="btn sm" data-pmove="'+id+'" style="flex:0 0 auto">Dời</button>':'')+'</div>'; }
+function pCell(list){ const byZ={}; list.forEach(([id,t])=>{ const k=t.zone||""; (byZ[k]=byZ[k]||[]).push([id,t]); });
+  return Object.entries(byZ).map(([z,L])=>{ const ppl=[...new Set(L.map(([,t])=>t.R).filter(Boolean))]; const dn=L.filter(([,t])=>t.status==="done").length;
+    return '<div style="border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:6px"><div class="row between" style="gap:6px;flex-wrap:wrap"><b>'+(z&&S.zones[z]?'<a href="#" data-zone="'+z+'" style="color:var(--brand)">'+esc(zShort(S.zones[z].name))+'</a>':'Việc chung')+'</b><span class="sub">'+ppl.map(pname).join(", ")+' · '+dn+'/'+L.length+' xong</span></div>'+L.map(([id,t])=>pItem(id,t)).join("")+'</div>'; }).join(""); }
+function myPlanToday(){ if(!me) return ''; const t0=todayStr(); const L=Object.entries(S.tasks).filter(([,t])=>t.planDate===t0&&t.R===me); if(!L.length) return '';
+  const g={am:[],pm:[],"":[]}; L.forEach(x=>(g[x[1].planSes||""]=g[x[1].planSes||""]||[]).push(x));
+  return '<div class="panel" style="margin-top:12px;border-left:4px solid var(--info)"><div class="row between"><h2>Lịch hôm nay của tôi</h2><span class="sub">'+L.filter(([,t])=>t.status==="done").length+'/'+L.length+' xong</span></div>'+["am","pm",""].filter(k=>g[k]&&g[k].length).map(k=>'<div class="sub" style="margin-top:6px;font-weight:600">'+PSES[k]+'</div>'+pCell(g[k])).join("")+'<div class="sub">Xong việc nào tick ngay. Không kịp thì bấm Dời, ghi lý do, việc tự vào báo cáo cuối ngày.</div></div>'; }
+function vPlan(){ const P=ui.pl, a=addDays(wkStart(todayStr()),7*(+P.wk||0)), b=addDays(a,6), t0=todayStr();
+  let L=planItems(a,b); if(P.who) L=L.filter(([,t])=>t.R===P.who);
+  const dn=L.filter(([,t])=>t.status==="done").length, late=L.filter(([,t])=>t.status!=="done"&&t.planDate<t0).length, moved=Object.values(S.tasks).filter(t=>(t.planLog||[]).some(x=>x.from>=a&&x.from<=b)).length;
+  let h='<div class="row between" style="flex-wrap:wrap;gap:8px"><div><h1>Kế hoạch tuần</h1><div class="sub">Lịch làm việc theo từng buổi. Mỗi dòng là một việc thật trên hệ thống, tick ở đây là xong ở trang Công việc.</div></div><div class="row" style="gap:8px;flex-wrap:wrap">'+(canManage()?'<button class="btn pri" id="plPaste">Dán lịch tuần</button>':'')+'<button class="btn" id="plCmp">Kế hoạch so với thực tế</button></div></div>';
+  h+=myPlanToday();
+  const ps=Object.entries(S.people).filter(([,p])=>p.active!==false).sort((x,y)=>(x[1].order||99)-(y[1].order||99));
+  h+='<div class="filters" style="margin-top:12px"><button class="btn sm" id="plPrev">‹ Tuần trước</button><b>'+dm(a)+' – '+dmy(b)+'</b><button class="btn sm" id="plNext">Tuần sau ›</button>'+(P.wk?'<button class="btn sm" id="plNow">Tuần này</button>':'')+'<select id="plWho"><option value="">Mọi người</option>'+ps.map(([k,p])=>'<option value="'+k+'"'+(P.who===k?" selected":"")+'>'+esc(p.name)+'</option>').join("")+'</select><span class="sub">'+L.length+' việc · '+dn+' xong · <span style="color:var(--bad)">'+late+' quá ngày chưa xong</span> · '+moved+' lần dời</span></div>';
+  if(!L.length) return h+'<div class="empty" style="margin-top:12px">Tuần này chưa có lịch. '+(canManage()?'Bấm "Dán lịch tuần" để nhập.':'Điều phối sẽ nhập lịch tuần.')+'</div>';
+  const days=[0,1,2,3,4,5,6].map(i=>addDays(a,i)).filter(d=>L.some(([,t])=>t.planDate===d)||d===t0);
+  h+='<div style="display:grid;gap:10px;margin-top:12px">'+days.map(d=>{ const D=L.filter(([,t])=>t.planDate===d); const ses=["am","pm",""].filter(k=>D.some(([,t])=>(t.planSes||"")===k));
+    return '<div class="panel" style="margin:0;'+(d===t0?'border-color:var(--info);border-width:2px':'')+'"><div class="row between"><h2 style="margin:0">'+wdName(d)+' '+dmy(d)+(d===t0?' · <span style="color:var(--info)">Hôm nay</span>':'')+'</h2><span class="sub">'+D.filter(([,t])=>t.status==="done").length+'/'+D.length+' xong</span></div>'
+     +(D.length?'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px;margin-top:8px">'+ses.map(k=>'<div><div class="sub" style="font-weight:600;margin-bottom:4px">'+PSES[k]+'</div>'+pCell(D.filter(([,t])=>(t.planSes||"")===k))+'</div>').join("")+'</div>':'<div class="sub">Không có lịch.</div>')+'</div>'; }).join("")+'</div>';
+  return h; }
+function openMove(id){ const t=S.tasks[id]; if(!t) return; ui.drawer=null; const nd=nextWorkday(t.planDate&&t.planDate>todayStr()?t.planDate:todayStr());
+  showDrawer('<div class="dh"><div><h2>Dời việc</h2><div class="sub">'+esc(t.title)+'</div></div><button class="btn sm" data-close>Đóng</button></div><form class="db" id="mvF"><div class="f2"><div class="f"><label for="mvD">Sang ngày</label><input type="date" id="mvD" value="'+nd+'" required></div><div class="f"><label for="mvS">Buổi</label><select id="mvS"><option value="am">Sáng</option><option value="pm">Chiều</option><option value="">Trong ngày</option></select></div></div><div class="f"><label for="mvR">Lý do (bắt buộc)</label><input id="mvR" required placeholder="Ví dụ: Chủ vườn vắng, hẹn lại thứ 2"></div><div class="row"><button class="btn pri">Dời</button><span class="sub" id="mvM"></span></div></form>');
+  $("#mvF").addEventListener("submit",async e=>{ e.preventDefault(); const to=$("#mvD").value, r=$("#mvR").value.trim(); if(!to||!r){ $("#mvM").textContent="Chọn ngày và ghi lý do."; return; }
+    const log=[...(t.planLog||[]),{from:t.planDate||t.due||"",to,reason:r,by:me||"",at:new Date().toISOString()}];
+    if(await upd("tasks",id,{planDate:to,planSes:$("#mvS").value,due:to,planLog:log,...stamp()})){ toast("Đã dời sang "+dm(to)); closeDrawer(); } }); }
+function planCmpText(d){ const L=Object.entries(S.tasks).filter(([,t])=>t.planDate===d||(t.planLog||[]).some(x=>x.from===d));
+  const lines=["KẾ HOẠCH SO VỚI THỰC TẾ "+wdName(d).toUpperCase()+" "+dmy(d)]; const grp={};
+  L.forEach(([id,t])=>{ const mv=(t.planLog||[]).filter(x=>x.from===d).pop(); const ses=mv?"":(t.planSes||""); const k=(mv?"~":"")+ses+"|"+(t.zone||""); (grp[k]=grp[k]||[]).push([id,t,mv]); });
+  let done=0,open=0,mvn=0; Object.entries(grp).sort().forEach(([k,G])=>{ const mvd=k.startsWith("~"); const [s,z]=k.replace(/^~/,"").split("|"); const head=(mvd?"Đã dời":(PSES[s]||""))+" – "+(z&&S.zones[z]?zShort(S.zones[z].name):"Việc chung")+" ("+[...new Set(G.map(([,t])=>pname(t.R)).filter(Boolean))].join(", ")+")";
+    lines.push(""); lines.push(head); G.forEach(([id,t,mv])=>{ if(mv){ mvn++; lines.push("↪ "+t.title+": dời sang "+dm(mv.to)+". Lý do: "+mv.reason); } else if(t.status==="done"){ done++; lines.push("✅ "+t.title); } else { open++; lines.push((d<todayStr()?"❌ ":"⏳ ")+t.title); } }); });
+  lines.splice(1,0,"Xong "+done+" · Chưa xong "+open+" · Dời "+mvn); return {txt:lines.join("\n"),done,open,mvn,n:L.length}; }
+function openCmp(){ ui.drawer=null; const d=ui.pl.day||todayStr(); const r=planCmpText(d);
+  showDrawer('<div class="dh"><div><h2>Kế hoạch so với thực tế</h2><div class="sub">'+wdName(d)+' '+dmy(d)+' · '+r.n+' việc</div></div><button class="btn sm" data-close>Đóng</button></div><div class="db"><div class="f"><label for="cmpD">Ngày</label><input type="date" id="cmpD" value="'+d+'"></div>'
+   +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0"><div class="panel" style="margin:0;padding:10px"><div style="font-size:22px;font-weight:700;color:var(--good)">'+r.done+'</div><div class="sub">Xong</div></div><div class="panel" style="margin:0;padding:10px"><div style="font-size:22px;font-weight:700;color:var(--bad)">'+r.open+'</div><div class="sub">Chưa xong</div></div><div class="panel" style="margin:0;padding:10px"><div style="font-size:22px;font-weight:700;color:var(--warn)">'+r.mvn+'</div><div class="sub">Dời</div></div></div>'
+   +'<textarea id="cmpT" rows="14" style="width:100%">'+esc(r.txt)+'</textarea><button class="btn" id="cmpC" style="margin-top:6px">Sao chép để gửi Zalo</button><div class="sub" style="margin-top:6px">Chỉ có tên việc và vùng, không có thông tin nông hộ.</div></div>');
+  $("#cmpD").addEventListener("change",e=>{ ui.pl.day=e.target.value; openCmp(); });
+  $("#cmpC").addEventListener("click",()=>{ navigator.clipboard?.writeText($("#cmpT").value).then(()=>toast("Đã sao chép"),()=>toast("Chọn và sao chép thủ công")); }); }
+function bindPlan(A){ const P=ui.pl;
+  $("#plPaste")?.addEventListener("click",openPlanPaste); $("#plCmp")?.addEventListener("click",openCmp);
+  $("#plPrev")?.addEventListener("click",()=>{ P.wk=(+P.wk||0)-1; render(); }); $("#plNext")?.addEventListener("click",()=>{ P.wk=(+P.wk||0)+1; render(); }); $("#plNow")?.addEventListener("click",()=>{ P.wk=0; render(); });
+  $("#plWho")?.addEventListener("change",e=>{ P.who=e.target.value; render(); });
+  bindTaskLinks(A); }
+document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest("[data-pmove]"); if(b){ e.preventDefault(); openMove(b.dataset.pmove); } });
+
 /* ---------- danh bạ liên hệ ---------- */
 const CTYPE={doitac:"Công ty đối tác",xa:"Cán bộ xã, phường",coquan:"Cơ quan nhà nước khác",khac:"Khác"};
 function ctMatch(c,q){ return !q||norm([c.name,c.title,c.org,c.ward,c.phone,c.note,unitName(c.unitId)].join(" ")).includes(norm(q)); }
@@ -2296,6 +2419,7 @@ function bindView(){
   if(ui.view==="tai-khoan"){ $("#accAdd")?.addEventListener("click",()=>openAcc(null)); $("#accBulk")?.addEventListener("click",openBulk); A.querySelectorAll("[data-acc]").forEach(r=>r.addEventListener("click",()=>openAcc(r.dataset.acc))); $("#impJson")?.addEventListener("change",e=>{ const f=e.target.files[0]; e.target.value=""; if(f) importJson(f); }); }
   if(ui.view==="ho-tro") bindSupport(A);
   if(ui.view==="bao-cao") bindReports(A);
+  if(ui.view==="ke-hoach") bindPlan(A);
   if(ui.view==="huong-dan") bindGuide(A);
   if(ui.view==="nhan-su") bindAtt(A);
   if(ui.view==="lien-he") bindContacts(A);
