@@ -101,7 +101,12 @@ th{color:var(--muted);font-weight:500;font-size:12px;white-space:nowrap}
 .db{overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:14px}
 .f{display:grid;gap:4px}
 .f label{font-size:12px;color:var(--muted)}
-.f2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.f2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.f2>*{min-width:0}
+.drawer select{max-width:100%}
+.plrv select,.plrv input:not([type=checkbox]){width:100%;min-width:0;max-width:100%;box-sizing:border-box}
+.plrv label.row>input:not([type=checkbox]){width:auto;flex:1}
+.plrv .panel>.row select{width:auto}
 @media (max-width:480px){.f2{grid-template-columns:1fr}}
 .steps{display:grid;grid-template-columns:repeat(9,1fr);gap:3px}
 .steps button{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:6px 0;font-weight:600;font-variant-numeric:tabular-nums}
@@ -2224,14 +2229,14 @@ function drawPlanPaste(){
   const {its,groups}=PL_DRAFT; const ppl=Object.entries(S.people).filter(([,p])=>p.active!==false).sort((a,b)=>(a[1].order||99)-(b[1].order||99));
   const zs=activeZones().sort((a,b)=>zShort(a[1].name).localeCompare(zShort(b[1].name),"vi"));
   const pOpt=(v,blank)=>'<option value="">'+blank+'</option>'+ppl.map(([k,p])=>'<option value="'+k+'"'+(v===k?" selected":"")+'>'+esc(p.name)+'</option>').join("");
-  let h='<div class="dh"><div><h2>Duyệt lịch tuần ('+its.length+' dòng việc)</h2><div class="sub">Kiểm tra vùng, chọn gắn vào việc có sẵn hay tạo việc con mới, chọn người đi. Bỏ tick dòng không cần.</div></div><button class="btn sm" data-close>Đóng</button></div><div class="db">';
+  let h='<div class="dh"><div><h2>Duyệt lịch tuần ('+its.length+' dòng việc)</h2><div class="sub">Kiểm tra vùng, chọn gắn vào việc có sẵn hay tạo việc con mới, chọn người đi. Bỏ tick dòng không cần.</div></div><button class="btn sm" data-close>Đóng</button></div><div class="db plrv">';
   const keys=[...new Set(its.map(it=>it.date+"|"+it.ses))].sort();
   keys.forEach(g=>{ const [d,s]=g.split("|"); h+='<div class="panel" style="padding:10px"><div class="row between" style="flex-wrap:wrap;gap:6px"><b>'+wdName(d)+' '+dmy(d)+' · '+PSES[s]+'</b><label class="row" style="gap:6px"><span class="sub">Người đi</span><select data-pg="'+g+'">'+pOpt(groups[g].R,"Chọn người")+'</select></label></div>';
     its.forEach((it,i)=>{ if(it.date+"|"+it.ses!==g) return; const cands=pCands(it.zone);
       h+='<div style="border-top:1px solid var(--line);padding:8px 0;display:grid;gap:6px"><label class="row" style="gap:8px;flex-wrap:nowrap;align-items:flex-start"><input type="checkbox" data-pon="'+i+'"'+(it.on?" checked":"")+' style="margin-top:4px"><input data-ptx="'+i+'" value="'+esc(it.text)+'" style="flex:1;min-width:0"></label>'
        +'<div class="f2" style="gap:6px"><select data-pz="'+i+'" aria-label="Vùng"><option value="">Không gắn vùng'+(it.label?' ('+esc(it.label.slice(0,30))+')':'')+'</option>'+zs.map(([k,z])=>'<option value="'+k+'"'+(it.zone===k?" selected":"")+'>'+esc(zShort(z.name))+'</option>').join("")+'</select>'
-       +'<select data-pa="'+i+'" aria-label="Cách làm"><option value="">Tạo việc con mới</option>'+cands.map(([k,t])=>'<option value="'+k+'"'+(it.act===k?" selected":"")+'>Gắn vào: '+esc(t.title.slice(0,60))+(t.due?' (hạn '+dm(t.due)+')':'')+'</option>').join("")+'</select>'
-       +'<select data-pr="'+i+'" aria-label="Người làm">'+pOpt(it.R,"Theo người đi của buổi")+'</select></div></div>'; });
+       +'<select data-pr="'+i+'" aria-label="Người làm">'+pOpt(it.R,"Theo người đi của buổi")+'</select></div>'
+       +'<select data-pa="'+i+'" aria-label="Cách làm"><option value="">Tạo việc con mới</option>'+cands.map(([k,t])=>'<option value="'+k+'"'+(it.act===k?" selected":"")+'>Gắn vào: '+esc(t.title.slice(0,60))+(t.due?' (hạn '+dm(t.due)+')':'')+'</option>').join("")+'</select></div>'; });
     h+='</div>'; });
   const nNew=its.filter(it=>it.on&&!it.act).length, nLink=its.filter(it=>it.on&&it.act).length;
   h+='<div class="row" style="flex-wrap:wrap;gap:8px"><button class="btn pri" id="plSave">Lưu: gắn '+nLink+' việc, tạo '+nNew+' việc con</button><button class="btn" id="plBack">Dán lại</button><span class="sub" id="plMsg"></span></div><div class="sub" style="margin-top:6px">Việc được gắn sẽ đổi hạn thành đúng ngày trong lịch. Việc mới nằm trong việc chính của vùng, hoặc trong mục "Việc theo kế hoạch tuần" nếu không gắn vùng.</div></div>';
