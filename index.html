@@ -920,6 +920,22 @@ function vTasks(){
 function taskRow(id,t,isSub,nsub){
   return '<div class="trow'+(isSub?" sub":"")+'"><span class="t"><input type="checkbox" aria-label="Xong" data-done="'+id+'"'+(t.status==="done"?" checked":"")+'><button class="btn sm" style="border:0;padding:0;background:none;text-align:left;font-weight:'+(isSub?400:600)+'" data-edit-task="'+id+'"><span class="tt">'+esc(t.title)+'</span></button>'+(nsub?'<span class="sub">'+nsub+' việc con</span>':'')+(t.zone&&S.zones[t.zone]?'<span class="pill">'+esc(S.zones[t.zone].name.replace(/^v[uù]ng tr[oồ]ng s[aầ]u ri[eê]ng /i,""))+'</span>':'')+'</span><span class="row">'+prBadge(t)+raciChips(t)+(t.due?'<span class="sub mono">'+dm(t.due)+'</span>':'')+stBadge(t)+(isSub?'':'<button class="btn sm" data-add-child="'+id+'" title="Thêm việc con">+</button>')+'</span></div>';
 }
+function hTime(t){ if(!t) return ""; const d=new Date(t); return isNaN(d)?"":d.toLocaleTimeString("vi-VN",{hour:"2-digit",minute:"2-digit"})+" "+d.toLocaleDateString("vi-VN"); }
+function histPanel(col,id,t){
+  const who=k=>esc(pname(k)||k||"");
+  const rows=[]; if(t.createdAt) rows.push('<div><span class="sub">Tạo lúc</span> '+hTime(t.createdAt)+(t.createdBy?' · <b>'+who(t.createdBy)+'</b>':' · <span class="sub" id="histBy">nhập từ hệ thống</span>')+'</div>');
+  if(t.updatedAt&&t.updatedAt!==t.createdAt) rows.push('<div><span class="sub">Cập nhật gần nhất</span> '+hTime(t.updatedAt)+(t.updatedBy?' · <b>'+who(t.updatedBy)+'</b>':'')+'</div>');
+  if(t.status==="done"&&t.doneAt) rows.push('<div><span class="sub">Hoàn thành lúc</span> '+hTime(t.doneAt)+'</div>');
+  return '<div class="panel" id="hist" style="margin-top:12px"><h2>Lịch sử</h2><div style="display:grid;gap:2px;font-size:13px">'+(rows.join("")||'<div class="sub">Chưa có thông tin.</div>')+'</div><div id="histLog" style="margin-top:8px">'+(canManage()?'<div class="sub">Đang tải nhật ký thay đổi…</div>':'<div class="sub">Nhật ký chi tiết từng lần sửa chỉ owner và quản lý xem được.</div>')+'</div></div>'; }
+async function loadHist(col,id){ const box=$("#histLog"); if(!box||!canManage()) return;
+  try{ const {data,error}=await SB.from("activity_log").select("at,name,email,action,summary,doc_id,col").eq("col",col).eq("doc_id",id).order("at",{ascending:false}).limit(100);
+    const L=(data||[]).filter(r=>r.col===col&&r.doc_id===id); if(!$("#histLog")) return;
+    if(error){ box.innerHTML='<div class="sub">Không đọc được nhật ký: '+esc(error.message)+'</div>'; return; }
+    if(!L.length){ box.innerHTML='<div class="sub">Chưa có lần sửa nào được ghi lại trên web (việc tạo hoặc sửa hàng loạt từ hệ thống không ghi nhật ký).</div>'; return; }
+    const cr=L.filter(r=>r.action==="create").pop(); if(cr&&$("#histBy")) $("#histBy").outerHTML='<b>'+esc(cr.name||cr.email||"")+'</b>';
+    const AL={create:["Tạo","good"],update:["Sửa","warn"],delete:["Xóa","bad"]};
+    box.innerHTML='<div style="display:grid">'+L.map(r=>{ const A=AL[r.action]||[r.action,""]; return '<div class="row" style="gap:8px;align-items:flex-start;padding:6px 0;border-top:1px solid var(--line)"><span class="sub mono" style="flex:0 0 auto;white-space:nowrap">'+hTime(r.at)+'</span><span class="pill '+A[1]+'" style="flex:0 0 auto">'+A[0]+'</span><div style="flex:1;min-width:0;overflow-wrap:anywhere"><b>'+esc(r.name||r.email||"Hệ thống")+'</b> '+esc(r.summary||"")+'</div></div>'; }).join("")+'</div>'+(L.length>=100?'<div class="sub">Hiện 100 lần gần nhất.</div>':'');
+  }catch(e){ box.innerHTML='<div class="sub">Không đọc được nhật ký.</div>'; } }
 function openTask(id,preset){ ui.drawer=()=>drawTask(id,preset); drawTask(id,preset); }
 function drawTask(id,preset){
   const t=id?S.tasks[id]:{kind:preset.kind,parent:preset.parent||null,zone:preset.zone||null,prio:(preset.parent&&S.tasks[preset.parent]?.prio)||"",title:"",status:"todo",R:me||"",A:"",C:[],I:[],due:"",team:"",smart:{}};
@@ -951,8 +967,8 @@ function drawTask(id,preset){
   h+='<div class="panel" id="tReview"><div class="row between"><h2>Góp ý SMART · RACI · độ rõ</h2><span class="score" id="tScore"></span></div><div class="chk-list" id="tChecks"></div>'+(sampleNs?'<div class="ai-box"><button type="button" class="btn sm" id="tAi">Nhờ Claude góp ý câu chữ</button> <span class="sub">Đọc nội dung việc và gợi ý cách viết để người được giao hiểu ngay.</span><div id="tAiOut"></div></div>':'')+'</div>';
   h+='<div class="row"><button class="btn pri" type="submit">Lưu</button>'+(id?'<button class="btn" type="button" id="tdel">Xóa</button>':'')+'<span class="sub" id="tmsg"></span></div>';
   if(id){ const kids=tKids(id); if(kids.length) h+='<div class="sub">'+kids.length+' việc con bên dưới. Xóa việc này không xóa việc con.</div>'; }
-  h+='</form>';
-  showDrawer(h);
+  h+=(id?histPanel("tasks",id,t):'')+'</form>';
+  showDrawer(h); if(id) loadHist("tasks",id);
   const readT=()=>{ const pick=n=>[...document.querySelectorAll('input[name="'+n+'"]:checked')].map(x=>x.value);
     return {kind:t.kind,parent:t.parent,title:$("#tt").value.trim(),due:$("#tdue").value,zone:$("#tzone").value,R:$("#tR").value,A:$("#tA").value,C:pick("tC"),I:pick("tI"),smart:{s:$("#sS").value.trim(),m:$("#sM").value.trim(),a:$("#sA").value.trim(),r:$("#sR").value.trim()},note:$("#tnote").value.trim()}; };
   const refreshReview=()=>{ const r=reviewTask(readT(),id); const n=r.length, ok=r.filter(x=>x.lv==="ok").length, bad=r.filter(x=>x.lv==="bad").length;
@@ -968,7 +984,7 @@ function drawTask(id,preset){
     if(!data.title){ $("#tmsg").textContent="Nhập tên việc."; return; }
     if(!data.A){ $("#tmsg").textContent="Chọn một người A (chịu trách nhiệm cuối)."; return; }
     if(!data.due){ $("#tmsg").textContent="Chọn hạn hoàn thành để việc đạt SMART."; return; }
-    if(!id) data.createdAt=new Date().toISOString();
+    if(!id){ data.createdAt=new Date().toISOString(); data.createdBy=me||""; }
     if(data.status==="done") data.doneAt=(t.status==="done"&&t.doneAt)?t.doneAt:new Date().toISOString(); else data.doneAt=null;
     const ok=await put("tasks",id||("t"+uid()),id?{...t,...data}:data); if(ok){ toast("Đã lưu"); closeDrawer(); }
   });
