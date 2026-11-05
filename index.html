@@ -36,6 +36,10 @@ header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;backgroun
 .logo i b{width:6px;height:6px;border-radius:1px;background:var(--done)}
 .logo i b.y{background:var(--doing)} .logo i b.w{background:var(--todo);outline:1px solid var(--line)}
 nav.tabs{display:flex;gap:2px;overflow-x:auto;flex:1;min-width:0}
+.subnav{display:flex;gap:6px;overflow-x:auto;max-width:1280px;margin:0 auto;padding-bottom:8px;scrollbar-width:none}
+.subnav:empty{display:none}
+.subnav a{padding:5px 12px;border-radius:999px;font-size:13px;color:var(--muted);text-decoration:none;white-space:nowrap;border:1px solid var(--line);background:var(--surface)}
+.subnav a[aria-current="page"]{background:var(--brand);color:var(--brand-ink);border-color:var(--brand);font-weight:600}
 nav.tabs a{padding:8px 12px;border-radius:8px;color:var(--muted);text-decoration:none;font-weight:500;white-space:nowrap}
 nav.tabs a[aria-current="page"]{background:var(--chip);color:var(--fg)}
 .me{display:flex;align-items:center;gap:8px;white-space:nowrap}
@@ -217,7 +221,7 @@ a.btn{color:inherit;text-decoration:none}
   <div class="logo"><i><b></b><b></b><b></b><b></b><b class="y"></b><b class="w"></b><b class="w"></b><b class="w"></b><b class="w"></b></i>BVI Điều hành</div>
   <nav class="tabs" id="tabs"></nav>
   <div class="me" id="meBox"><button class="btn sm" id="meBtn" style="max-width:220px;overflow:hidden;text-overflow:ellipsis">Tài khoản</button><select id="meSel" hidden></select></div>
-</div></header>
+</div><nav class="subnav wrap" id="subnav" aria-label="Mục con"></nav></header>
 <main class="wrap" id="app"><div class="empty">Đang tải dữ liệu chung của đội…</div></main>
 <nav class="bot" id="bot"></nav>
 <div id="layer"></div>
@@ -599,6 +603,16 @@ document.addEventListener("toggle",e=>taFitIn(e.target),true);
 window.addEventListener("resize",()=>document.querySelectorAll("textarea").forEach(taFit));
 new MutationObserver(ms=>{ ms.forEach(m=>m.addedNodes.forEach(taFitIn)); }).observe(document.documentElement,{childList:true,subtree:true});
 /* ---------- shell ---------- */
+const NAV=[["g-tq","Tổng quan","Tổng",["tong-quan"]],["g-viec","Công việc","Việc",["cong-viec","ke-hoach","lich","ho-tro"]],["g-bc","Báo cáo","Báo cáo",["bao-cao","thong-ke"]],["g-vung","Vùng, khách hàng","Vùng",["vung","hop-dong","cong-ty"]],["g-doi","Đội ngũ","Đội ngũ",["nhan-su","lien-he"]],["g-tg","Trợ giúp","Trợ giúp",["huong-dan","faq"]],["g-qt","Quản trị","Quản trị",["tai-khoan","nhat-ky"]]];
+const VLAB={"tai-khoan":"Tài khoản","nhat-ky":"Nhật ký"}; const GICON={"g-qt":'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'};
+function navOk(v){ if(v==="ke-hoach") return canPlan(); if(v==="tai-khoan"||v==="nhat-ky") return typeof isOwner==="function"&&isOwner(); return VIEWS.some(x=>x[0]===v); }
+function navGroup(v){ v=v==="khach"?"cong-ty":v; return NAV.find(g=>g[3].includes(v))||NAV[0]; }
+function navLabel(v){ return VLAB[v]||(VIEWS.find(x=>x[0]===v)||[,v])[1]; }
+function renderNav(){ ui.navLast=ui.navLast||{}; const cur=ui.view==="khach"?"cong-ty":ui.view, G=navGroup(cur); ui.navLast[G[0]]=cur;
+  const gs=NAV.map(g=>[g,g[3].filter(navOk)]).filter(([,v])=>v.length); const tgt=([g,v])=>v.includes(ui.navLast[g[0]])?ui.navLast[g[0]]:v[0];
+  $("#tabs").innerHTML=gs.map(x=>'<a href="#'+tgt(x)+'" data-g="'+x[0][0]+'"'+(x[0][0]===G[0]?' aria-current="page"':'')+'>'+x[0][1]+(x[1].length>1?' <span style="opacity:.5;font-size:11px">▾</span>':'')+'</a>').join("");
+  $("#bot").innerHTML=gs.map(x=>'<a href="#'+tgt(x)+'" data-g="'+x[0][0]+'"'+(x[0][0]===G[0]?' aria-current="page"':'')+'><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'+(GICON[x[0][0]]||ICONS[x[1][0]]||"")+'</svg>'+x[0][2]+'</a>').join("");
+  const sub=G[3].filter(navOk); $("#subnav").innerHTML=sub.length>1?sub.map(v=>'<a href="#'+v+'"'+(v===cur?' aria-current="page"':'')+'>'+esc(navLabel(v))+'</a>').join(""):""; }
 function renderShell(){
   $("#tabs").innerHTML=VIEWS.map(([k,l])=>'<a href="#'+k+'" data-v="'+k+'">'+l+'</a>').join("");
   $("#bot").innerHTML=VIEWS.map(([k,l])=>'<a href="#'+k+'" data-v="'+k+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'+ICONS[k]+'</svg>'+l.replace("Vùng trồng","Vùng").replace("Công việc","Việc").replace("Tổng quan","Tổng").replace("Thống kê","Số liệu").replace("Hợp đồng","HĐ").replace("Công ty","Cty")+'</a>').join("");
@@ -607,7 +621,7 @@ function renderShell(){
 function route(){
   const h=(location.hash||"").replace("#","");
   ui.view=VIEWS.some(v=>v[0]===h)||h==="khach"||h==="tai-khoan"||h==="nhat-ky"?h:"tong-quan";
-  document.querySelectorAll("[data-v]").forEach(a=>a.setAttribute("aria-current",a.dataset.v===(ui.view==="khach"?"cong-ty":ui.view)?"page":"false"));
+  renderNav();
   if(ready) render();
 }
 window.addEventListener("hashchange",route);
@@ -616,7 +630,7 @@ $("#meBtn").addEventListener("click",()=>{ if(PROFILE) openMe(); });
 function render(){
   renderMe();
   if(ready&&!window.__evInit&&me&&canManage()){ window.__evInit=1; setTimeout(evSyncAll,3000); }
-  const cp=canPlan(); document.querySelectorAll('[data-v="ke-hoach"]').forEach(a=>a.style.display=cp?"":"none");
+  const cp=canPlan(); renderNav();
   const v=ui.view, el=$("#app");
   if(v==="tong-quan") el.innerHTML=vOverview();
   else if(v==="vung") el.innerHTML=vZones();
@@ -1660,7 +1674,9 @@ function personKpi(pid,c,r,wd){
 }
 function vStats(){
   const r=stRange(), c=stCalc(r), P=ui.st, wd=workDays(r), M=canManage();
-  let h='<div class="row between"><div><h1>Thống kê, đánh giá</h1><div class="sub">'+esc(r.lb)+' · '+wd+' ngày làm việc (trừ Chủ nhật) · số liệu trực tiếp</div></div></div>';
+  const MD=P.mode||""; let h='<div class="row between"><div><h1>Thống kê, đánh giá</h1><div class="sub">'+(MD?'Tiến độ tuần '+dm(wkStart(todayStr()))+' – '+dmy(addDays(wkStart(todayStr()),6))+' · số liệu trực tiếp':esc(r.lb)+' · '+wd+' ngày làm việc (trừ Chủ nhật) · số liệu trực tiếp')+'</div></div></div>';
+  h+='<div class="focusbar" role="group" style="margin-top:10px"><button data-stm="" aria-pressed="'+(!MD)+'">Tổng hợp</button><button data-stm="wk" aria-pressed="'+(MD==="wk")+'">Tiến độ tuần của đội</button><button data-stm="me" aria-pressed="'+(MD==="me")+'">Tiến độ tuần cá nhân</button></div>';
+  if(MD==="wk") return '<div class="stv">'+h+vWeekTeam()+'</div>'; if(MD==="me") return '<div class="stv">'+h+vWeekMe()+'</div>';
   h+='<div class="row" style="margin-top:10px;flex-wrap:wrap">'+[["today","Hôm nay"],["week","Tuần"],["2w","2 tuần"],["month","Tháng này"],["30","30 ngày"],["custom","Từ ngày…"]].map(([k,l])=>'<button class="cp" data-sp="'+k+'" aria-pressed="'+(P.p===k)+'">'+l+'</button>').join("")
     +(P.p==="custom"?'<input type="date" id="stF" value="'+esc(r.f)+'" aria-label="Từ ngày"><input type="date" id="stT" value="'+esc(r.to)+'" aria-label="Đến ngày">':'')+'</div>';
   // KPI tiles
@@ -1714,6 +1730,7 @@ function vStats(){
   return '<div class="stv">'+h+'</div>';
 }
 function bindStats(A){
+  A.querySelectorAll("[data-stm]").forEach(b=>b.addEventListener("click",()=>{ ui.st.mode=b.dataset.stm; render(); })); bindWeek(A);
   A.querySelectorAll("[data-sp]").forEach(b=>b.addEventListener("click",()=>{ ui.st.p=b.dataset.sp; render(); }));
   $("#stF")?.addEventListener("change",e=>{ ui.st.from=e.target.value; render(); });
   $("#stT")?.addEventListener("change",e=>{ ui.st.to=e.target.value; render(); });
@@ -2106,7 +2123,7 @@ function bindReports(A){ const R=ui.rp;
 const GUIDE=[
  {k:"start",t:"Bắt đầu: đăng nhập, menu, nhịp mỗi ngày",s:[
   "Đăng nhập bằng email công ty và mật khẩu được cấp. Bấm tên của bạn ở góc trên bên phải để đổi mật khẩu hoặc đăng xuất.",
-  "Menu trên cùng (máy tính) hoặc thanh dưới cùng (điện thoại, vuốt ngang để xem hết): Tổng quan, Vùng trồng, Công việc, Báo cáo, Hỗ trợ, Lịch, Hợp đồng, Nhân sự, Công ty, Liên hệ, FAQ, Thống kê, Hướng dẫn.",
+  "Menu 2 cấp. Cấp 1 ở trên cùng (máy tính) hoặc thanh dưới cùng (điện thoại): Tổng quan, Công việc, Báo cáo, Vùng và khách hàng, Đội ngũ, Trợ giúp. Cấp 2 là hàng nút tròn ngay dưới: ví dụ Công việc gồm Công việc, Kế hoạch, Lịch, Hỗ trợ; Báo cáo gồm Báo cáo nhanh và Thống kê. Bấm lại mục cấp 1 sẽ mở trang cấp 2 bạn xem gần nhất.",
   "Mỗi sáng: mở Tổng quan, xem ô \"Việc hôm nay\" (3 việc nên làm trước) và trang Báo cáo để biết hôm nay ai ở đâu.",
   "Trong ngày: làm xong việc nào thì tick ô vuông của việc đó ngay. Bị vướng thì đổi trạng thái sang \"Chờ người khác\" hoặc bấm \"Cần hỗ trợ\".",
   "Cuối ngày (trước 17h): gửi Báo cáo nhanh. Hệ thống điền sẵn từ việc bạn đã tick, bạn chỉ sửa lại và ghi ngày mai làm ở đâu."]},
@@ -2297,6 +2314,161 @@ function vSprint(){ const G=ui.gd; const B=sprBurn(); const t0=todayStr();
   h+=sec("kpi","5. Chỉ số theo dõi mỗi tuần",'<ul style="margin:0;padding-left:20px;display:grid;gap:6px;font-size:14px"><li><b>Tỉ lệ hoàn thành sprint</b>: việc xong trên việc trong sprint. Mục tiêu từ 80%.</li><li><b>Việc trễ ở vùng ưu tiên 1</b>: xem tab Rà soát, cột Trễ ở UT1. Mục tiêu bằng 0.</li><li><b>Số lần dời</b>: dời nhiều là lịch chưa sát thực tế, cần ước lượng lại ở họp kế hoạch.</li><li><b>Báo cáo đúng giờ</b>: số người báo cáo trước 17h30, xem trang Báo cáo.</li><li><b>Vùng tiến bước</b>: số vùng lên bước mới trong tuần, xem Vùng trồng.</li></ul>');
   h+=sec("tip","6. Gợi ý để nhịp tuần chạy đều",'<ul style="margin:0;padding-left:20px;display:grid;gap:6px;font-size:14px"><li>Việc mới phát sinh giữa tuần: báo Chị Trinh, Anh Uy quyết có chen vào không. Nếu chen thì dời bớt việc khác, không chỉ thêm vào.</li><li>Mỗi việc nhỏ đủ làm trong một buổi. Việc lớn hơn thì tách việc con.</li><li>Đi hiện trường gom theo xã. Dùng Hướng dẫn cho tôi để xem gợi ý gom chuyến.</li><li>Họp 7h30 đúng 15 phút. Vướng mắc xử lý sau họp với người liên quan.</li><li>Cuối tuần Chị Trinh soạn nháp lịch tuần sau bằng nút Chèn mẫu trống trong Dán lịch tuần.</li></ul>');
   return h+'</div>'; }
+/* ---------- tiến độ tuần: đội và cá nhân ---------- */
+function wkCtx(){ const t0=todayStr(), a=wkStart(t0), b=addDays(a,6), D=[0,1,2,3,4,5,6].map(i=>addDays(a,i)), hr=new Date().getHours();
+  const isWd=d=>new Date(d+"T00:00:00").getDay()!==0;
+  const elapsed=D.filter(d=>d<t0&&isWd(d)).length+(isWd(t0)?(hr>=17?1:0.5):0);
+  const left=D.filter(d=>d>t0&&isWd(d)).length+(isWd(t0)&&hr<17?0.5:0);
+  return {t0,a,b,D,elapsed:Math.max(elapsed,0.5),left,total:D.filter(isWd).length,isWd}; }
+function wkTasks(C,pid){ return Object.entries(S.tasks).filter(([id,t])=>{ if(t.kind==="epic"||!pInTree(id)||tKids(id).length) return false; if(pid&&t.R!==pid) return false;
+  const inW=x=>x&&x>=C.a&&x<=C.b; const dn=t.status==="done"?tDone(t):"";
+  return inW(t.due)||inW(t.planDate)||inW(dn)||(t.status!=="done"&&t.due&&t.due<C.a); }); }
+function wkMetrics(C,pid){ const L=wkTasks(C,pid), t0=C.t0;
+  const done=L.filter(([,t])=>t.status==="done"), open=L.filter(([,t])=>t.status!=="done");
+  const carry=L.filter(([,t])=>t.due&&t.due<C.a);
+  const dueNow=L.filter(([,t])=>{ const d=t.planDate&&t.planDate>=C.a?t.planDate:t.due; return d&&d<=t0; });
+  const dueNowDone=dueNow.filter(([,t])=>t.status==="done"&&(tDone(t)<=((t.planDate&&t.planDate>=C.a?t.planDate:t.due)||"9")));
+  const dueNowDoneAny=dueNow.filter(([,t])=>t.status==="done");
+  const late=open.filter(([,t])=>{ const d=t.planDate&&t.planDate>=C.a?t.planDate:t.due; return d&&d<t0; });
+  const doing=open.filter(([,t])=>t.status==="doing");
+  const unplanned=open.filter(([,t])=>!t.planDate);
+  const moved=L.reduce((n,[,t])=>n+(t.planLog||[]).filter(x=>x.from>=C.a&&x.from<=C.b).length,0);
+  const quiet=open.filter(([,t])=>(t.updatedAt||t.createdAt||"").slice(0,10)<addDays(t0,-3));
+  const u1=open.filter(([,t])=>(t.zone&&S.zones[t.zone]?.priority==="1")||t.prio==="1");
+  const pace=done.length/C.elapsed, need=C.left>0?open.length/C.left:open.length;
+  const fc=Math.min(L.length,Math.round(done.length+pace*C.left)), fcp=L.length?Math.round(100*fc/L.length):100;
+  const perDay=C.D.map(d=>({d,done:done.filter(([,t])=>tDone(t)===d).length,due:L.filter(([,t])=>((t.planDate&&t.planDate>=C.a?t.planDate:t.due)===d)).length}));
+  return {L,done,open,carry,dueNow,dueNowDone,dueNowDoneAny,late,doing,unplanned,moved,quiet,u1,pace,need,fc,fcp,perDay}; }
+function wkLevel(p){ return p>=90?["good","Đúng nhịp","Giữ nhịp, ghi nhận kết quả"]:p>=70?["warn","Hơi chậm","Gỡ vướng sớm, ưu tiên việc quan trọng"]:["bad","Chậm, cần can thiệp","Họp ngắn gỡ vướng, cắt bớt hoặc chia lại việc"]; }
+function wkBurn(C,M,W){ W=W||640; const H=230,px=40,py=22,n=M.L.length, cw=(W-px-16)/6, ch=H-py-40, y=v=>py+ch-(n?v/n*ch:0), x=i=>px+i*cw; const ti=C.D.indexOf(C.t0);
+  const rem=C.D.map(d=>d>C.t0?null:M.L.filter(([,t])=>{ const dd=t.status==="done"?tDone(t):""; return !dd||dd>d; }).length);
+  let s='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;max-width:'+(W+80)+'px;min-width:'+Math.min(W,480)+'px;height:auto;display:block" role="img" aria-label="Việc còn lại trong tuần">';
+  [0,.5,1].forEach(f=>{ const v=Math.round(n*f); s+='<line x1="'+px+'" x2="'+(W-16)+'" y1="'+y(v)+'" y2="'+y(v)+'" style="stroke:var(--line)"/><text x="'+(px-6)+'" y="'+(y(v)+4)+'" text-anchor="end" style="font-size:11px;fill:var(--muted)">'+v+'</text>'; });
+  C.D.forEach((d,i)=>{ s+='<text x="'+x(i)+'" y="'+(H-20)+'" text-anchor="middle" style="font-size:11px;fill:'+(d===C.t0?'var(--info)':'var(--muted)')+';font-weight:'+(d===C.t0?700:400)+'">'+WDN[i]+'</text><text x="'+x(i)+'" y="'+(H-6)+'" text-anchor="middle" style="font-size:10px;fill:var(--muted)">'+dm(d)+'</text>'; });
+  s+='<line x1="'+x(0)+'" y1="'+y(n)+'" x2="'+x(6)+'" y2="'+y(0)+'" style="stroke:var(--muted);stroke-dasharray:5 4;stroke-width:1.5"/>';
+  const pts=rem.map((v,i)=>v==null?null:[x(i),y(v),v]).filter(Boolean);
+  if(pts.length) s+='<polyline points="'+pts.map(p=>p[0]+','+p[1]).join(" ")+'" style="fill:none;stroke:var(--brand);stroke-width:2.5"/>'+pts.map(p=>'<circle cx="'+p[0]+'" cy="'+p[1]+'" r="3.5" style="fill:var(--brand)"/><text x="'+p[0]+'" y="'+(p[1]-8)+'" text-anchor="middle" style="font-size:11px;fill:var(--fg);font-weight:600">'+p[2]+'</text>').join("");
+  if(ti>=0&&ti<6&&pts.length){ const last=pts[pts.length-1], endV=Math.max(0,n-M.fc); s+='<line x1="'+last[0]+'" y1="'+last[1]+'" x2="'+x(6)+'" y2="'+y(endV)+'" style="stroke:var(--warn);stroke-width:2;stroke-dasharray:3 3"/><text x="'+(x(6)-4)+'" y="'+(y(endV)-8)+'" text-anchor="end" style="font-size:11px;fill:var(--warn);font-weight:600">dự báo còn '+endV+'</text>'; }
+  return s+'</svg><div class="legend" style="margin-top:4px"><span><i style="display:inline-block;width:14px;height:0;border-top:2px dashed var(--muted)"></i>Tốc độ cần đạt</span><span><i style="display:inline-block;width:14px;height:3px;background:var(--brand)"></i>Việc còn lại thực tế</span><span><i style="display:inline-block;width:14px;height:0;border-top:2px dashed var(--warn)"></i>Dự báo theo tốc độ hiện tại</span></div>'; }
+function wkDayBars(C,M){ const W=640,H=180,px=30,py=14,cw=(W-px-10)/7,bw=cw*0.32, mx=Math.max(1,...M.perDay.map(p=>Math.max(p.done,p.due))), ch=H-py-36, y=v=>py+ch-v/mx*ch;
+  let s='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;max-width:720px;min-width:480px;height:auto;display:block" role="img" aria-label="Việc xong và việc đến hạn theo ngày">';
+  M.perDay.forEach((p,i)=>{ const cx=px+i*cw+cw/2; s+='<rect x="'+(cx-bw-2)+'" y="'+y(p.due)+'" width="'+bw+'" height="'+(py+ch-y(p.due))+'" rx="3" style="fill:none;stroke:var(--muted);stroke-width:1.5"/><rect x="'+(cx+2)+'" y="'+y(p.done)+'" width="'+bw+'" height="'+(py+ch-y(p.done))+'" rx="3" style="fill:var(--good)"/>'
+    +(p.due?'<text x="'+(cx-bw/2-2)+'" y="'+(y(p.due)-4)+'" text-anchor="middle" style="font-size:10px;fill:var(--muted)">'+p.due+'</text>':'')+(p.done?'<text x="'+(cx+bw/2+2)+'" y="'+(y(p.done)-4)+'" text-anchor="middle" style="font-size:10px;fill:var(--good);font-weight:700">'+p.done+'</text>':'')
+    +'<text x="'+cx+'" y="'+(H-18)+'" text-anchor="middle" style="font-size:11px;fill:'+(p.d===C.t0?'var(--info)':'var(--muted)')+';font-weight:'+(p.d===C.t0?700:400)+'">'+WDN[i]+'</text><text x="'+cx+'" y="'+(H-5)+'" text-anchor="middle" style="font-size:10px;fill:var(--muted)">'+dm(p.d)+'</text>'; });
+  return s+'<line x1="'+px+'" x2="'+(W-10)+'" y1="'+(py+ch)+'" y2="'+(py+ch)+'" style="stroke:var(--line)"/></svg><div class="legend"><span><i style="display:inline-block;width:12px;height:12px;border:1.5px solid var(--muted);border-radius:3px"></i>Việc đến hạn, đã xếp</span><span><i style="display:inline-block;width:12px;height:12px;background:var(--good);border-radius:3px"></i>Việc xong</span></div>'; }
+function wkStack(rows){ const mx=Math.max(1,...rows.map(r=>r.a+r.b+r.c));
+  return rows.map(r=>'<div style="display:grid;grid-template-columns:minmax(80px,26%) 1fr auto;gap:8px;align-items:center;margin:6px 0;font-size:13px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(r.k?'<a href="#" data-wkp="'+r.k+'" style="color:var(--brand);font-weight:600">'+esc(r.l)+'</a>':esc(r.l))+'</span><span style="display:flex;height:14px;border-radius:4px;overflow:hidden;background:var(--sunk)"><span style="width:'+(100*r.a/mx)+'%;background:var(--good)"></span><span style="width:'+(100*r.b/mx)+'%;background:var(--info);opacity:.55"></span><span style="width:'+(100*r.c/mx)+'%;background:var(--bad)"></span></span><span class="sub" style="white-space:nowrap">'+r.a+'/'+(r.a+r.b+r.c)+(r.c?' · <b style="color:var(--bad)">'+r.c+' trễ</b>':'')+'</span></div>').join("")+'<div class="legend"><span><i style="display:inline-block;width:12px;height:12px;background:var(--good);border-radius:3px"></i>Xong</span><span><i style="display:inline-block;width:12px;height:12px;background:var(--info);opacity:.55;border-radius:3px"></i>Còn trong hạn</span><span><i style="display:inline-block;width:12px;height:12px;background:var(--bad);border-radius:3px"></i>Trễ</span></div>'; }
+function wkGauge(v,lvl){ const r=52, c=2*Math.PI*r, col=lvl==="good"?"var(--good)":lvl==="warn"?"var(--warn)":"var(--bad)";
+  return '<svg viewBox="0 0 140 140" style="width:140px;height:140px;flex:0 0 140px" role="img" aria-label="Điểm '+v+'"><circle cx="70" cy="70" r="'+r+'" style="fill:none;stroke:var(--sunk);stroke-width:14"/><circle cx="70" cy="70" r="'+r+'" transform="rotate(-90 70 70)" style="fill:none;stroke:'+col+';stroke-width:14;stroke-linecap:round" stroke-dasharray="'+(c*v/100)+' '+c+'"/><text x="70" y="74" text-anchor="middle" style="font-size:30px;font-weight:700;fill:var(--fg)">'+v+'</text><text x="70" y="94" text-anchor="middle" style="font-size:11px;fill:var(--muted)">/ 100</text></svg>'; }
+function wkList(L,max,extra){ return L.slice(0,max||12).map(([id,t])=>'<div class="row" style="gap:6px;flex-wrap:nowrap;align-items:flex-start;padding:4px 0;border-top:1px solid var(--line)"><a href="#" data-otask="'+id+'" style="flex:1;min-width:0;color:inherit;text-decoration:none;overflow-wrap:anywhere">'+(t.zone&&S.zones[t.zone]&&!(t.title||"").startsWith(zShort(S.zones[t.zone].name))?'<b>'+esc(zShort(S.zones[t.zone].name))+'</b>: ':'')+esc(t.title)+'</a>'+(extra?extra(t):'')+'<span class="pill" style="flex:0 0 auto">'+esc(pname(t.R)||"?")+'</span></div>').join("")+(L.length>(max||12)?'<div class="sub">Còn '+(L.length-(max||12))+' việc nữa.</div>':''); }
+function wkDue(t,C){ return (t.planDate&&t.planDate>=C.a?t.planDate:t.due)||""; }
+function wkCopyBox(id,txt,label){ return '<textarea id="'+id+'" rows="6" style="width:100%">'+esc(txt)+'</textarea><button class="btn sm" data-wkcp="'+id+'" style="margin-top:6px">'+(label||"Sao chép")+'</button>'; }
+function vWeekTeam(){ const C=wkCtx(), M=wkMetrics(C), lv=wkLevel(M.fcp);
+  const ppl=Object.entries(S.people).filter(([,p])=>p.active!==false&&p.team!=="lead");
+  const PM=ppl.map(([k,p])=>({k,p,m:wkMetrics(C,k)})).filter(x=>x.m.L.length);
+  const avgOpen=PM.length?PM.reduce((a,x)=>a+x.m.open.length,0)/PM.length:0;
+  const repNeed=ppl.filter(([k])=>isReporter(k)).length*Math.floor(C.elapsed), repGot=Object.values(S.daily).filter(d=>d.date>=C.a&&d.date<=C.t0&&isReporter(d.person)).length;
+  let h='<div class="panel" style="margin-top:12px;border-left:4px solid var(--'+lv[0]+')"><div class="row between" style="flex-wrap:wrap;gap:8px"><div><h2 style="margin:0">Tuần '+dm(C.a)+' – '+dmy(C.b)+': <span style="color:var(--'+lv[0]+')">'+lv[1]+'</span></h2><div class="sub">Đã qua '+String(C.elapsed).replace(".",",")+' / '+C.total+' ngày làm việc · còn '+String(C.left).replace(".",",")+' ngày đến Chủ Nhật · '+lv[2]+'</div></div><span class="pill '+lv[0]+'" style="font-size:14px">Dự báo hoàn thành '+M.fcp+'%</span></div></div>';
+  h+='<div class="grid kpis" style="margin-top:12px">'+tile("Việc trong tuần",M.L.length,(M.carry.length?M.carry.length+" việc tồn từ tuần trước":"có hạn hoặc lịch trong tuần"),"","")
+   +tile("Đã xong",M.done.length,pctTxt(pct(M.done.length,M.L.length))+" khối lượng tuần","good","")
+   +tile("Đến hạn tới hôm nay đã xong",pctTxt(pct(M.dueNowDoneAny.length,M.dueNow.length)),M.dueNowDoneAny.length+"/"+M.dueNow.length+" việc",pct(M.dueNowDoneAny.length,M.dueNow.length)>=80?"good":"warn","")
+   +tile("Đang trễ",M.late.length,M.u1.filter(x=>M.late.includes(x)).length+" việc ưu tiên 1",M.late.length?"bad":"good","")
+   +tile("Tốc độ",(Math.round(M.pace*10)/10).toString().replace(".",","),"việc xong mỗi ngày","","")
+   +tile("Cần đạt",(Math.round(M.need*10)/10).toString().replace(".",","),"việc mỗi ngày để hết việc",M.need>M.pace*1.2?"warn":"good","")
+   +tile("Dời lịch",M.moved,"lần trong tuần",M.moved>5?"warn":"","")
+   +tile("Báo cáo nhanh",pctTxt(pct(repGot,repNeed)),repGot+"/"+repNeed+" lượt đến hôm nay",pct(repGot,repNeed)>=80?"good":"warn","")+'</div>';
+  h+='<div class="grid2" style="margin-top:12px"><div class="panel"><h2>Việc còn lại và dự báo đến Chủ Nhật</h2><div style="overflow-x:auto">'+wkBurn(C,M)+'</div></div><div class="panel"><h2>Nhịp từng ngày: đến hạn và hoàn thành</h2><div style="overflow-x:auto">'+wkDayBars(C,M)+'</div><div class="sub">Cột viền cao hơn cột xanh nhiều ngày liền là đội đang nhận nhiều hơn làm được.</div></div></div>';
+  h+='<div class="grid2" style="margin-top:12px"><div class="panel"><h2>Theo người: xong, còn trong hạn, trễ</h2>'+wkStack(PM.sort((a,b)=>b.m.L.length-a.m.L.length).map(x=>({k:x.k,l:x.p.name,a:x.m.done.length,b:x.m.open.length-x.m.late.length,c:x.m.late.length})))+'<div class="sub">Bấm tên để xem tiến độ cá nhân.</div></div>';
+  const ep={}; M.L.forEach(([id,t])=>{ let e=t, n=0; while(e&&e.kind!=="epic"&&n<8){ e=S.tasks[e.parent]; n++; } const k=e&&e.kind==="epic"?e.title:"Khác"; (ep[k]=ep[k]||{a:0,b:0,c:0}); if(t.status==="done") ep[k].a++; else if(M.late.some(([i])=>i===id)) ep[k].c++; else ep[k].b++; });
+  h+='<div class="panel"><h2>Theo mục tiêu (Epic)</h2>'+wkStack(Object.entries(ep).sort((a,b)=>(b[1].a+b[1].b+b[1].c)-(a[1].a+a[1].b+a[1].c)).map(([l,v])=>({l:l.replace(/^Ưu tiên (\d):/,"UT$1:"),...v})))+'</div></div>';
+  // diagnosis + recommendations
+  const rec=[];
+  if(M.fcp<90) rec.push(["bad","Khoảng cách tiến độ","Cần "+String(Math.round(M.need*10)/10).replace(".",",")+" việc/ngày nhưng đội đang làm "+String(Math.round(M.pace*10)/10).replace(".",",")+". Chọn lại 3 đến 5 việc quan trọng nhất phải xong trước Chủ Nhật, các việc còn lại báo rõ sẽ dời.","Kế hoạch"]);
+  const heavy=PM.filter(x=>x.m.open.length>avgOpen*1.5&&x.m.open.length>=4); if(heavy.length) rec.push(["warn","Tải không đều",heavy.map(x=>x.p.name+" còn "+x.m.open.length+" việc").join(", ")+" (trung bình "+Math.round(avgOpen)+"). Chuyển bớt việc cùng loại sang người ít việc hơn, hoặc ghép cặp đi thực địa.","Kế hoạch"]);
+  const wip=PM.filter(x=>x.m.doing.length>3); if(wip.length) rec.push(["warn","Làm dở quá nhiều",wip.map(x=>x.p.name+" có "+x.m.doing.length+" việc đang làm").join(", ")+". Nguyên tắc: làm xong trước khi bắt đầu việc mới, tối đa 3 việc đang làm mỗi người.",""]);
+  if(M.unplanned.length>3) rec.push(["warn","Việc chưa xếp lịch",M.unplanned.length+" việc còn mở chưa có ngày, buổi cụ thể. Việc không có lịch thường bị trôi. Xếp lịch trong Kế hoạch tuần.","Kế hoạch"]);
+  if(M.quiet.length) rec.push(["warn","Việc im lặng",M.quiet.length+" việc 3 ngày không ai cập nhật. Hỏi nhanh người phụ trách ở họp 7h30.",""]);
+  if(M.moved>5) rec.push(["warn","Dời nhiều",M.moved+" lần dời trong tuần. Lịch đang lạc quan hơn thực tế, nên xếp ít việc hơn mỗi buổi và chừa thời gian đi lại.",""]);
+  if(repNeed&&pct(repGot,repNeed)<80) rec.push(["warn","Báo cáo nhanh chưa đều","Mới "+repGot+"/"+repNeed+" lượt. Thiếu báo cáo thì điều phối không thấy vướng mắc để gỡ. Nhắc trước 17h30.","Báo cáo"]);
+  if(M.u1.length&&M.late.some(x=>M.u1.includes(x))) rec.push(["bad","Trễ ở vùng ưu tiên 1","Có việc ưu tiên 1 đang trễ, ảnh hưởng hạn có mã. Gỡ trước mọi việc khác.","Rà soát"]);
+  const star=PM.filter(x=>x.m.done.length>=3&&!x.m.late.length).sort((a,b)=>b.m.done.length-a.m.done.length)[0];
+  if(star) rec.push(["good","Ghi nhận",star.p.name+" đã xong "+star.m.done.length+" việc, không việc nào trễ. Khen trước nhóm ở họp tổng kết để lan tỏa nhịp làm việc tốt.",""]);
+  if(!rec.length) rec.push(["good","Đội đang đúng nhịp","Không có điểm nghẽn rõ. Giữ họp 7h30 ngắn, ghi nhận kết quả hằng ngày.",""]);
+  const go={"Kế hoạch":"#ke-hoach","Báo cáo":"#bao-cao","Rà soát":"#ke-hoach"};
+  h+='<div class="panel" style="margin-top:12px"><h2>Chẩn đoán và gợi ý của quản lý</h2>'+rec.map(([c,t,d,l])=>'<div style="display:grid;grid-template-columns:6px 1fr auto;gap:10px;padding:8px 0;border-top:1px solid var(--line);align-items:start"><span style="background:var(--'+c+');border-radius:3px;align-self:stretch"></span><div><b>'+t+'</b><div style="font-size:14px">'+esc(d)+'</div></div>'+(l?'<a class="btn sm" href="'+go[l]+'"'+(l==="Rà soát"?' data-wkaud="1"':'')+'>Mở '+l+'</a>':'<span></span>')+'</div>').join("")+'</div>';
+  // risk list
+  const risk=M.open.filter(([,t])=>{ const d=wkDue(t,C); return d&&d<=C.b; }).sort((x,y)=>wkDue(x[1],C).localeCompare(wkDue(y[1],C)));
+  h+='<div class="grid2" style="margin-top:12px"><div class="panel"><h2>Việc cần gỡ trước Chủ Nhật ('+risk.length+')</h2>'+(risk.length?wkList(risk,14,t=>{ const d=wkDue(t,C); return '<span class="pill" style="flex:0 0 auto;'+(d<C.t0?'color:var(--bad)':'')+'">'+(d<C.t0?'Trễ ':'')+dm(d)+'</span>'; }):'<div class="sub">Không có.</div>')+'</div>';
+  // tools
+  const name=x=>x.replace(/^(Anh|Chị|Em)\s+/,"");
+  const msg="📊 TIẾN ĐỘ TUẦN "+dm(C.a)+"–"+dm(C.b)+" (đến "+dm(C.t0)+")\nXong "+M.done.length+"/"+M.L.length+" việc · dự báo "+M.fcp+"% · đang trễ "+M.late.length+"\n"+(star?"👏 Cảm ơn "+name(star.p.name)+" đã xong "+star.m.done.length+" việc đúng hạn.\n":"")+(M.late.length?"🔧 Cần gỡ: "+M.late.slice(0,4).map(([,t])=>{ const z=t.zone&&S.zones[t.zone]; return (z?zShort(z.name)+" ":"")+"("+name(pname(t.R)||"?")+")"; }).join(", ")+(M.late.length>4?"…":"")+"\n":"")+"🎯 Còn "+M.open.length+" việc, mỗi ngày khoảng "+Math.ceil(M.need)+" việc là về đích. Vướng gì báo ngay để cả nhóm cùng gỡ. Cố lên cả đội! 💪";
+  const fix="VIỆC CẦN GỠ HÔM NAY "+dm(C.t0)+"\n"+(M.late.length?M.late.slice(0,12).map(([,t])=>"• "+(t.zone&&S.zones[t.zone]?zShort(S.zones[t.zone].name)+": ":"")+t.title+" ("+(pname(t.R)||"?")+", hạn "+dm(wkDue(t,C))+")").join("\n"):"Không có việc trễ.");
+  h+='<div class="panel"><h2>Công cụ nhanh</h2><div class="sub" style="font-weight:600;margin-bottom:4px">Tin nhắn tiến độ, động viên đội (dán nhóm Zalo)</div>'+wkCopyBox("wkMsg",msg)+'<div class="sub" style="font-weight:600;margin:10px 0 4px">Danh sách cần gỡ cho họp 7h30</div>'+wkCopyBox("wkFix",fix)+'<div class="sub" style="margin-top:6px">Chỉ có tên việc, vùng và người phụ trách. Không có thông tin nông hộ.</div></div></div>';
+  return h; }
+function wkScore(C,M,pid){ const onT=pct(M.dueNowDoneAny.length,M.dueNow.length); const wdE=Math.floor(C.elapsed)||1;
+  const rep=isReporter(pid)?Object.values(S.daily).filter(d=>d.person===pid&&d.date>=C.a&&d.date<=C.t0).length:null;
+  const repP=rep===null?null:Math.min(100,Math.round(100*rep/wdE));
+  const paceP=M.open.length?Math.min(100,Math.round(100*M.pace/Math.max(0.01,M.need))):100;
+  const mvP=Math.max(0,100-M.moved*15);
+  const parts=[[onT??100,.45],[repP??100,.2],[paceP,.25],[mvP,.1]]; const sc=Math.round(parts.reduce((a,[v,w])=>a+v*w,0));
+  return {sc,onT,rep,repP,paceP,wdE}; }
+function wkGrade(sc){ return sc>=85?["good","Rất tốt"]:sc>=70?["good","Đúng nhịp"]:sc>=50?["warn","Cần hỗ trợ nhẹ"]:["bad","Cần gỡ ngay"]; }
+function vWeekMe(){ const C=wkCtx(), P=ui.st; const M0=canManage(); let pid=P.wp||me||""; if(!M0) pid=me||"";
+  const ps=Object.entries(S.people).filter(([,p])=>p.active!==false).sort((a,b)=>(a[1].order||99)-(b[1].order||99));
+  let h=M0?'<div class="filters" style="margin-top:12px"><select id="wkWho" aria-label="Xem tiến độ của">'+ps.map(([k,p])=>'<option value="'+k+'"'+(pid===k?" selected":"")+'>'+esc(p.name)+(k===me?" (tôi)":"")+'</option>').join("")+'</select><span class="sub">Quản lý xem tiến độ từng người để kèm cặp và hỗ trợ.</span></div>':'';
+  if(!pid||!S.people[pid]) return h+'<div class="empty" style="margin-top:12px">Tài khoản chưa gắn với nhân sự. Nhờ owner gắn tên để xem tiến độ cá nhân.</div>';
+  const pn=pname(pid), nm=pn.replace(/^(Anh|Chị|Em)\s+/,""), M=wkMetrics(C,pid), K=wkScore(C,M,pid), G=wkGrade(K.sc);
+  const mine=pid===me;
+  h+='<div class="panel" style="margin-top:12px;border-left:4px solid var(--'+G[0]+')"><div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">'+wkGauge(K.sc,G[0])+'<div style="flex:1;min-width:220px"><h2 style="margin:0">'+esc(pn)+': <span style="color:var(--'+G[0]+')">'+G[1]+'</span></h2><div class="sub" style="margin:4px 0 8px">Tuần '+dm(C.a)+' – '+dmy(C.b)+', tính đến '+(new Date().getHours()>=17?"cuối":"giữa")+' ngày '+dm(C.t0)+'</div>'
+   +'<div style="display:grid;gap:4px;font-size:13px">'+[["Đúng hạn đến hôm nay",K.onT??100,"45%"],["Báo cáo nhanh",K.repP??100,"20%"],["Tốc độ so với cần đạt",K.paceP,"25%"],["Ít phải dời lịch",Math.max(0,100-M.moved*15),"10%"]].map(([l,v,w])=>'<div style="display:grid;grid-template-columns:150px 1fr 40px;gap:8px;align-items:center"><span>'+l+' <span class="sub">('+w+')</span></span><span style="height:8px;background:var(--sunk);border-radius:4px;overflow:hidden"><span style="display:block;height:100%;width:'+v+'%;background:var(--'+(v>=80?'good':v>=60?'warn':'bad')+')"></span></span><b>'+v+'</b></div>').join("")+'</div></div></div></div>';
+  h+='<div class="grid kpis" style="margin-top:12px">'+tile("Việc trong tuần",M.L.length,M.carry.length?M.carry.length+" việc tồn tuần trước":"của "+nm,"","")
+   +tile("Đã xong",M.done.length,"trong tuần","good","")+tile("Đến hạn đã xong",M.dueNowDoneAny.length+"/"+M.dueNow.length,"tính đến hôm nay",K.onT===null||K.onT>=80?"good":"warn","")
+   +tile("Đang trễ",M.late.length,M.late.length?"cần gỡ trước":"không có",M.late.length?"bad":"good","")+tile("Còn đến Chủ Nhật",M.open.length,"khoảng "+Math.ceil(M.need)+" việc mỗi ngày",M.need>M.pace*1.3&&M.open.length>2?"warn":"","")
+   +tile("Báo cáo nhanh",K.rep===null?"—":K.rep+"/"+K.wdE,"ngày đã gửi",K.repP===null||K.repP>=80?"good":"warn","")+tile("Dời lịch",M.moved,"lần",M.moved>2?"warn":"","")+tile("Đang làm dở",M.doing.length,"việc",M.doing.length>3?"warn":"","")+'</div>';
+  // day strip
+  const rep=d=>!!S.daily[d+"_"+pid];
+  h+='<div class="panel" style="margin-top:12px"><h2>Từng ngày trong tuần</h2><div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px">'+C.D.map((d,i)=>{ const p=M.perDay[i], fut=d>C.t0; return '<div style="border:1px solid '+(d===C.t0?'var(--info)':'var(--line)')+';border-radius:8px;padding:6px;text-align:center;'+(fut?'opacity:.6':'')+'"><div class="sub" style="font-weight:600">'+WDN[i]+' '+dm(d)+'</div><div style="font-size:20px;font-weight:700;color:var(--good)">'+p.done+'</div><div class="sub">xong / '+p.due+' hạn</div><div style="font-size:12px;margin-top:2px">'+(C.isWd(d)&&isReporter(pid)?(rep(d)?'<span style="color:var(--good)">✓ báo cáo</span>':fut?'·':'<span style="color:var(--bad)">✗ báo cáo</span>'):'')+'</div></div>'; }).join("")+'</div></div>';
+  h+='<div class="grid2" style="margin-top:12px"><div class="panel"><h2>Việc còn lại của '+esc(nm)+'</h2><div style="overflow-x:auto">'+wkBurn(C,M,560)+'</div></div>';
+  // evaluation
+  const good=[], gap=[];
+  if(M.done.length) good.push("Đã xong "+M.done.length+" việc trong tuần.");
+  if(K.onT!==null&&K.onT>=80) good.push("Đúng hạn "+K.onT+"% các việc đến hạn.");
+  if(K.repP!==null&&K.repP>=80) good.push("Báo cáo nhanh đều đặn.");
+  if(!M.moved&&M.L.length) good.push("Bám lịch tốt, chưa phải dời việc nào.");
+  if(M.late.length) gap.push(M.late.length+" việc đang trễ hạn.");
+  if(K.repP!==null&&K.repP<80) gap.push("Thiếu "+(K.wdE-K.rep)+" ngày báo cáo nhanh.");
+  if(M.moved>2) gap.push("Dời lịch "+M.moved+" lần, lịch có thể đang quá dày.");
+  if(M.doing.length>3) gap.push("Đang làm dở "+M.doing.length+" việc cùng lúc.");
+  if(M.quiet.length) gap.push(M.quiet.length+" việc 3 ngày chưa cập nhật.");
+  if(M.unplanned.length>2) gap.push(M.unplanned.length+" việc chưa có ngày làm cụ thể.");
+  h+='<div class="panel"><h2>Đánh giá</h2><div class="sub" style="font-weight:600">Điểm mạnh</div><ul style="margin:4px 0 8px;padding-left:18px">'+(good.map(x=>'<li>'+esc(x)+'</li>').join("")||'<li class="sub">Chưa có dữ liệu.</li>')+'</ul><div class="sub" style="font-weight:600">Cần cải thiện</div><ul style="margin:4px 0;padding-left:18px">'+(gap.map(x=>'<li>'+esc(x)+'</li>').join("")||'<li>Không có điểm cần lưu ý.</li>')+'</ul></div></div>';
+  // support suggestions
+  const sup=[];
+  if(M.late.length) sup.push(["Gỡ việc trễ","Hẹn 10 phút sau họp 7h30. Hỏi: vướng ở đâu, cần ai, cần gì. Chốt ngày mới thực tế cho từng việc trễ."]);
+  if(M.open.length>Math.max(6,M.need*3)) sup.push(["Giảm tải","Còn "+M.open.length+" việc. Chọn 3 việc quan trọng nhất phải xong tuần này, chuyển bớt việc ít quan trọng cho người khác hoặc sang tuần sau."]);
+  if(M.doing.length>3) sup.push(["Làm xong từng việc","Chốt 1 đến 2 việc làm dở gần xong nhất để hoàn tất hôm nay trước khi nhận việc mới."]);
+  if(M.moved>2) sup.push(["Lịch sát thực tế","Mỗi buổi thực địa chỉ xếp 1 đến 2 vùng gần nhau, chừa thời gian đi lại và chờ chủ vườn."]);
+  if(K.repP!==null&&K.repP<80) sup.push(["Nhắc báo cáo","Đặt nhắc 17h15 trên điện thoại. Báo cáo chỉ cần 3 dòng: đã làm, vướng, ngày mai ở đâu."]);
+  if(M.unplanned.length>2) sup.push(["Xếp lịch","Cùng điều phối đặt ngày, buổi cho "+M.unplanned.length+" việc chưa có lịch trong Kế hoạch tuần."]);
+  if(!sup.length) sup.push(["Ghi nhận và giao thử thách","Khen cụ thể kết quả đã làm. Có thể giao thêm việc có tính học hỏi, hoặc nhờ kèm đồng nghiệp."]);
+  const top=M.open.slice().sort((x,y)=>{ const lx=wkDue(x[1],C)<C.t0?0:1, ly=wkDue(y[1],C)<C.t0?0:1; return lx-ly||prRank(x[1])-prRank(y[1])||(wkDue(x[1],C)||"9").localeCompare(wkDue(y[1],C)||"9"); }).slice(0,3);
+  h+='<div class="grid2" style="margin-top:12px"><div class="panel"><h2>'+(mine?'Gợi ý cho bạn':'Gợi ý hỗ trợ '+esc(nm))+'</h2>'+sup.map(([t,d])=>'<div style="padding:6px 0;border-top:1px solid var(--line)"><b>'+t+'</b><div style="font-size:14px">'+esc(d)+'</div></div>').join("")
+   +(!mine?'<div class="sub" style="font-weight:600;margin-top:10px">Câu hỏi kèm cặp 1-1 (mô hình GROW)</div><ol style="margin:4px 0;padding-left:20px;font-size:14px;display:grid;gap:3px"><li><b>Mục tiêu</b>: Đến Chủ Nhật, việc nào '+esc(nm)+' muốn chắc chắn xong nhất?</li><li><b>Thực trạng</b>: Việc đó đang tới đâu, vướng ở bước nào?</li><li><b>Phương án</b>: Có mấy cách làm? Cần ai hỗ trợ, cần thêm gì?</li><li><b>Cam kết</b>: Bước tiếp theo là gì, làm khi nào, mình kiểm tra lại lúc nào?</li></ol>':'')+'</div>';
+  const enc=G[1]==="Rất tốt"?"Tuần này "+nm+" làm rất chắc tay: xong "+M.done.length+" việc"+(K.onT!==null?", đúng hạn "+K.onT+"%":"")+". Cảm ơn "+nm+" nhiều! Giữ nhịp này, có việc gì cần thêm người cứ nói nhé 👏"
+    :G[1]==="Đúng nhịp"?nm+" đang đúng nhịp tuần này, xong "+M.done.length+" việc rồi. Còn "+M.open.length+" việc đến Chủ Nhật, mỗi ngày khoảng "+Math.ceil(M.need)+" việc là về đích. Cố lên nhé 💪"
+    :G[1]==="Cần hỗ trợ nhẹ"?"Tuần này nhiều việc phát sinh, vất vả cho "+nm+" rồi. "+(M.late.length?"Còn "+M.late.length+" việc đang trễ, ":"")+"mình cùng xem lại để chọn việc nào làm trước nhé. Cần hỗ trợ gì cứ nhắn mình 🙌"
+    :"Mình thấy "+nm+" đang bị kẹt mấy việc"+(M.late.length?" ("+M.late.length+" việc trễ)":"")+". Không sao, mình hẹn 10 phút sau họp sáng để gỡ cùng nhé. Việc đầu tiên mình cùng làm: "+(top[0]?top[0][1].title:"rà lại danh sách việc")+". Có mình hỗ trợ 🤝";
+  const plan="3 VIỆC ƯU TIÊN NGÀY MAI ("+pn+")\n"+(top.length?top.map(([,t],i)=>(i+1)+". "+(t.zone&&S.zones[t.zone]&&!(t.title||"").startsWith(zShort(S.zones[t.zone].name))?zShort(S.zones[t.zone].name)+": ":"")+t.title+(wkDue(t,C)?" (hạn "+dm(wkDue(t,C))+")":"")).join("\n"):"Không còn việc mở.");
+  h+='<div class="panel"><h2>Công cụ nhanh</h2>'+(top.length?'<div class="sub" style="font-weight:600">3 việc nên làm tiếp</div>'+wkList(top,3,t=>{ const d=wkDue(t,C); return d?'<span class="pill" style="flex:0 0 auto;'+(d<C.t0?'color:var(--bad)':'')+'">'+dm(d)+'</span>':''; }):'')
+   +'<div class="sub" style="font-weight:600;margin:10px 0 4px">'+(mine?'Kế hoạch 3 việc ngày mai':'Lời động viên gửi riêng '+esc(nm))+'</div>'+(mine?wkCopyBox("wkPlan",plan):wkCopyBox("wkEnc",enc,"Sao chép lời động viên"))
+   +(mine?'':'<div class="sub" style="font-weight:600;margin:10px 0 4px">3 việc ưu tiên gửi '+esc(nm)+'</div>'+wkCopyBox("wkPlan",plan))+'</div></div>';
+  if(M.late.length) h+='<div class="panel" style="margin-top:12px"><h2>Việc đang trễ ('+M.late.length+')</h2>'+wkList(M.late,20,t=>'<span class="pill" style="flex:0 0 auto;color:var(--bad)">'+dm(wkDue(t,C))+'</span>')+'</div>';
+  return h; }
+function bindWeek(A){ $("#wkWho")?.addEventListener("change",e=>{ ui.st.wp=e.target.value; render(); });
+  A.querySelectorAll("[data-wkp]").forEach(a=>a.addEventListener("click",e=>{ e.preventDefault(); ui.st.wp=a.dataset.wkp; ui.st.mode="me"; render(); scrollTo(0,0); }));
+  A.querySelectorAll("[data-wkcp]").forEach(b=>b.addEventListener("click",()=>{ const t=$("#"+b.dataset.wkcp); navigator.clipboard?.writeText(t.value).then(()=>toast("Đã sao chép"),()=>{ t.select(); toast("Chọn và sao chép thủ công"); }); }));
+  A.querySelectorAll("[data-wkaud]").forEach(a=>a.addEventListener("click",()=>{ ui.pl.tab="rs"; }));
+  bindTaskLinks(A); }
 /* ---------- kế hoạch tuần ---------- */
 const PSES={am:"Sáng",pm:"Chiều","":"Trong ngày"};
 function pNorm(x){ return String(x??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/đ/g,"d").replace(/Đ/g,"D").toLowerCase().replace(/[^a-z0-9]+/g," ").replace(/\s+/g," ").trim(); }
