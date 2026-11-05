@@ -444,7 +444,7 @@ async function startSession(){
   if(error||!prof){ await SB.auth.signOut(); showLogin("Tài khoản chưa được cấp quyền. Liên hệ owner."); return; }
   if(!prof.active){ await SB.auth.signOut(); showLogin("Tài khoản đã bị khóa."); return; }
   PROFILE=prof; if(prof.must_change_pw){ showChangePw(true); return; }
-  logEv("open"); userCan=["owner","manager"].includes(prof.role); me=prof.person_id||null; viewerName=prof.name||prof.email;
+  logEv("open"); if(!window._seenT){ window._seenT=setInterval(()=>{ if(document.visibilityState==="visible") logEv("open"); },15*60e3); document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") logEv("open"); }); } userCan=["owner","manager"].includes(prof.role); me=prof.person_id||null; viewerName=prof.name||prof.email;
   if(prof.role!=="viewer") assetsNs=makeAssets();
   shellAuth(true); renderShell(); $("#app").innerHTML='<div class="empty">Đang tải dữ liệu…</div>';
   try{ await loadAll(); }catch(e){ $("#app").innerHTML='<div class="alert bad">Không đọc được dữ liệu: '+esc(e.message||"")+'. Tải lại trang.</div>'; return; }
