@@ -2003,7 +2003,18 @@ function drawCharts(){ const c=ui.ch; const eps=Object.entries(S.tasks).filter((
 }
 
 /* ---------- xuất dữ liệu (owner) ---------- */
-const EXP={tasks:true,zones:true,sum:true,scope:"all"};
+const EXP={tasks:true,zones:true,sum:true,scope:"all",more:["events","daily","leaves","supports","faqs","contacts","people","units","contracts"]};
+const XCOL=[["events","Lịch công tác, sự kiện"],["daily","Báo cáo nhanh"],["leaves","Nghỉ phép, đi muộn, về sớm"],["supports","Yêu cầu hỗ trợ"],["faqs","FAQ"],["contacts","Liên hệ (cán bộ xã, đối tác)"],["people","Nhân sự"],["units","Công ty, khách hàng"],["contracts","Hợp đồng (không có số tiền)"]];
+const XBAD=/^(price|prices|amount|amounts|value|fee|fees|cost|costs|paid|paidDate|money|cccd|cccds|soDo|sodo|redbook|households|farmers|farmerPhone|phones|bankAccount)$/i;
+const XLAB={title:"Tiêu đề",name:"Tên",date:"Ngày",end:"Đến ngày",time:"Giờ",place:"Địa điểm",kind:"Loại",status:"Trạng thái",person:"Nhân sự",people:"Người tham gia",lead:"Phụ trách",purpose:"Mục đích",report:"Báo cáo",done:"Đã làm",block:"Vướng mắc",next:"Tiếp theo",loc:"Làm ở đâu",at:"Gửi lúc",type:"Loại",pay:"Hưởng lương",from:"Từ",to:"Đến",fromSes:"Buổi bắt đầu",toSes:"Buổi kết thúc",reason:"Lý do",q:"Câu hỏi",cat:"Chủ đề",aud:"Đối tượng",final:"Câu trả lời chốt",answers:"Các câu trả lời",org:"Tổ chức",ward:"Xã, phường",phone:"Điện thoại",zones:"Vùng liên quan",zoneId:"Vùng",unitId:"Đơn vị",team:"Nhóm",role:"Vai trò",provinces:"Tỉnh",active:"Đang làm",number:"Số hợp đồng",signed:"Ngày ký",customer:"Khách hàng",items:"Hạng mục",payments:"Đợt thanh toán",legal:"Tên pháp lý",tax:"Mã số thuế",rep:"Đại diện",address:"Địa chỉ",note:"Ghi chú",createdAt:"Tạo lúc",createdBy:"Người tạo",updatedAt:"Cập nhật lúc",updatedBy:"Người cập nhật",decidedBy:"Người duyệt",decidedAt:"Duyệt lúc",askedBy:"Người hỏi",approvedBy:"Người duyệt",approvedAt:"Duyệt lúc",taskIds:"Công việc liên quan",auto:"Tự tạo",photos:"Ảnh",signs:"Danh sách ký",docs:"Tài liệu"};
+const XPER=new Set(["person","lead","createdBy","updatedBy","decidedBy","askedBy","approvedBy","by","owner","R","A","assignee","to_person"]);
+function xClean(v){ if(Array.isArray(v)) return v.map(xClean); if(v&&typeof v==="object"){ const o={}; Object.entries(v).forEach(([k,x])=>{ if(!XBAD.test(k)) o[k]=xClean(x); }); return o; } return v; }
+function xCell(k,v,col){ if(v==null) return ""; if(XPER.has(k)&&typeof v==="string") return pname(v)||v; if(k==="people"&&Array.isArray(v)) return v.map(x=>pname(x)||x).join(", ");
+  if((k==="zoneId")&&S.zones[v]) return zShort(S.zones[v].name); if(k==="zones"&&Array.isArray(v)) return v.map(z=>S.zones[z]?zShort(S.zones[z].name):z).join(", "); if(k==="unitId") return unitName(v)||v;
+  if(k==="taskIds"&&Array.isArray(v)) return v.map(t=>S.tasks[t]?.title||t).join("; "); if((k==="photos"||k==="signs"||k==="docs")&&Array.isArray(v)) return v.length+" tệp";
+  if(typeof v==="boolean") return v?"Có":"Không"; if(typeof v==="number") return v; if(typeof v==="object") return JSON.stringify(v); return String(v); }
+function xColRows(col){ const E=Object.entries(S[col]||{}).map(([id,d])=>[id,xClean(d)]); const keys=[]; E.forEach(([,d])=>Object.keys(d).forEach(k=>{ if(!keys.includes(k)) keys.push(k); }));
+  return [["Mã",...keys.map(k=>XLAB[k]||k)],...E.map(([id,d])=>[id,...keys.map(k=>xCell(k,d[k],col))])]; }
 function xD(s){ return s?dmy(String(s).slice(0,10)):""; }
 function xDT(s){ if(!s) return ""; const d=new Date(s); return isNaN(d)?"":d.toLocaleString("vi-VN",{hour:"2-digit",minute:"2-digit",day:"2-digit",month:"2-digit",year:"numeric"}); }
 function xEpic(id){ let x=S.tasks[id], g=0; while(x&&g++<6){ if(x.kind==="epic") return x; x=S.tasks[x.parent]; } return null; }
@@ -2047,13 +2058,14 @@ async function xXlsx(sheets){ if(!window.JSZip) throw new Error("Chưa tải đ�
   sheets.forEach((s,i)=>z.file("xl/worksheets/sheet"+(i+1)+".xml",xSheet(s.rows,s.hdr)));
   return z.generateAsync({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}); }
 function xSave(blob,name){ const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1500); }
-function xName(ext){ const d=todayStr(); const parts=[EXP.tasks&&"CongViec",EXP.zones&&"VungTrong",EXP.sum&&"TongHop"].filter(Boolean); return "BVI_"+(parts.length===3?"DuLieu":parts.join("_"))+"_"+d.slice(8,10)+"-"+d.slice(5,7)+"-"+d.slice(0,4)+"."+ext; }
+function xName(ext){ const d=todayStr(); const parts=[EXP.tasks&&"CongViec",EXP.zones&&"VungTrong",EXP.sum&&"TongHop"].filter(Boolean); return "BVI_"+(parts.length===3&&EXP.more.length===XCOL.length?"ToanBo":parts.length===3?"DuLieu":(parts.join("_")||"NoiDungKhac"))+"_"+d.slice(8,10)+"-"+d.slice(5,7)+"-"+d.slice(0,4)+"."+ext; }
 function xJson(){ const o={xuatLuc:new Date().toISOString(),nguon:"BVI Điều hành",phamViVung:EXP.scope};
   const strip=(t)=>{ const c={...t}; return c; };
   if(EXP.tasks) o.congViec=Object.entries(S.tasks).map(([id,t])=>({id,...strip(t),_tenR:pname(t.R),_tenA:pname(t.A),_tienDo:Math.round(tProg(id)*100),_quaHan:tLate(t)}));
   if(EXP.zones) o.vungTrong=xZones().map(([id,z])=>{ const {households,cccd,phones,...rest}=z; return {id,...rest,_trangThai:zstatus(z).t,_tenBuoc:z.step!=null&&STEPS[z.step]?STEPS[z.step].name:""}; });
   if(EXP.sum) o.tongHop=Object.fromEntries(xSumBlocks().map(b=>[b.t,b.rows.slice(1).map(r=>Object.fromEntries(b.rows[0].map((h,i)=>[h,r[i]??""])))]));
   o.nhanSu=Object.fromEntries(Object.entries(S.people).map(([k,p])=>[k,p.name]));
+  if(EXP.more.length) o.noiDungKhac=Object.fromEntries(EXP.more.map(c=>[c,Object.entries(S[c]||{}).map(([id,d])=>({id,...xClean(d)}))]));
   return new Blob([JSON.stringify(o,null,2)],{type:"application/json"}); }
 function openExport(){ ui.drawer=null; drawExport(); }
 function drawExport(){ if(!isOwner()){ toast("Chỉ owner được xuất dữ liệu"); return; }
@@ -2063,12 +2075,14 @@ function drawExport(){ if(!isOwner()){ toast("Chỉ owner được xuất dữ l
    +'<label class="row" style="flex-wrap:nowrap;align-items:flex-start;gap:8px"><input type="checkbox" id="xT"'+(EXP.tasks?" checked":"")+' style="margin-top:3px"><span>Công việc ('+nT+' dòng: epic, việc, việc con, RACI, SMART, hạn, lịch sử tạo, sửa)</span></label>'
    +'<label class="row" style="flex-wrap:nowrap;align-items:flex-start;gap:8px"><input type="checkbox" id="xZ"'+(EXP.zones?" checked":"")+' style="margin-top:3px"><span>Vùng trồng ('+nZ+' vùng: bước, tiến độ, vướng mắc, số việc)</span></label>'
    +'<label class="row" style="flex-wrap:nowrap;align-items:flex-start;gap:8px"><input type="checkbox" id="xS"'+(EXP.sum?" checked":"")+' style="margin-top:3px"><span>Tổng hợp (theo ưu tiên, bước, người, epic)</span></label></div>'
+   +'<div class="row between" style="margin-top:12px"><b>Nội dung khác</b><button type="button" class="btn sm" id="xAll">Chọn tất cả</button></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:6px;margin-top:6px">'+XCOL.map(([k,l])=>'<label class="row" style="flex-wrap:nowrap;align-items:flex-start;gap:8px"><input type="checkbox" data-xc="'+k+'"'+(EXP.more.includes(k)?" checked":"")+' style="margin-top:3px"><span>'+l+' ('+Object.keys(S[k]||{}).length+')</span></label>').join("")+'</div>'
    +'<div class="f" style="margin-top:10px"><label for="xSc">Phạm vi vùng</label><select id="xSc"><option value="all"'+(EXP.scope==="all"?" selected":"")+'>Tất cả vùng, kể cả đã ẩn</option><option value="active"'+(EXP.scope==="active"?" selected":"")+'>Vùng đang theo dõi</option><option value="focus"'+(EXP.scope==="focus"?" selected":"")+'>Chỉ ưu tiên 1–2</option></select></div></div>'
    +'<div class="row" style="flex-wrap:wrap;gap:8px"><button class="btn pri" id="xX">Tải Excel (.xlsx)</button><button class="btn" id="xJ">Tải JSON</button><span class="sub" id="xMsg"></span></div>'
-   +'<div class="sub" style="margin-top:10px">File không có CCCD, sổ đỏ, số điện thoại nông hộ hay số tiền hợp đồng. Excel mỗi nội dung là một trang tính, có sẵn bộ lọc ở dòng tiêu đề.</div></div>');
-  const sync=()=>{ EXP.tasks=$("#xT").checked; EXP.zones=$("#xZ").checked; EXP.sum=$("#xS").checked; EXP.scope=$("#xSc").value; const any=EXP.tasks||EXP.zones||EXP.sum; $("#xX").disabled=!any; $("#xJ").disabled=!any; };
-  ["xT","xZ","xS","xSc"].forEach(k=>$("#"+k).addEventListener("change",sync)); sync();
-  $("#xX").addEventListener("click",async()=>{ const m=$("#xMsg"); m.textContent="Đang tạo file…"; try{ const sh=[]; if(EXP.sum) sh.push({name:"Tổng hợp",rows:xSumRows(),hdr:false}); if(EXP.tasks) sh.push({name:"Công việc",rows:xTaskRows(),hdr:true}); if(EXP.zones) sh.push({name:"Vùng trồng",rows:xZoneRows(),hdr:true}); xSave(await xXlsx(sh),xName("xlsx")); m.textContent="Đã tải "+xName("xlsx"); }catch(e){ m.textContent="Lỗi: "+e.message; } });
+   +'<div class="sub" style="margin-top:10px">File không có CCCD, sổ đỏ, số điện thoại nông hộ hay số tiền hợp đồng, thanh toán. Excel mỗi nội dung là một trang tính, có sẵn bộ lọc ở dòng tiêu đề. JSON chứa đầy đủ trường dữ liệu để lưu trữ hoặc chuyển hệ thống.</div></div>');
+  const sync=()=>{ EXP.tasks=$("#xT").checked; EXP.zones=$("#xZ").checked; EXP.sum=$("#xS").checked; EXP.scope=$("#xSc").value; EXP.more=[...$("#layer").querySelectorAll("[data-xc]:checked")].map(x=>x.dataset.xc); const any=EXP.tasks||EXP.zones||EXP.sum||EXP.more.length; $("#xX").disabled=!any; $("#xJ").disabled=!any; };
+  ["xT","xZ","xS","xSc"].forEach(k=>$("#"+k).addEventListener("change",sync)); $("#layer").querySelectorAll("[data-xc]").forEach(x=>x.addEventListener("change",sync));
+  $("#xAll").addEventListener("click",()=>{ ["xT","xZ","xS"].forEach(k=>$("#"+k).checked=true); $("#layer").querySelectorAll("[data-xc]").forEach(x=>x.checked=true); sync(); }); sync();
+  $("#xX").addEventListener("click",async()=>{ const m=$("#xMsg"); m.textContent="Đang tạo file…"; try{ const sh=[]; if(EXP.sum) sh.push({name:"Tổng hợp",rows:xSumRows(),hdr:false}); if(EXP.tasks) sh.push({name:"Công việc",rows:xTaskRows(),hdr:true}); if(EXP.zones) sh.push({name:"Vùng trồng",rows:xZoneRows(),hdr:true}); XCOL.forEach(([k,l])=>{ if(EXP.more.includes(k)) sh.push({name:l.replace(/[\\/?*\[\]:]/g," ").replace(/\s*\(.*\)/,"").slice(0,31),rows:xColRows(k),hdr:true}); }); xSave(await xXlsx(sh),xName("xlsx")); m.textContent="Đã tải "+xName("xlsx"); }catch(e){ m.textContent="Lỗi: "+e.message; } });
   $("#xJ").addEventListener("click",()=>{ try{ xSave(xJson(),xName("json")); $("#xMsg").textContent="Đã tải "+xName("json"); }catch(e){ $("#xMsg").textContent="Lỗi: "+e.message; } });
 }
 document.addEventListener("click",e=>{ if(e.target.closest&&e.target.closest("#expBtn")){ e.preventDefault(); openExport(); } });
