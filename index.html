@@ -239,8 +239,8 @@ const MIL=[["Chốt danh sách (T)",0],["Khảo sát xong",10],["Chốt sổ l�
 const TEAMS={lead:"Lãnh đạo",dieuphoi:"Điều phối",hientruong:"Hiện trường",hoso:"Hồ sơ và hệ thống",vanphong:"Văn phòng",kinhdoanh:"Kinh doanh",thuengoai:"Thuê ngoài"};
 const TSTAT={todo:"Chưa làm",doing:"Đang làm",wait:"Chờ người khác",done:"Xong"};
 const PRI={"1":"Ưu tiên 1","2":"Ưu tiên 2","3":"Ưu tiên 3","GACC":"Chờ GACC / có mã"};
-const VIEWS=[["tong-quan","Tổng quan"],["vung","Vùng trồng"],["cong-viec","Công việc"],["bao-cao","Báo cáo"],["ho-tro","Hỗ trợ"],["lich","Lịch"],["hop-dong","Hợp đồng"],["nhan-su","Nhân sự"],["cong-ty","Công ty"],["lien-he","Liên hệ"],["faq","FAQ"],["thong-ke","Thống kê"]];
-const ICONS={"bao-cao":'<path d="M5 3h10l4 4v14H5z"/><path d="M9 12h6M9 16h6M9 8h3"/><circle cx="17.5" cy="17.5" r="0"/>',"lien-he":'<rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M7.5 17a4.5 4.5 0 0 1 9 0M2 7h2M2 12h2M2 17h2"/>',"ho-tro":'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M5.6 5.6l3.6 3.6M14.8 14.8l3.6 3.6M18.4 5.6l-3.6 3.6M9.2 14.8l-3.6 3.6"/>',"tong-quan":'<path d="M3 13h8V3H3zM13 21h8V11h-8zM3 21h8v-6H3zM13 3v6h8V3z"/>',"vung":'<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>',"cong-viec":'<path d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/>',"hop-dong":'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>',"nhan-su":'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M17 11a3 3 0 1 0-1-5.8M18 20h3.5a5 5 0 0 0-4-4.9"/>',"lich":'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',"khach":'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',"thong-ke":'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',"faq":'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.6v.6M12 17h.01"/>',"cong-ty":'<path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 10h.01M15 10h.01M9 13.5h.01M15 13.5h.01"/>'};
+const VIEWS=[["tong-quan","Tổng quan"],["vung","Vùng trồng"],["cong-viec","Công việc"],["bao-cao","Báo cáo"],["ho-tro","Hỗ trợ"],["lich","Lịch"],["hop-dong","Hợp đồng"],["nhan-su","Nhân sự"],["cong-ty","Công ty"],["lien-he","Liên hệ"],["faq","FAQ"],["thong-ke","Thống kê"],["huong-dan","Hướng dẫn"]];
+const ICONS={"huong-dan":'<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5v.01"/>',"bao-cao":'<path d="M5 3h10l4 4v14H5z"/><path d="M9 12h6M9 16h6M9 8h3"/><circle cx="17.5" cy="17.5" r="0"/>',"lien-he":'<rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M7.5 17a4.5 4.5 0 0 1 9 0M2 7h2M2 12h2M2 17h2"/>',"ho-tro":'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M5.6 5.6l3.6 3.6M14.8 14.8l3.6 3.6M18.4 5.6l-3.6 3.6M9.2 14.8l-3.6 3.6"/>',"tong-quan":'<path d="M3 13h8V3H3zM13 21h8V11h-8zM3 21h8v-6H3zM13 3v6h8V3z"/>',"vung":'<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>',"cong-viec":'<path d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/>',"hop-dong":'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>',"nhan-su":'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M17 11a3 3 0 1 0-1-5.8M18 20h3.5a5 5 0 0 0-4-4.9"/>',"lich":'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',"khach":'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',"thong-ke":'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',"faq":'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.6v.6M12 17h.01"/>',"cong-ty":'<path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 10h.01M15 10h.01M9 13.5h.01M15 13.5h.01"/>'};
 
 /* ---------- state ---------- */
 const S={zones:{},people:{},tasks:{},contracts:{},daily:{},units:{},events:{},leaves:{},faqs:{},supports:{},contacts:{}};
@@ -611,6 +611,7 @@ function render(){
   else if(v==="lien-he") el.innerHTML=vContacts();
   else if(v==="ho-tro") el.innerHTML=vSupport();
   else if(v==="bao-cao") el.innerHTML=vReports();
+  else if(v==="huong-dan") el.innerHTML=vGuide();
   else if(v==="thong-ke") el.innerHTML=vStats();
   else if(v==="tai-khoan") el.innerHTML=vAccounts();
   else if(v==="nhat-ky") el.innerHTML=vLog();
@@ -2047,6 +2048,136 @@ function bindReports(A){ const R=ui.rp;
   let qt=null; $("#rQ")?.addEventListener("input",e=>{ R.q=e.target.value; clearTimeout(qt); qt=setTimeout(()=>{ R.n=60; render(); const i=$("#rQ"); if(i){ i.focus(); i.setSelectionRange(i.value.length,i.value.length); } },350); });
   $("#rMore")?.addEventListener("click",()=>{ R.n+=60; render(); }); }
 
+/* ---------- hướng dẫn sử dụng ---------- */
+const GUIDE=[
+ {k:"start",t:"Bắt đầu: đăng nhập, menu, nhịp mỗi ngày",s:[
+  "Đăng nhập bằng email công ty và mật khẩu được cấp. Bấm tên của bạn ở góc trên bên phải để đổi mật khẩu hoặc đăng xuất.",
+  "Menu trên cùng (máy tính) hoặc thanh dưới cùng (điện thoại, vuốt ngang để xem hết): Tổng quan, Vùng trồng, Công việc, Báo cáo, Hỗ trợ, Lịch, Hợp đồng, Nhân sự, Công ty, Liên hệ, FAQ, Thống kê, Hướng dẫn.",
+  "Mỗi sáng: mở Tổng quan, xem ô \"Việc hôm nay\" (3 việc nên làm trước) và trang Báo cáo để biết hôm nay ai ở đâu.",
+  "Trong ngày: làm xong việc nào thì tick ô vuông của việc đó ngay. Bị vướng thì đổi trạng thái sang \"Chờ người khác\" hoặc bấm \"Cần hỗ trợ\".",
+  "Cuối ngày (trước 17h): gửi Báo cáo nhanh. Hệ thống điền sẵn từ việc bạn đã tick, bạn chỉ sửa lại và ghi ngày mai làm ở đâu."]},
+ {k:"task-new",t:"Tạo công việc: Epic, công việc, việc con",s:[
+  "Cấu trúc 3 tầng: Epic (mục tiêu lớn, ví dụ Ưu tiên 1 có mã trước 20/11) → Công việc (thường là một vùng hoặc một đầu việc) → Việc con (từng bước nhỏ, 1 người làm, 1 hạn).",
+  "Tạo Epic: trang Công việc → \"Thêm Epic\". Tạo công việc trong Epic: bấm \"Thêm công việc\" ở cuối Epic. Tạo việc con: bấm dấu + ở cuối dòng công việc.",
+  "Tên việc: động từ + kết quả, ví dụ \"Nộp hồ sơ cứng Quyết Tiến 1 cho Phòng Kinh tế\". Tránh tên chung chung như \"Làm hồ sơ\".",
+  "RACI: R là người làm (một người), A là người chịu trách nhiệm cuối và nghiệm thu (một người), C là người cần hỏi ý kiến, I là người cần được báo.",
+  "SMART: ghi kết quả cụ thể (S), đo bằng gì là đạt (M), cần gì để làm được (A), vì sao cần (R). Hạn hoàn thành là T, bắt buộc phải có.",
+  "Chọn Độ ưu tiên (cao, vừa), Nhóm, Vùng trồng nếu việc gắn với một vùng. Ô \"Bên phụ trách\" sẽ hiện trong báo cáo gửi khách.",
+  "Khung \"Góp ý SMART · RACI · độ rõ\" chấm điểm ngay khi bạn gõ. Cố đạt hết các mục xanh trước khi bấm Lưu."]},
+ {k:"task-man",t:"Quản lý công việc hằng ngày",s:[
+  "Tick ô vuông đầu dòng là đánh dấu Xong. Bỏ tick là mở lại. Việc xong tự vào báo cáo cuối ngày của bạn.",
+  "Bấm vào tên việc để mở chi tiết: sửa hạn, đổi người, đổi trạng thái (Chưa làm, Đang làm, Chờ người khác, Xong), ghi mô tả.",
+  "Bộ lọc: Việc của tôi; Đang mở, Quá hạn, Tất cả; theo người thực hiện (R); theo mức ưu tiên; theo ngày (sửa hôm nay, tạo hôm nay); theo nhóm.",
+  "Cuối màn hình chi tiết việc có mục Lịch sử: ai tạo, ai sửa gần nhất, xong lúc nào. Owner và quản lý xem được từng lần sửa.",
+  "Việc im lặng: việc đang làm hoặc sắp đến hạn mà 3 ngày không ai cập nhật sẽ bị đánh dấu. Chỉ cần mở việc và cập nhật trạng thái hoặc ghi chú.",
+  "Không xóa việc làm sai hướng. Đổi tên hoặc ghi rõ \"không cần nữa\" để còn lịch sử."]},
+ {k:"progress",t:"Theo dõi tiến độ: biểu đồ, đội, vướng mắc",s:[
+  "Trang Công việc → \"Biểu đồ tiến độ\": Tuần này từng ngày; Tuần này theo người; Việc còn mở theo ngày (thực tế so với kế hoạch); Việc đến hạn theo tuần; Tiến độ theo người; Tiến độ từng epic.",
+  "Chọn Phạm vi (một epic) và Ưu tiên để xem riêng phần quan trọng. Với biểu đồ tuần có thể xem tuần trước, tuần này, tuần sau.",
+  "Đường thực tế nằm trên đường kế hoạch nghĩa là đang chậm. Thanh epic màu vàng là chậm hơn thời gian đã trôi qua, màu đỏ là quá hạn.",
+  "Quản lý: ô \"Theo dõi cập nhật của đội\" trên Tổng quan cho biết ai có việc quá hạn, việc im lặng, chưa gửi báo cáo. Bấm tên để xem chi tiết và chép tin nhắc gửi Zalo.",
+  "Trang Hỗ trợ → nút \"Vướng mắc\": gom mọi vướng mắc từ việc đang chờ, vướng của vùng và báo cáo 7 ngày gần nhất. Từ đó tạo yêu cầu hỗ trợ hoặc mở việc, mở vùng."]},
+ {k:"zone",t:"Theo dõi tiến độ mã vùng trồng",s:[
+  "Mỗi vùng đi qua 9 bước (0 đến 8): mở quan hệ xã, gom dân, khảo sát lô, thu giấy tờ, tập huấn và ký hồ sơ, xã kiểm tra, nộp hồ sơ chờ mã nội địa, phía Trung Quốc bổ sung, mã GACC và duy trì.",
+  "Thanh 9 ô trên mỗi vùng: ô đậm là bước đã xong, ô vàng là bước đang làm. Trạng thái: Đúng tiến độ (lệch ≤ 2 ngày), Trễ nhẹ (3 đến 7 ngày), Trễ nặng (trên 7 ngày), Chờ cơ quan.",
+  "Có 3 cổng kiểm soát: Cổng 1 sau bước 1 (chốt hình thức đứng mã trước khi ký giấy tờ), Cổng 2 sau bước 3 (đủ 100% giấy tờ), Cổng 3 sau bước 5 (xã xác nhận, hồ sơ rà chéo không lệch).",
+  "Bấm vào vùng để mở chi tiết: tick checklist của bước hiện tại, chuyển bước, ghi việc tiếp theo, vướng mắc, cần ai hỗ trợ, dự kiến có mã, xã đã kiểm tra chưa.",
+  "Trong chi tiết vùng có danh sách việc của vùng, nút tạo việc mới cho vùng, và mục \"Liên hệ của vùng\" (cán bộ xã, đối tác).",
+  "Bấm \"Đã cập nhật hôm nay\" khi đã rà vùng mà không có thay đổi, để đội biết vùng vẫn đang được theo dõi.",
+  "Lọc vùng theo tỉnh, xã, đơn vị, nhóm khách, ưu tiên, bước, người giữ, trạng thái. Nút \"Ưu tiên 1–2\" giúp tập trung vào vùng quan trọng."]},
+ {k:"report",t:"Báo cáo nhanh và trang Báo cáo",s:[
+  "Gửi: bấm \"Gửi báo cáo nhanh\" (Tổng quan, Nhân sự hoặc trang Báo cáo). 4 ô: hôm nay hoàn thành gì, đang vướng gì, dự kiến hoàn thiện gì, ngày mai làm ở đâu.",
+  "Ô \"ngày mai làm ở đâu\" tự điền từ việc thực địa có hạn hôm sau. Đi công tác thì ghi rõ xã, vùng. Ở văn phòng thì ghi Văn phòng.",
+  "Sửa được đến hết ngày. Sau 17h nếu chưa gửi, hệ thống tự mở form nhắc một lần.",
+  "Trang Báo cáo → \"Hôm nay và hôm qua\": bảng ai đang ở đâu hôm nay, báo cáo của từng người, ai chưa gửi.",
+  "Trang Báo cáo → \"Lịch sử\": xem lại mọi báo cáo, lọc theo người, khoảng ngày, tìm theo chữ (tên xã, vướng mắc)."]},
+ {k:"support",t:"Hỗ trợ, Lịch, Nghỉ phép, Liên hệ, FAQ",s:[
+  "Hỗ trợ: bấm \"Cần hỗ trợ\" trong chi tiết việc hoặc \"Gửi yêu cầu hỗ trợ\" trên trang Hỗ trợ. Ghi rõ cần gì, ai giúp, hạn. Người giúp cập nhật trạng thái và lý do nếu không hỗ trợ.",
+  "Lịch: \"Lịch công tác và sự kiện\" để ghi lịch đi xã, họp, tập huấn. Lọc theo loại và thời gian.",
+  "Nghỉ phép: trang Nhân sự → phần nghỉ phép. Gửi đơn nghỉ hoặc về sớm, quản lý duyệt. Bảng ngày công tự tính theo tháng.",
+  "Liên hệ: danh bạ cán bộ xã, phường và đối tác. Bấm Gọi hoặc Zalo. Không lưu số điện thoại hay CCCD của nông hộ ở đây.",
+  "FAQ: tra câu hỏi thường gặp về quy trình. Gửi câu hỏi mới, quản lý duyệt rồi mới hiện cho mọi người."]},
+ {k:"mgr",t:"Dành cho quản lý và owner",s:[
+  "Báo cáo khách: trang Công ty (mở đơn vị) hoặc Thống kê → Báo cáo khách. Có thể gộp nhiều đơn vị, tải file Word gửi khách. Báo cáo khách không hiện CCCD, sổ đỏ, số điện thoại nông hộ hay chi phí nội bộ.",
+  "Nhật ký hoạt động: bấm tên của bạn → Nhật ký hoạt động. Xem ai đăng nhập, thêm, sửa, xóa gì. Nhật ký không ghi số tiền.",
+  "Owner: Tổng quan → \"Xuất dữ liệu\" để tải Excel hoặc JSON về công việc, vùng trồng và tổng hợp.",
+  "Owner: Quản lý tài khoản để tạo tài khoản, đổi vai trò, khóa tài khoản.",
+  "Số tiền hợp đồng chỉ hiện với tài khoản có quyền tài chính."]},
+ {k:"rule",t:"Quy tắc bảo mật và làm việc nhóm",s:[
+  "Không đăng CCCD, sổ đỏ, số điện thoại bà con hay chi phí đại diện mã lên nhóm Zalo.",
+  "Mỗi việc chỉ có một R và một A. Không chắc ai làm thì hỏi điều phối, đừng để trống.",
+  "Vướng quá 1 ngày thì phải báo: đổi trạng thái sang Chờ người khác, ghi vướng gì, hoặc gửi yêu cầu hỗ trợ.",
+  "Không tự đổi hạn của việc ưu tiên cao mà không báo A của việc đó."]}
+];
+const BIZ=[
+ {k:/flycam|bẫy|kho thuốc|thực địa/i,t:"Đi thực địa: flycam, bẫy côn trùng, kho thuốc",s:["Gộp chuyến theo xã: xem mục \"Gộp chuyến thực địa\" ở trên, đi các vùng cùng xã trong một ngày.","Trước khi đi: hẹn đại diện mã hoặc chủ vườn, sạc pin flycam, mang đủ bẫy, kiểm tra thời tiết.","Tại vườn: bay flycam toàn vùng, đặt bẫy côn trùng và chụp ảnh bẫy, chụp kho thuốc (kệ, nhãn, sổ ghi chép).","Cùng chuyến: làm luôn bảng khảo sát phía Trung Quốc và thu nhật ký canh tác nếu việc yêu cầu.","Về: lưu ảnh lên Drive đúng thư mục của vùng trong ngày, tick xong việc, ghi vào báo cáo cuối ngày."]},
+ {k:/khảo sát phía Trung Quốc|khảo sát TQ|khảo sát trung quốc/i,t:"Bảng khảo sát phía Trung Quốc",s:["Lấy mẫu bảng khảo sát mới nhất từ điều phối, không dùng bản cũ.","Điền theo từng hộ hoặc từng vùng theo mẫu, đối chiếu với dữ liệu trên FarmBase (diện tích, số cây, tọa độ).","Thiếu thông tin thì ghi vào báo cáo cuối ngày phần \"vướng\", không tự điền ước lượng.","Gửi bản điền xong cho người làm hồ sơ (A của việc) để đóng vào bộ hồ sơ cứng."]},
+ {k:/hồ sơ cứng|Phòng Kinh tế|in, đóng bộ/i,t:"Bổ sung, nộp hồ sơ cứng cho Phòng Kinh tế",s:["Gom đủ: hồ sơ đã cập nhật (bìa, chữ ký mới), bảng khảo sát phía Trung Quốc, ảnh flycam, ảnh bẫy côn trùng, ảnh kho thuốc, quy trình thu hoạch, nhật ký canh tác.","Rà chéo số liệu giữa hồ sơ, FarmBase và bảng khảo sát trước khi in (tên hộ, diện tích, thửa).","In, đóng bộ theo thứ tự, làm danh mục tài liệu ở trang đầu, giữ một bản scan trên Drive.","Nộp xong: ghi ngày nộp, người nhận vào ghi chú việc, tick xong, rồi theo dõi Phòng Kinh tế xác nhận."]},
+ {k:/Cổng DVC|Dịch vụ công|DVC/i,t:"Nộp Cổng Dịch vụ công",s:["Kiểm tra vùng có cần nộp DVC không (một số vùng chỉ nộp hồ sơ cứng). Hỏi điều phối nếu chưa rõ.","Scan đủ hồ sơ đã ký, đặt tên file theo vùng, rà chéo số liệu.","Nộp, lưu biên nhận vào Drive và ghi mã hồ sơ vào ghi chú việc.","Theo dõi kết quả, có mã nội địa thì cập nhật vùng sang bước tiếp theo."]},
+ {k:/bìa|ký lại|chữ ký|ký hồ sơ/i,t:"Cập nhật bìa, ký hồ sơ với nông hộ",s:["Lập danh sách hộ cần ký hoặc cập nhật bìa, hẹn theo thôn để đi một lần.","Mang bản in đã rà số liệu, bút, dấu (nếu cần), danh sách để tick hộ đã ký.","Hộ vắng: ghi lại, hẹn lần 2, báo đại diện mã hỗ trợ.","Không chụp hoặc gửi CCCD, sổ đỏ qua nhóm Zalo chung."]},
+ {k:/minh chứng|nhật ký|quy trình thu hoạch/i,t:"Minh chứng: quy trình thu hoạch, nhật ký canh tác",s:["Dùng mẫu quy trình thu hoạch chung của công ty, chỉnh tên vùng, đơn vị.","Nhật ký canh tác: mỗi hộ có ghi chép phân, thuốc, ngày phun. Thiếu thì hướng dẫn hộ bổ sung, chụp lại.","Lưu theo thư mục vùng trên Drive, đặt tên file theo hộ."]},
+ {k:/xã kiểm tra|hẹn lịch|kiểm tra thực địa/i,t:"Chuẩn bị xã kiểm tra",s:["Hẹn lịch với xã, báo đại diện mã và bà con trước ít nhất 2 ngày.","Kiểm tra vườn, kho thuốc, bẫy, sổ ghi chép sẵn sàng (checklist bước 5 của vùng).","Sau kiểm tra: ghi đề nghị bổ sung của xã vào vướng mắc của vùng và tạo việc con cho từng mục."]},
+ {k:/FarmBase|nhập dữ liệu|xuất hồ sơ/i,t:"Nhập, quản lý dữ liệu và xuất hồ sơ trên FarmBase",s:["Nhập theo vùng: tạo vùng, thêm hộ, thêm lô (diện tích, số cây, tọa độ), đối chiếu với danh sách khảo sát.","Rà lệch số liệu trước khi xuất: tổng diện tích, số hộ, số lô khớp với web điều hành.","Xuất hồ sơ đúng mẫu, lưu vào Drive của vùng, báo người phụ trách in."]},
+ {k:/tập huấn|tài liệu|thuyết trình|bán hàng/i,t:"Tài liệu tập huấn, bán hàng, thuyết trình",s:["Bám mẫu chung của công ty, dữ kiện lấy từ hồ sơ năng lực và quy trình MVT.","Gửi bản nháp cho A của việc duyệt trước hạn 2 ngày.","Lưu bản cuối trên Drive, ghi đường dẫn vào ghi chú việc."]},
+ {k:/KPI/i,t:"Xây dựng KPI",s:["KPI chung đo được từ web: số vùng xong đúng hạn, việc quá hạn, hồ sơ bị trả lại, báo cáo đủ ngày.","KPI riêng 3 đến 5 chỉ số theo vai trò, thống nhất với từng người.","Anh Uy duyệt và công bố trước 10/12."]},
+ {k:/GACC|phía TQ|Greens|37 Global/i,t:"Mã GACC, làm việc với phía Trung Quốc",s:["Lập danh sách việc phía Trung Quốc yêu cầu bổ sung, giao từng việc con có hạn.","Gửi bổ sung qua đối tác, lưu bằng chứng gửi.","Có mã GACC thì báo vào nhóm và cập nhật vùng sang bước 8."]}
+];
+const ROLE_TIP={
+ lead:["Đầu ngày: xem Tổng quan, Theo dõi cập nhật của đội, và trang Báo cáo để biết ai ở đâu.","Mỗi tuần: mở Biểu đồ tiến độ → Tiến độ từng epic, xử lý epic màu vàng, đỏ.","Duyệt các việc mà anh là A: xem bộ lọc theo người hoặc mục \"Việc bạn chịu trách nhiệm cuối\" bên dưới."],
+ dieuphoi:["Đầu ngày: xem Theo dõi cập nhật của đội, nhắc người có việc quá hạn hoặc im lặng.","Mỗi ngày: rà nút Vướng mắc trên trang Hỗ trợ, gỡ hoặc chuyển đúng người.","Cuối tuần: xem Biểu đồ tuần theo người, chia lại việc cho người đang quá tải trước khi sang tuần mới."],
+ hientruong:["Tối hôm trước: xem việc thực địa ngày mai, hẹn đại diện mã, ghi nơi làm việc ngày mai trong báo cáo.","Gộp chuyến theo xã (xem mục bên dưới), làm hết các việc của một vùng trong một lần đến.","Về đến nơi là lưu ảnh lên Drive và tick việc ngay, đừng để dồn cuối tuần."],
+ hoso:["Đầu ngày: xem việc hồ sơ đến hạn trong 3 ngày, việc nào đang chờ ảnh, chữ ký từ hiện trường thì nhắc sớm.","Rà chéo số liệu trước khi in hoặc nộp. Mỗi lần nộp ghi ngày nộp và người nhận vào ghi chú việc.","Hồ sơ bị trả lại thì tạo việc con cho từng mục bổ sung, ghi rõ ai làm."],
+ vanphong:["Đầu ngày: gọi xã theo danh sách việc cần hẹn, ghi kết quả vào ghi chú việc.","Lưu hồ sơ gốc và công văn đúng thư mục, cập nhật số điện thoại cán bộ xã ở trang Liên hệ.","Hỗ trợ bà con FarmBase qua Zalo: câu hỏi lặp lại thì đề xuất thêm vào FAQ."],
+ kinhdoanh:["Theo dõi đơn vị, khách hàng ở trang Công ty; dùng Báo cáo khách để cập nhật tiến độ cho khách.","Ghi mọi cam kết với khách thành việc có hạn và người phụ trách."],
+ thuengoai:["Làm theo việc được giao, tick xong ngay khi xong, gửi ảnh và thông tin về người phụ trách vùng."]
+};
+ui.gd=ui.gd||{tab:"me",who:"",open:{}};
+function gTaskLink(id,t,extra){ return '<a href="#" data-otask="'+id+'" class="row between" style="gap:8px;text-decoration:none;color:inherit;border-top:1px solid var(--line);padding:6px 0"><span style="min-width:0;overflow-wrap:anywhere">'+(t.prio==="1"?'<b style="color:var(--bad)">▲</b> ':'')+esc(t.title)+(t.zone&&S.zones[t.zone]?' <span class="sub">· '+esc(zShort(S.zones[t.zone].name))+'</span>':'')+'</span><span class="sub" style="white-space:nowrap">'+(extra||"")+'</span></a>'; }
+function gPersonal(pid){ const p=S.people[pid]; if(!p) return '<div class="empty">Chọn một người để xem hướng dẫn.</div>';
+  const t0=todayStr(), w7=addDays(t0,7);
+  const mine=Object.entries(S.tasks).filter(([id,t])=>t.kind!=="epic"&&t.R===pid&&t.status!=="done"&&!tOpenKids(id));
+  const late=mine.filter(([,t])=>tLate(t)), soon=mine.filter(([,t])=>t.due&&t.due>=t0&&t.due<=w7), sil=mine.filter(([,t])=>tSilent(t)), wait=mine.filter(([,t])=>t.status==="wait");
+  const asA=Object.entries(S.tasks).filter(([id,t])=>t.kind!=="epic"&&t.A===pid&&t.R!==pid&&t.status!=="done"&&tLate(t));
+  const zones=activeZones().filter(([,z])=>z.owner===pid);
+  const next=mine.slice().sort((a,b)=>(tLate(b[1])?1:0)-(tLate(a[1])?1:0)||prRank(a[1])-prRank(b[1])||(a[1].due||"9").localeCompare(b[1].due||"9")).slice(0,6);
+  const k=(v,l,c)=>'<div class="panel" style="padding:10px;margin:0"><div style="font-size:22px;font-weight:700'+(c&&v?';color:'+c:'')+'">'+v+'</div><div class="sub">'+l+'</div></div>';
+  let h='<div class="panel" style="margin-top:12px"><h2>'+esc(p.name)+' · '+esc(TEAMS[p.team]||"")+'</h2><div class="sub">'+esc(p.role||"")+'</div>'
+   +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:10px">'+k(mine.length,"việc đang mở (R)")+k(late.length,"việc quá hạn","var(--bad)")+k(soon.length,"đến hạn trong 7 ngày","var(--warn)")+k(sil.length,"việc im lặng ≥3 ngày","var(--warn)")+k(zones.length,"vùng đang giữ")+'</div></div>';
+  h+='<div class="panel"><h2>Nhịp làm việc gợi ý cho vai trò này</h2><ol style="margin:0;padding-left:20px;display:grid;gap:4px">'+(ROLE_TIP[p.team]||ROLE_TIP.hientruong).map(x=>'<li>'+esc(x)+'</li>').join("")+'</ol></div>';
+  // đề xuất
+  const sug=[];
+  if(late.length) sug.push('<b>'+late.length+' việc quá hạn.</b> Xử lý trước tiên: làm xong, hoặc mở việc ghi lý do và hạn mới, báo A của việc. Nếu bị chặn bởi người khác thì đổi sang "Chờ người khác" và bấm "Cần hỗ trợ".');
+  if(sil.length) sug.push('<b>'+sil.length+' việc 3 ngày chưa cập nhật.</b> Mở từng việc, cập nhật trạng thái hoặc ghi một dòng tiến độ để đội biết việc vẫn chạy.');
+  const byDay={}; soon.forEach(([,t])=>byDay[t.due]=(byDay[t.due]||0)+1); const heavy=Object.entries(byDay).filter(([,n])=>n>=5).sort();
+  if(heavy.length) sug.push('<b>Ngày dồn việc:</b> '+heavy.map(([d,n])=>dm(d)+' có '+n+' việc').join(", ")+'. Làm sớm các việc nhẹ trước 1 đến 2 ngày hoặc trao đổi với điều phối để giãn hạn.');
+  if(wait.length) sug.push('<b>'+wait.length+' việc đang chờ người khác.</b> Hỏi lại người đang giữ mỗi ngày, quá 2 ngày thì gửi yêu cầu hỗ trợ để quản lý thấy.');
+  if(mine.length>30) sug.push('<b>Đang ôm '+mine.length+' việc.</b> Dùng bộ lọc "Chỉ ưu tiên cao" để tập trung, việc ưu tiên vừa có hạn xa có thể đề xuất chuyển bớt.');
+  if(asA.length) sug.push('<b>'+asA.length+' việc bạn là A (chịu trách nhiệm cuối) đang quá hạn.</b> Nhắc người làm (R) và giúp gỡ vướng: '+asA.slice(0,3).map(([,t])=>esc(pname(t.R))+' · '+esc(t.title.slice(0,40))).join("; ")+(asA.length>3?"…":""));
+  const fv=mine.filter(([,t])=>t.fieldVisit||/flycam|bẫy|kho thuốc|thực địa/i.test(t.title));
+  const byWard={}; fv.forEach(([id,t])=>{ const z=S.zones[t.zone]; const w=z?.ward||"Chưa rõ xã"; (byWard[w]=byWard[w]||[]).push([id,t]); });
+  if(!sug.length) sug.push("Không có việc quá hạn hay im lặng. Giữ nhịp: tick việc ngay khi xong, gửi báo cáo trước 17h.");
+  h+='<div class="panel"><h2>Đề xuất sắp xếp công việc</h2><ul style="margin:0;padding-left:20px;display:grid;gap:6px">'+sug.map(x=>'<li>'+x+'</li>').join("")+'</ul></div>';
+  h+='<div class="panel"><h2>Nên làm tiếp theo</h2>'+(next.length?next.map(([id,t])=>gTaskLink(id,t,tLate(t)?'<span style="color:var(--bad)">quá '+diffDays(t0,t.due)+' ngày</span>':t.due?'hạn '+dm(t.due):'')).join(""):'<div class="sub">Không có việc đang mở.</div>')+'<div class="sub" style="margin-top:6px">Xếp theo: quá hạn trước, rồi ưu tiên cao, rồi hạn gần.</div></div>';
+  if(Object.keys(byWard).length) h+='<div class="panel"><h2>Gộp chuyến thực địa theo xã</h2>'+Object.entries(byWard).sort((a,b)=>b[1].length-a[1].length).map(([w,L])=>'<div style="margin-top:8px"><b>'+esc(w)+'</b> <span class="sub">'+L.length+' việc · hạn sớm nhất '+dm(L.map(([,t])=>t.due).filter(Boolean).sort()[0]||"")+'</span>'+L.sort((a,b)=>(a[1].due||"").localeCompare(b[1].due||"")).map(([id,t])=>gTaskLink(id,t,t.due?'hạn '+dm(t.due):'')).join("")+'</div>').join("")+'<div class="sub" style="margin-top:6px">Đi các vùng cùng xã trong một chuyến, chọn ngày theo hạn sớm nhất.</div></div>';
+  if(zones.length){ h+='<div class="panel"><h2>Vùng bạn đang giữ: việc cần làm ở bước hiện tại</h2>'+zones.sort((a,b)=>(a[1].priority||"9").localeCompare(b[1].priority||"9")).slice(0,12).map(([zid,z])=>{ const st=STEPS[z.step]; const ck=(z.checks||{})["s"+z.step]||[]; const left=st?st.ck.filter((c,i)=>!ck[i]):[]; const s=zstatus(z);
+    return '<div style="border-top:1px solid var(--line);padding:8px 0"><a href="#" data-zone="'+zid+'" style="color:var(--brand);font-weight:600">'+esc(zShort(z.name))+'</a> <span class="pill '+s.c+'">'+esc(s.t)+'</span> <span class="sub">'+(st?'Bước '+z.step+': '+esc(st.name):'Chưa rõ bước')+'</span>'+(z.blocker?'<div style="color:var(--bad)" class="sub">Vướng: '+esc(z.blocker)+'</div>':'')+(left.length?'<ul class="sub" style="margin:4px 0 0;padding-left:18px">'+left.slice(0,4).map(c=>'<li>'+esc(c)+'</li>').join("")+'</ul>':'')+'</div>'; }).join("")+(zones.length>12?'<div class="sub">Và '+(zones.length-12)+' vùng khác.</div>':'')+'</div>'; }
+  const titles=mine.map(([,t])=>t.title+" "+(t.note||"")).join(" | ");
+  const biz=BIZ.filter(b=>b.k.test(titles));
+  if(biz.length) h+='<div class="panel"><h2>Nghiệp vụ liên quan đến việc bạn đang làm</h2>'+biz.map(b=>{ const n=mine.filter(([,t])=>b.k.test(t.title+" "+(t.note||""))).length; return '<details style="border-top:1px solid var(--line);padding:8px 0"><summary style="cursor:pointer"><b>'+esc(b.t)+'</b> <span class="sub">'+n+' việc</span></summary><ol style="margin:6px 0 0;padding-left:20px;display:grid;gap:4px">'+b.s.map(x=>'<li>'+esc(x)+'</li>').join("")+'</ol></details>'; }).join("")+'</div>';
+  return h; }
+function vGuide(){ const G=ui.gd; const who=G.who||me||"";
+  let h='<div><h1>Hướng dẫn sử dụng</h1><div class="sub">Cách dùng hệ thống và gợi ý xử lý công việc theo từng người.</div></div>';
+  h+='<div class="focusbar" role="group" style="margin-top:10px"><button data-gtab="me" aria-pressed="'+(G.tab==="me")+'">Hướng dẫn cho tôi</button><button data-gtab="all" aria-pressed="'+(G.tab==="all")+'">Hướng dẫn chung</button></div>';
+  if(G.tab==="all") return h+'<div style="margin-top:12px;display:grid;gap:8px">'+GUIDE.map(g=>'<details class="panel" style="margin:0"'+(G.open[g.k]?" open":"")+' data-gsec="'+g.k+'"><summary style="cursor:pointer;font-weight:600">'+esc(g.t)+'</summary><ol style="margin:8px 0 0;padding-left:20px;display:grid;gap:6px">'+g.s.map(x=>'<li>'+esc(x)+'</li>').join("")+'</ol></details>').join("")+'</div>';
+  const ps=Object.entries(S.people).filter(([,p])=>p.active!==false).sort((a,b)=>(a[1].order||99)-(b[1].order||99));
+  h+=(canManage()?'<div class="filters" style="margin-top:10px"><select id="gWho" aria-label="Xem hướng dẫn của"><option value="">Chọn người</option>'+ps.map(([k,p])=>'<option value="'+k+'"'+(who===k?" selected":"")+'>'+esc(p.name)+(k===me?" (tôi)":"")+'</option>').join("")+'</select><span class="sub">Quản lý xem được hướng dẫn của từng người để kèm cặp.</span></div>':'');
+  return h+(who?gPersonal(who):'<div class="empty" style="margin-top:12px">Tài khoản chưa gắn với nhân sự nào. Nhờ owner gắn tên để xem hướng dẫn cá nhân.</div>'); }
+function bindGuide(A){ const G=ui.gd;
+  A.querySelectorAll("[data-gtab]").forEach(b=>b.addEventListener("click",()=>{ G.tab=b.dataset.gtab; render(); }));
+  A.querySelectorAll("[data-gsec]").forEach(d=>d.addEventListener("toggle",()=>{ G.open[d.dataset.gsec]=d.open; }));
+  $("#gWho")?.addEventListener("change",e=>{ G.who=e.target.value; render(); });
+  bindTaskLinks(A); }
+
 /* ---------- danh bạ liên hệ ---------- */
 const CTYPE={doitac:"Công ty đối tác",xa:"Cán bộ xã, phường",coquan:"Cơ quan nhà nước khác",khac:"Khác"};
 function ctMatch(c,q){ return !q||norm([c.name,c.title,c.org,c.ward,c.phone,c.note,unitName(c.unitId)].join(" ")).includes(norm(q)); }
@@ -2165,6 +2296,7 @@ function bindView(){
   if(ui.view==="tai-khoan"){ $("#accAdd")?.addEventListener("click",()=>openAcc(null)); $("#accBulk")?.addEventListener("click",openBulk); A.querySelectorAll("[data-acc]").forEach(r=>r.addEventListener("click",()=>openAcc(r.dataset.acc))); $("#impJson")?.addEventListener("change",e=>{ const f=e.target.files[0]; e.target.value=""; if(f) importJson(f); }); }
   if(ui.view==="ho-tro") bindSupport(A);
   if(ui.view==="bao-cao") bindReports(A);
+  if(ui.view==="huong-dan") bindGuide(A);
   if(ui.view==="nhan-su") bindAtt(A);
   if(ui.view==="lien-he") bindContacts(A);
   if(ui.view==="faq"){
