@@ -72,6 +72,7 @@ button.tile:hover{border-color:var(--brand)}
 .pill.A{background:var(--brand);color:var(--brand-ink)} .pill.B{background:var(--chip);color:var(--brand);outline:1px solid var(--brand);outline-offset:-1px} .pill.C{color:var(--muted)}
 .dot{width:8px;height:8px;border-radius:50%;display:inline-block;background:currentColor}
 .filters{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+textarea{resize:vertical;line-height:1.45;overflow-wrap:anywhere}
 .filters input,.filters select,.f input,.f select,.f textarea{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 9px;min-width:0}
 .filters input[type=search]{flex:1 1 220px}
 .list{display:flex;flex-direction:column;gap:6px}
@@ -590,6 +591,13 @@ function bindLog(A){
 
 const stamp=()=>({updatedAt:new Date().toISOString(),updatedBy:me||""});
 
+/* ---------- ô nhập nhiều dòng tự giãn theo nội dung ---------- */
+function taFit(t){ if(!t||t.tagName!=="TEXTAREA"||t.dataset.nofit||!t.isConnected||t.offsetParent===null) return; const mx=Math.max(240,Math.round(innerHeight*0.7)); t.style.height="auto"; const h=t.scrollHeight+2; t.style.height=Math.min(h,mx)+"px"; t.style.overflowY=h>mx?"auto":"hidden"; }
+function taFitIn(n){ if(!n||n.nodeType!==1) return; if(n.tagName==="TEXTAREA") taFit(n); else n.querySelectorAll&&n.querySelectorAll("textarea").forEach(taFit); }
+document.addEventListener("input",e=>taFit(e.target));
+document.addEventListener("toggle",e=>taFitIn(e.target),true);
+window.addEventListener("resize",()=>document.querySelectorAll("textarea").forEach(taFit));
+new MutationObserver(ms=>{ ms.forEach(m=>m.addedNodes.forEach(taFitIn)); }).observe(document.documentElement,{childList:true,subtree:true});
 /* ---------- shell ---------- */
 function renderShell(){
   $("#tabs").innerHTML=VIEWS.map(([k,l])=>'<a href="#'+k+'" data-v="'+k+'">'+l+'</a>').join("");
@@ -1424,7 +1432,7 @@ function evDesired(){ const t0=todayStr(), lim=addDays(t0,31), soon=addDays(t0,7
     const z0=g.zones[0]&&S.zones[g.zones[0]];
     const title=(g.k==="sukien"?T[0].title:("Công tác "+(g.place||"")+": "+T.map(item).join("; "))).slice(0,180);
     const ppl=[...new Set(T.flatMap(x=>[x.R].filter(Boolean)))];
-    out[key]={kind:g.k,title,date:g.d,end:"",time:g.ses==="am"?"7:30–11:30":g.ses==="pm"?"13:30–17:00":"",place:z0?[z0.ward,z0.province].filter(Boolean).join(", "):"",zoneId:g.zones.length===1?g.zones[0]:"",unitId:g.zones.length===1?(z0?.unitId||""):"",lead:ppl[0]||"",people:ppl,purpose:"Tạo tự động từ công việc: "+T.map(x=>x.title).join("; "),status:"draft",auto:true,taskIds:g.ids.slice().sort()}; });
+    out[key]={kind:g.k,title,date:g.d,end:"",time:g.ses==="am"?"7:30–11:30":g.ses==="pm"?"13:30–17:00":"",place:z0?[z0.ward,z0.province].filter(Boolean).join(", "):"",zoneId:g.zones.length===1?g.zones[0]:"",unitId:g.zones.length===1?(z0?.unitId||""):"",lead:ppl[0]||"",people:ppl,purpose:"Tạo tự động từ công việc:\n• "+T.map(item).join("\n• "),status:"draft",auto:true,taskIds:g.ids.slice().sort()}; });
   return out; }
 let EV_BUSY=false, EV_T=null;
 function evSyncSoon(){ clearTimeout(EV_T); EV_T=setTimeout(evSyncAll,1500); }
@@ -1433,7 +1441,7 @@ async function evSyncAll(){ if(EV_BUSY||!me) return; EV_BUSY=true; try{ const D=
     if(!o){ if(await put("events",k,{...e,report:{},photos:[],signs:[],createdAt:new Date().toISOString(),createdBy:me||"",...stamp()})) n++; continue; }
     if(o.status!=="draft") continue;
     const same=o.date===e.date&&JSON.stringify(o.taskIds||[])===JSON.stringify(e.taskIds)&&JSON.stringify(o.people||[])===JSON.stringify(e.people);
-    if(!same||(!o.edited&&(o.title!==e.title||o.time!==e.time))){ const patch=o.edited?{date:e.date,taskIds:e.taskIds,people:e.people,lead:o.lead||e.lead,purpose:e.purpose}:{...e}; await upd("events",k,{...patch,...stamp()}); } }
+    if(!same||(!o.edited&&(o.title!==e.title||o.time!==e.time||o.purpose!==e.purpose))){ const patch=o.edited?{date:e.date,taskIds:e.taskIds,people:e.people,lead:o.lead||e.lead,purpose:e.purpose}:{...e}; await upd("events",k,{...patch,...stamp()}); } }
   for(const [k,o] of Object.entries(S.events)){ if(o.auto&&o.status==="draft"&&!D[k]&&(o.date||"")>=t0&&!o.edited) await del("events",k); }
   if(n&&ui.view!=="lich") toast("Đã tạo "+n+" lịch nháp từ công việc, xem ở trang Lịch");
  }catch(e){} EV_BUSY=false; }
@@ -1445,8 +1453,8 @@ function drawEvent(id,preset){
   const zs=activeZones().sort((a,b)=>a[1].name.localeCompare(b[1].name,"vi"));
   const isEv=e.kind==="sukien"; const r=e.report||{};
   let h='<div class="dh"><div style="min-width:0"><div class="row"><span class="pill">'+esc(EKIND[e.kind])+'</span>'+(id&&evNeedsReport(e)?'<span class="pill bad">Thiếu báo cáo</span>':'')+'</div><h2 style="margin-top:6px;overflow-wrap:anywhere">'+(id?esc(e.title):(isEv?"Thêm sự kiện":"Thêm lịch công tác"))+'</h2></div><button class="btn sm" data-close>Đóng</button></div><div class="db"><form id="eform" class="grid" style="gap:10px">';
-  if(e.status==="draft") h+='<div class="alert" style="margin-bottom:4px">Lịch nháp tạo tự động từ công việc'+((e.taskIds||[]).length?': '+(e.taskIds||[]).filter(k=>S.tasks[k]).map(k=>'<a href="#" data-evt="'+k+'">'+esc(S.tasks[k].title)+'</a>').join("; "):'')+'. Kiểm tra giờ, địa điểm, người đi rồi bấm <b>Xác nhận lịch</b>. Khi việc đổi ngày, lịch nháp tự đổi theo.</div>';
-  h+='<div class="f"><label for="e_title">'+(isEv?'Tên sự kiện (họp dân, tập huấn, ký hồ sơ…)':'Nội dung công tác')+'</label><input id="e_title" value="'+esc(e.title)+'" required></div>'
+  if(e.status==="draft"){ const ti=(e.taskIds||[]).filter(k=>S.tasks[k]); h+='<div class="alert" style="margin-bottom:4px">Lịch nháp tạo tự động từ '+ti.length+' công việc. Kiểm tra giờ, địa điểm, người đi rồi bấm <b>Xác nhận lịch</b>. Khi việc đổi ngày, lịch nháp tự đổi theo.'+(ti.length?'<ul style="margin:6px 0 0;padding-left:18px;display:grid;gap:3px">'+ti.map(k=>{ const t=S.tasks[k], z=t.zone&&S.zones[t.zone]; return '<li><a href="#" data-evt="'+k+'">'+(z&&!(t.title||"").startsWith(zShort(z.name))?'<b>'+esc(zShort(z.name))+'</b>: ':'')+esc(t.title)+'</a>'+(t.R?' <span class="sub">· '+esc(pname(t.R))+'</span>':'')+'</li>'; }).join("")+'</ul>':'')+'</div>'; }
+  h+='<div class="f"><label for="e_title">'+(isEv?'Tên sự kiện (họp dân, tập huấn, ký hồ sơ…)':'Nội dung công tác')+'</label><textarea id="e_title" rows="1" required>'+esc(e.title)+'</textarea></div>'
     +'<div class="f2"><div class="f"><label for="e_date">Ngày</label><input type="date" id="e_date" value="'+esc(e.date||"")+'" required></div><div class="f"><label for="e_end">Đến ngày (nếu nhiều ngày)</label><input type="date" id="e_end" value="'+esc(e.end||"")+'"></div>'
     +'<div class="f"><label for="e_time">Giờ</label><input id="e_time" value="'+esc(e.time||"")+'" placeholder="7:30–11:00"></div><div class="f"><label for="e_place">Địa điểm</label><input id="e_place" value="'+esc(e.place||"")+'" placeholder="UBND xã, nhà văn hóa thôn…"></div>'
     +'<div class="f"><label for="e_unit">Công ty, HTX</label><select id="e_unit"><option value="">—</option>'+unitList().map(([k,u])=>'<option value="'+k+'"'+(e.unitId===k?" selected":"")+'>'+esc(u.name)+'</option>').join("")+'</select></div>'
@@ -2355,7 +2363,7 @@ function drawPlanPaste(){
     +'<div class="row" style="flex-wrap:wrap;gap:6px;margin-top:8px"><button type="button" class="btn sm" id="plTpl">Chèn mẫu trống tuần '+dm(addDays(wkStart(todayStr()),7*((+ui.pl.wk||0)+1)))+'</button><button type="button" class="btn sm" id="plTplT">Chèn mẫu tuần này</button><button type="button" class="btn sm" id="plEx">Chèn ví dụ đầy đủ</button></div>'
     +'<div class="sub" style="margin-top:8px">Tên vùng dùng trong lịch:</div><div class="row" style="flex-wrap:wrap;gap:4px;margin-top:4px">'+zn.map(n=>'<button type="button" class="pill" data-zcp="'+esc(n)+'" style="cursor:pointer;border:1px solid var(--line)">'+esc(n)+'</button>').join("")+'</div></details>'
     +'<div class="f"><label for="plTxt">Lịch tuần</label><textarea id="plTxt" rows="14" placeholder="1. THỨ NĂM (05/11/2026)&#10;Buổi sáng – Xom Sin Farm (Huy):&#10;• Thu bìa, ký lại hồ sơ&#10;• Bay flycam, đặt bẫy côn trùng&#10;Buổi chiều (Minh):&#10;• Tân Lập Buôn Lang: Tổ chức ký hồ sơ"></textarea></div><div class="row" style="margin-top:8px"><button class="btn pri" id="plParse">Tách lịch</button><span class="sub" id="plMsg"></span></div></div>');
-    const ins=v=>{ const ta=$("#plTxt"); if(ta.value.trim()&&!confirmLite(ta)) return; ta.value=v; ta.focus(); };
+    const ins=v=>{ const ta=$("#plTxt"); if(ta.value.trim()&&!confirmLite(ta)) return; ta.value=v; taFit(ta); ta.focus(); };
     $("#plTpl").addEventListener("click",()=>ins(planTemplate(addDays(wkStart(todayStr()),7*((+ui.pl.wk||0)+1)))));
     $("#plTplT").addEventListener("click",()=>ins(planTemplate(addDays(wkStart(todayStr()),7*(+ui.pl.wk||0)))));
     $("#plEx").addEventListener("click",()=>ins(PLAN_EX));
@@ -2598,7 +2606,7 @@ function drawFaq(id){
     const cur=S.faqs[id]||f; const a=[...(cur.answers||[]),{by:me,text:t,at:new Date().toISOString()}];
     const patch={answers:a}; if(cur.status==="approved") patch.pendingEdit=true; else patch.status="review";
     if(await upd("faqs",id,patch)) toast(cur.status==="approved"?"Đã gửi đề xuất, chờ quản lý duyệt":"Đã gửi câu trả lời, chờ quản lý duyệt"); });
-  L.querySelectorAll("[data-fpick]").forEach(b=>b.addEventListener("click",()=>{ $("#f_final").value=ans[+b.dataset.fpick].text; $("#f_final").focus(); }));
+  L.querySelectorAll("[data-fpick]").forEach(b=>b.addEventListener("click",()=>{ $("#f_final").value=ans[+b.dataset.fpick].text; taFit($("#f_final")); $("#f_final").focus(); }));
   L.querySelectorAll("[data-frm]").forEach(b=>b.addEventListener("click",async()=>{ if(b.dataset.c!=="1"){b.dataset.c="1";b.textContent="Bấm lần nữa để xóa";return;} const cur=S.faqs[id]||f; const a=[...(cur.answers||[])]; a.splice(+b.dataset.frm,1); const patch={answers:a}; if(cur.status!=="approved"&&!a.length) patch.status="open"; if(cur.status==="approved"&&!a.length) patch.pendingEdit=false; await upd("faqs",id,patch); }));
   $("#fapp")?.addEventListener("click",async()=>{ const fin=$("#f_final").value.trim(); if(!fin){toast("Nội dung cuối đang trống");return;}
     const patch={final:fin,source:$("#f_src").value.trim(),status:"approved",pendingEdit:false,approvedBy:me||"",approvedAt:new Date().toISOString(),answers:[]};
