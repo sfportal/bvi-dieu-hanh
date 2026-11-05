@@ -2267,16 +2267,35 @@ function myPlanToday(){ if(!me) return ''; const t0=todayStr(); const L=Object.e
 function vPlan(){ const P=ui.pl, a=addDays(wkStart(todayStr()),7*(+P.wk||0)), b=addDays(a,6), t0=todayStr();
   let L=planItems(a,b); if(P.who) L=L.filter(([,t])=>t.R===P.who);
   const dn=L.filter(([,t])=>t.status==="done").length, late=L.filter(([,t])=>t.status!=="done"&&t.planDate<t0).length, moved=Object.values(S.tasks).filter(t=>(t.planLog||[]).some(x=>x.from>=a&&x.from<=b)).length;
-  let h='<div class="row between" style="flex-wrap:wrap;gap:8px"><div><h1>Kế hoạch tuần</h1><div class="sub">Lịch làm việc theo từng buổi. Mỗi dòng là một việc thật trên hệ thống, tick ở đây là xong ở trang Công việc.</div></div><div class="row" style="gap:8px;flex-wrap:wrap">'+(canManage()?'<button class="btn pri" id="plPaste">Dán lịch tuần</button>':'')+'<button class="btn" id="plCmp">Kế hoạch so với thực tế</button></div></div>';
+  let h='<div class="row between" style="flex-wrap:wrap;gap:8px"><div><h1>Kế hoạch tuần</h1><div class="sub">Lịch làm việc theo từng buổi. Bảng chỉ hiện việc đã được xếp ngày và buổi, việc có hạn tuần này mà chưa xếp nằm ở khung vàng. Tick ở đây là xong ở trang Công việc.</div></div><div class="row" style="gap:8px;flex-wrap:wrap">'+(canManage()?'<button class="btn pri" id="plPaste">Dán lịch tuần</button>':'')+'<button class="btn" id="plCmp">Kế hoạch so với thực tế</button></div></div>';
   h+=myPlanToday();
   const ps=Object.entries(S.people).filter(([,p])=>p.active!==false).sort((x,y)=>(x[1].order||99)-(y[1].order||99));
   h+='<div class="filters" style="margin-top:12px"><button class="btn sm" id="plPrev">‹ Tuần trước</button><b>'+dm(a)+' – '+dmy(b)+'</b><button class="btn sm" id="plNext">Tuần sau ›</button>'+(P.wk?'<button class="btn sm" id="plNow">Tuần này</button>':'')+'<select id="plWho"><option value="">Mọi người</option>'+ps.map(([k,p])=>'<option value="'+k+'"'+(P.who===k?" selected":"")+'>'+esc(p.name)+'</option>').join("")+'</select><span class="sub">'+L.length+' việc · '+dn+' xong · <span style="color:var(--bad)">'+late+' quá ngày chưa xong</span> · '+moved+' lần dời</span></div>';
-  if(!L.length) return h+'<div class="empty" style="margin-top:12px">Tuần này chưa có lịch. '+(canManage()?'Bấm "Dán lịch tuần" để nhập.':'Điều phối sẽ nhập lịch tuần.')+'</div>';
+  h+=pUnplanned(a,b,P.who);
+  if(!L.length) return h+'<div class="empty" style="margin-top:12px">Tuần này chưa có việc nào được xếp vào buổi. '+(canManage()?'Bấm "Xếp lịch" ở các việc trên, hoặc "Dán lịch tuần" để nhập cả tuần.':'Bấm "Xếp lịch" ở việc của mình, hoặc chờ điều phối nhập lịch tuần.')+'</div>';
   const days=[0,1,2,3,4,5,6].map(i=>addDays(a,i)).filter(d=>L.some(([,t])=>t.planDate===d)||d===t0);
   h+='<div style="display:grid;gap:10px;margin-top:12px">'+days.map(d=>{ const D=L.filter(([,t])=>t.planDate===d); const ses=["am","pm",""].filter(k=>D.some(([,t])=>(t.planSes||"")===k));
     return '<div class="panel" style="margin:0;'+(d===t0?'border-color:var(--info);border-width:2px':'')+'"><div class="row between"><h2 style="margin:0">'+wdName(d)+' '+dmy(d)+(d===t0?' · <span style="color:var(--info)">Hôm nay</span>':'')+'</h2><span class="sub">'+D.filter(([,t])=>t.status==="done").length+'/'+D.length+' xong</span></div>'
      +(D.length?'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px;margin-top:8px">'+ses.map(k=>'<div><div class="sub" style="font-weight:600;margin-bottom:4px">'+PSES[k]+'</div>'+pCell(D.filter(([,t])=>(t.planSes||"")===k))+'</div>').join("")+'</div>':'<div class="sub">Không có lịch.</div>')+'</div>'; }).join("")+'</div>';
   return h; }
+function pInTree(id){ let t=S.tasks[id], n=0; while(t&&n<8){ if(t.kind==="epic") return true; t=t.parent?S.tasks[t.parent]:null; n++; } return false; }
+function pUnplanned(a,b,who){ const t0=todayStr(), cur=t0>=a&&t0<=b;
+  let U=Object.entries(S.tasks).filter(([id,t])=>t.kind!=="epic"&&t.status!=="done"&&!tKids(id).length&&!(t.planDate&&t.planDate>=a&&t.planDate<=b)&&t.due&&(t.due>=a&&t.due<=b||(cur&&t.due<a))&&pInTree(id));
+  if(who) U=U.filter(([,t])=>t.R===who);
+  if(!U.length) return '';
+  U.sort((x,y)=>x[1].due.localeCompare(y[1].due)||(x[1].zone||"").localeCompare(y[1].zone||""));
+  const open=ui.pl.un!==false;
+  return '<details class="panel" style="margin-top:12px;border-left:4px solid var(--warn)"'+(open?' open':'')+' id="plUn"><summary style="cursor:pointer"><b>Việc trong trang Công việc có hạn tuần này, chưa xếp buổi ('+U.length+')</b></summary><div class="sub" style="margin:6px 0">Các việc này có hạn trong tuần nhưng chưa được đặt vào ngày và buổi cụ thể nên chưa nằm trên bảng bên dưới. Bấm "Xếp lịch" để đưa vào.</div>'
+   +U.map(([id,t])=>{ const late=t.due<t0; const can=canManage()||t.R===me;
+     return '<div class="row" style="gap:6px;flex-wrap:nowrap;align-items:flex-start;padding:4px 0;border-top:1px solid var(--line)"><span class="pill" style="flex:0 0 auto;'+(late?'color:var(--bad)':'')+'">'+(late?'Quá hạn ':'Hạn ')+dm(t.due)+'</span><a href="#" data-otask="'+id+'" style="flex:1;min-width:0;color:inherit;text-decoration:none;overflow-wrap:anywhere">'+(t.zone&&S.zones[t.zone]?'<b>'+esc(zShort(S.zones[t.zone].name))+'</b>: ':'')+esc(t.title)+'</a><span class="pill" style="flex:0 0 auto">'+esc(pname(t.R)||"?")+'</span>'+(can?'<button class="btn sm" data-pplan="'+id+'" style="flex:0 0 auto">Xếp lịch</button>':'')+'</div>'; }).join("")+'</details>'; }
+function openSched(id){ const t=S.tasks[id]; if(!t) return; ui.drawer=null; const t0=todayStr(); const d0=t.due&&t.due>=t0?t.due:t0;
+  const ps=Object.entries(S.people).filter(([,p])=>p.active!==false).sort((x,y)=>(x[1].order||99)-(y[1].order||99));
+  showDrawer('<div class="dh"><div><h2>Xếp lịch</h2><div class="sub">'+esc(t.title)+'</div></div><button class="btn sm" data-close>Đóng</button></div><form class="db" id="scF"><div class="f2"><div class="f"><label for="scD">Ngày làm</label><input type="date" id="scD" value="'+d0+'" required></div><div class="f"><label for="scS">Buổi</label><select id="scS"><option value="am">Sáng</option><option value="pm">Chiều</option><option value="">Trong ngày</option></select></div></div>'
+   +(canManage()?'<div class="f"><label for="scR">Người làm</label><select id="scR">'+ps.map(([k,p])=>'<option value="'+k+'"'+(t.R===k?" selected":"")+'>'+esc(p.name)+'</option>').join("")+'</select></div>':'')
+   +'<label class="row"><input type="checkbox" id="scDue"'+(t.due&&t.due<d0?' checked':'')+'> Đổi hạn việc thành ngày này</label><div class="row" style="margin-top:8px"><button class="btn pri">Xếp vào lịch</button><span class="sub" id="scM"></span></div></form>');
+  $("#scF").addEventListener("submit",async e=>{ e.preventDefault(); const d=$("#scD").value; if(!d){ $("#scM").textContent="Chọn ngày."; return; }
+    const ch={planDate:d,planSes:$("#scS").value,...stamp()}; if($("#scR")) ch.R=$("#scR").value; if($("#scDue").checked) ch.due=d;
+    if(await upd("tasks",id,ch)){ toast("Đã xếp vào "+wdName(d)+" "+dm(d)); closeDrawer(); } }); }
 function openMove(id){ const t=S.tasks[id]; if(!t) return; ui.drawer=null; const nd=nextWorkday(t.planDate&&t.planDate>todayStr()?t.planDate:todayStr());
   showDrawer('<div class="dh"><div><h2>Dời việc</h2><div class="sub">'+esc(t.title)+'</div></div><button class="btn sm" data-close>Đóng</button></div><form class="db" id="mvF"><div class="f2"><div class="f"><label for="mvD">Sang ngày</label><input type="date" id="mvD" value="'+nd+'" required></div><div class="f"><label for="mvS">Buổi</label><select id="mvS"><option value="am">Sáng</option><option value="pm">Chiều</option><option value="">Trong ngày</option></select></div></div><div class="f"><label for="mvR">Lý do (bắt buộc)</label><input id="mvR" required placeholder="Ví dụ: Chủ vườn vắng, hẹn lại thứ 2"></div><div class="row"><button class="btn pri">Dời</button><span class="sub" id="mvM"></span></div></form>');
   $("#mvF").addEventListener("submit",async e=>{ e.preventDefault(); const to=$("#mvD").value, r=$("#mvR").value.trim(); if(!to||!r){ $("#mvM").textContent="Chọn ngày và ghi lý do."; return; }
@@ -2300,6 +2319,8 @@ function bindPlan(A){ const P=ui.pl;
   $("#plWho")?.addEventListener("change",e=>{ P.who=e.target.value; render(); });
   bindTaskLinks(A); }
 document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest("[data-pmove]"); if(b){ e.preventDefault(); openMove(b.dataset.pmove); } });
+document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest("[data-pplan]"); if(b){ e.preventDefault(); openSched(b.dataset.pplan); } });
+document.addEventListener("toggle",e=>{ if(e.target&&e.target.id==="plUn") ui.pl.un=e.target.open; },true);
 
 /* ---------- danh bạ liên hệ ---------- */
 const CTYPE={doitac:"Công ty đối tác",xa:"Cán bộ xã, phường",coquan:"Cơ quan nhà nước khác",khac:"Khác"};
