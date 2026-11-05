@@ -778,12 +778,12 @@ function drawHs(id,focus){ const z=S.zones[id]; if(!z){ closeDrawer(); return; }
 }
 
 /* ---------- thư mục Drive của vùng: đếm file, tải nhiều file lên ---------- */
-const DRV_TREE=[["hs01","01 Bộ hồ sơ mã vùng trồng",[["hs01_ky","Bản xuất để ký"],["hs01_scan","Bản scan đã ký"],["hs01_anh","Ảnh bản cứng đã ký"]]],["tq","02 Hồ sơ nộp Trung Quốc",[["tq_ky","Bản xuất để ký"],["tq_scan","Bản scan đã ký"],["tq_anh","Ảnh bản cứng đã ký"]]],["cccd","03 Hồ sơ CCCD",[]],["sodo","04 Hồ sơ sổ đỏ",[]],["img","05 Hình ảnh thực tế",[["fly","Flycam"],["kho","Kho thuốc"],["thung","Thùng thuốc"],["bay","Bẫy côn trùng"]]]];
+const DRV_TREE=[["hs01","01 Bộ hồ sơ mã vùng trồng",[["hs01_ky","Bản xuất để ký"],["hs01_scan","Bản scan đã ký"],["hs01_anh","Ảnh bản cứng đã ký"]]],["tq","02 Hồ sơ nộp Trung Quốc",[["tq_ky","Bản xuất để ký"],["tq_scan","Bản scan đã ký"],["tq_anh","Ảnh bản cứng đã ký"]]],["cccd","03 Hồ sơ CCCD",[]],["sodo","04 Hồ sơ sổ đỏ",[]],["img","05 Hình ảnh thực tế",[["fly","Flycam"],["kho","Kho thuốc, thùng thuốc"],["bay","Bẫy côn trùng"],["thu","Thu hoạch sầu riêng"]]]];
 const DRV_LEAF=DRV_TREE.flatMap(([g,gl,ch])=>ch.length?ch.map(([k,l])=>[k,l,g,gl]):[[g,gl.replace(/^\d+ /,""),g,gl]]);
-const DRV_SHORT={hs01_ky:"MVT xuất",hs01_scan:"MVT scan",hs01_anh:"MVT ảnh ký",tq_ky:"TQ xuất",tq_scan:"TQ scan",tq_anh:"TQ ảnh ký",cccd:"CCCD",sodo:"Sổ đỏ",fly:"Flycam",kho:"Kho",thung:"Thùng",bay:"Bẫy"};
-const DRV_FIELD=["fly","kho","thung","bay","hs01_anh","tq_anh"];
+const DRV_SHORT={hs01_ky:"MVT xuất",hs01_scan:"MVT scan",hs01_anh:"MVT ảnh ký",tq_ky:"TQ xuất",tq_scan:"TQ scan",tq_anh:"TQ ảnh ký",cccd:"CCCD",sodo:"Sổ đỏ",fly:"Flycam",kho:"Kho, thùng thuốc",bay:"Bẫy",thu:"Thu hoạch"};
+const DRV_FIELD=["fly","kho","bay","thu","hs01_anh","tq_anh"];
 // thư mục nào có file thì tự đánh dấu "Đã scan lưu Drive" cho loại hồ sơ tương ứng (chỉ bật, không tự tắt)
-const DRV_HS={cccd:["cccd"],sodo:["sodo"],ks:["tq_scan"],fly:["fly"],kho:["kho","thung","bay"]};
+const DRV_HS={cccd:["cccd"],sodo:["sodo"],ks:["tq_scan"],fly:["fly"],kho:["kho","bay"]};
 const drvUrl=id=>"https://drive.google.com/drive/folders/"+id;
 const canDrv=()=>!!(typeof PROFILE!=="undefined"&&PROFILE&&["owner","manager","staff"].includes(PROFILE.role));
 const DUP={}; // tiến trình tải theo vùng
@@ -1311,8 +1311,8 @@ function drawTask(id,preset){
   h+='<div class="panel" id="tReview"><div class="row between"><h2>Góp ý SMART · RACI · độ rõ</h2><span class="score" id="tScore"></span></div><div class="chk-list" id="tChecks"></div>'+(sampleNs?'<div class="ai-box"><button type="button" class="btn sm" id="tAi">Nhờ Claude góp ý câu chữ</button> <span class="sub">Đọc nội dung việc và gợi ý cách viết để người được giao hiểu ngay.</span><div id="tAiOut"></div></div>':'')+'</div>';
   h+='<div class="row"><button class="btn pri" type="submit">Lưu</button>'+(id?'<button class="btn" type="button" id="tdel">Xóa</button>':'')+'<span class="sub" id="tmsg"></span></div>';
   if(id){ const kids=tKids(id); if(kids.length) h+='<div class="sub">'+kids.length+' việc con bên dưới. Xóa việc này không xóa việc con.</div>'; }
-  if(id&&t.zone&&S.zones[t.zone]?.drv&&canDrv()){ const tl=norm(t.title||""); const fv=t.fieldVisit||/flycam|bay|kho thuoc|thung thuoc|thuc dia|ky|scan|chup|anh/.test(tl);
-    const dk=/flycam/.test(tl)?"fly":/bay/.test(tl)?"bay":/thung/.test(tl)?"thung":/kho/.test(tl)?"kho":/scan/.test(tl)?"hs01_scan":/ky|bia/.test(tl)?"hs01_anh":"fly";
+  if(id&&t.zone&&S.zones[t.zone]?.drv&&canDrv()){ const tl=norm(t.title||""); const fv=t.fieldVisit||/flycam|bay|kho thuoc|thung thuoc|thu hoach|thuc dia|ky|scan|chup|anh/.test(tl);
+    const dk=/flycam/.test(tl)?"fly":/bay/.test(tl)?"bay":/thu hoach/.test(tl)?"thu":/thung|kho/.test(tl)?"kho":/scan/.test(tl)?"hs01_scan":/ky|bia/.test(tl)?"hs01_anh":"fly";
     h+='<details class="panel"'+(fv?' open':'')+'><summary style="cursor:pointer"><b>Tải ảnh, file thực địa lên Drive</b> <span class="sub">· '+esc(S.zones[t.zone].name)+'</span></summary><div class="sub" style="margin:4px 0 6px">Ảnh vào thẳng thư mục của vùng trên Drive, không cần mở Drive.</div>'+drvUpBox(t.zone,[...DRV_FIELD,"hs01_scan","tq_scan","cccd","sodo"],dk)+'</details>'; }
   h+=(id?histPanel("tasks",id,t):'')+'</form>';
   showDrawer(h); if(id) loadHist("tasks",id); bindDrvUp($("#layer"));
@@ -2488,7 +2488,7 @@ const GUIDE=[
   "Mỗi vùng ưu tiên 1 và 2 có sẵn một thư mục trên Drive, chia 5 nhóm: 01 Bộ hồ sơ mã vùng trồng, 02 Hồ sơ nộp Trung Quốc, 03 CCCD, 04 Sổ đỏ, 05 Hình ảnh thực tế (Flycam, Kho thuốc, Thùng thuốc, Bẫy côn trùng).",
   "Nhóm 01 và 02 có 3 thư mục con: Bản xuất để ký (file in ra đưa dân), Bản scan đã ký (scan bản cứng đã ký), Ảnh bản cứng đã ký (chụp bộ hồ sơ có chữ ký làm bằng chứng).",
   "Hồ sơ › tab Thư mục Drive: bảng số file của từng thư mục, Rỗng là chưa có gì. Chọn một thư mục ở ô lọc rồi bấm Còn rỗng để biết vùng nào còn thiếu. Bấm số để mở đúng thư mục trên Drive.",
-  "Tải lên: mở hồ sơ của vùng, phần Thư mục Drive, chọn thư mục rồi bấm Chọn ảnh, file để tải. Chọn được nhiều file một lần, ảnh lớn tự thu nhỏ, tên file có thêm ngày tải ở đầu. Đi thực địa thì mở việc của vùng (bay flycam, chụp kho, đặt bẫy) và tải ngay trong việc đó.",
+  "Tải lên: mở hồ sơ của vùng, phần Thư mục Drive, chọn thư mục rồi bấm Chọn ảnh, file để tải. Chọn được nhiều file một lần, ảnh lớn tự thu nhỏ, tên file có thêm ngày tải ở đầu. Đi thực địa thì mở việc của vùng (bay flycam, chụp kho và thùng thuốc, đặt bẫy, thu hoạch) và tải ngay trong việc đó.",
   "Vùng đã nối kho Drive thì không tick tay Đã scan lưu Drive nữa. Mục này chỉ xanh khi có file thật: CCCD, Sổ đỏ, Khảo sát TQ (Bản scan hồ sơ TQ), Flycam, Kho thùng bẫy lấy theo số file trong thư mục. Các loại còn lại (ủy quyền, NQ36, liên kết, nhật ký, xã xác nhận) xanh khi đã bấm Tải file lên ở đúng loại đó, file vào thư mục Bản scan đã ký.",
   "Xóa hết file trong thư mục trên Drive rồi bấm Quét lại thì mục tương ứng tự chuyển về chưa có.",
   "Liên kết theo mã thư mục, không theo tên. Đổi tên vùng trên web không làm mất liên kết; quản lý đổi tên thì thư mục vùng trên Drive cũng đổi theo, giữ mã Z ở đầu. Web không xóa, không di chuyển file trên Drive.",
