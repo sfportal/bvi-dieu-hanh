@@ -310,6 +310,7 @@ function activeZones(){ return Object.entries(S.zones).filter(([,z])=>z.active!=
 function isFocus(z){ return z.priority==="1"||z.priority==="2"; }
 function focusZones(){ return activeZones().filter(([,z])=>!ui.focus||isFocus(z)); }
 function focusBar(){ const all=activeZones(), n=all.filter(([,z])=>isFocus(z)).length; return '<div class="focusbar" role="group" aria-label="Phạm vi xem"><button data-focus="1" aria-pressed="'+ui.focus+'">Ưu tiên 1–2 · '+n+'</button><button data-focus="0" aria-pressed="'+(!ui.focus)+'">Tất cả · '+all.length+'</button></div>'; }
+function canLeave(){ return typeof canLeaveOk==="function"?canLeaveOk():false; }
 function canPlan(){ return (typeof isOwner==='function'&&isOwner())||!!(me&&S.people[me]&&S.people[me].canPlan===true); }
 function canManage(){ return !!PROFILE&&["owner","manager"].includes(PROFILE.role); }
 function unitName(id){ return id&&S.units[id]?S.units[id].name:""; }
@@ -357,6 +358,7 @@ let SB=null, PROFILE=null, FIN={}, RAW={};
 const ROLE_L={owner:"Owner",manager:"Quản lý",staff:"Nhân viên",viewer:"Chỉ xem"};
 function canFin(){ return !!PROFILE&&(PROFILE.role==="owner"||PROFILE.can_finance); }
 function isOwner(){ return PROFILE?.role==="owner"; }
+function canLeaveOk(){ return isOwner()||!!(typeof me!=="undefined"&&me&&S.people[me]?.canLeave===true); }
 function finSplit(d){ // tách số tiền khỏi hợp đồng
   const items=(d.items||[]).map(it=>{ const {price,...r}=it; return r; });
   const payments=(d.payments||[]).map(p=>{ const {paid,paidDate,...r}=p; return r; });
@@ -481,8 +483,8 @@ function vAccounts(){
   if(!isOwner()) return '<div class="alert bad">Chỉ owner quản lý tài khoản.</div>';
   if(ACC===null){ loadAcc(); return '<div class="empty">Đang tải danh sách tài khoản…</div>'; }
   let h='<div class="row between"><div><h1>Tài khoản, phân quyền</h1><div class="sub">'+ACC.length+' tài khoản. Owner: toàn quyền, cấp tài khoản. Quản lý: sửa mọi dữ liệu, duyệt phép, FAQ. Nhân viên: ghi việc, vùng, lịch, báo cáo. Chỉ xem: không sửa. Tài chính bật riêng từng người.</div></div><div class="row"><a class="btn" href="#nhat-ky">Nhật ký</a><button class="btn" id="accBulk">Tạo tài khoản cho nhân sự</button><button class="btn pri" id="accAdd">Thêm tài khoản</button></div></div>';
-  h+='<div class="tw panel" style="margin-top:12px"><table><thead><tr><th>Tài khoản</th><th>Nhân sự</th><th>Vai trò</th><th>Tài chính</th><th>Kế hoạch</th><th>Trạng thái</th><th>Vào web gần nhất</th><th>Thao tác nghiệp vụ gần nhất</th><th title="Số lần tạo, sửa, xóa dữ liệu trong 7 ngày">Thao tác 7 ngày</th></tr></thead><tbody>'
-   +ACC.map(u=>'<tr data-acc="'+u.id+'" style="cursor:pointer"><td><b>'+esc(u.name||"")+'</b><div class="sub">'+esc(u.email)+'</div></td><td>'+esc(pname(u.person_id)||"—")+'</td><td>'+ROLE_L[u.role]+'</td><td>'+(u.role==="owner"||u.can_finance?'<span class="pill good">Được xem</span>':'<span class="pill">Không</span>')+'</td><td>'+(u.role==="owner"||(u.person_id&&S.people[u.person_id]?.canPlan)?'<span class="pill good">Được dùng</span>':'<span class="pill">Không</span>')+'</td><td>'+(u.active?(u.must_change_pw?'<span class="pill warn">Chờ đổi mật khẩu</span>':'<span class="pill good">Hoạt động</span>'):'<span class="pill bad">Đã khóa</span>')+'</td>'+accSeenCell(u)+'</tr>').join("")+'</tbody></table></div>';
+  h+='<div class="tw panel" style="margin-top:12px"><table><thead><tr><th>Tài khoản</th><th>Nhân sự</th><th>Vai trò</th><th>Tài chính</th><th>Kế hoạch</th><th>Duyệt nghỉ</th><th>Trạng thái</th><th>Vào web gần nhất</th><th>Thao tác nghiệp vụ gần nhất</th><th title="Số lần tạo, sửa, xóa dữ liệu trong 7 ngày">Thao tác 7 ngày</th></tr></thead><tbody>'
+   +ACC.map(u=>'<tr data-acc="'+u.id+'" style="cursor:pointer"><td><b>'+esc(u.name||"")+'</b><div class="sub">'+esc(u.email)+'</div></td><td>'+esc(pname(u.person_id)||"—")+'</td><td>'+ROLE_L[u.role]+'</td><td>'+(u.role==="owner"||u.can_finance?'<span class="pill good">Được xem</span>':'<span class="pill">Không</span>')+'</td><td>'+(u.role==="owner"||(u.person_id&&S.people[u.person_id]?.canPlan)?'<span class="pill good">Được dùng</span>':'<span class="pill">Không</span>')+'</td><td>'+(u.role==="owner"||(u.person_id&&S.people[u.person_id]?.canLeave)?'<span class="pill good">Được duyệt</span>':'<span class="pill">Không</span>')+'</td><td>'+(u.active?(u.must_change_pw?'<span class="pill warn">Chờ đổi mật khẩu</span>':'<span class="pill good">Hoạt động</span>'):'<span class="pill bad">Đã khóa</span>')+'</td>'+accSeenCell(u)+'</tr>').join("")+'</tbody></table></div>';
   h+='<div class="panel" style="margin-top:12px"><h2>Chuyển dữ liệu từ bản cũ</h2><div class="sub">Ở bản cũ trên Claude, vào Công ty bấm "Xuất toàn bộ dữ liệu (JSON)", rồi chọn file đó ở đây. Bản ghi trùng mã sẽ được ghi đè bằng bản trong file.</div><label class="btn" style="margin-top:8px;cursor:pointer">Chọn file JSON<input type="file" id="impJson" accept=".json,application/json" hidden></label><span class="sub" id="impJmsg" style="margin-left:8px"></span></div>';
   return h;
 }
@@ -495,7 +497,7 @@ function accForm(u){
    +'<div class="f"><label for="a_p">Gắn với nhân sự (để thấy việc của mình)</label><select id="a_p"><option value="">— Chưa gắn —</option>'+people.map(([k,p])=>'<option value="'+k+'"'+(u?.person_id===k?" selected":"")+'>'+esc(p.name)+'</option>').join("")+'</select></div>'
    +'<div class="f2"><div class="f"><label for="a_r">Vai trò</label><select id="a_r"'+(isSelf?" disabled":"")+'>'+Object.entries(ROLE_L).filter(([k])=>k!=="owner"||u?.role==="owner").map(([k,l])=>'<option value="'+k+'"'+((u?.role||"staff")===k?" selected":"")+'>'+l+'</option>').join("")+'</select></div>'
    +'<div class="f"><label>Tài chính</label><label class="chk"><input type="checkbox" id="a_f"'+(u?.can_finance||u?.role==="owner"?" checked":"")+(isSelf?" disabled":"")+'><span>Được xem số tiền hợp đồng</span></label></div></div>'
-   +'<div class="f"><label>Tính năng</label><label class="chk"><input type="checkbox" id="a_pl"'+(u?.role==="owner"||(u?.person_id&&S.people[u.person_id]?.canPlan)?" checked":"")+(u?.role==="owner"?" disabled":"")+'><span>Kế hoạch tuần: dán lịch, bảng tuần, rà soát công việc</span></label><div class="sub">Cần gắn với nhân sự. Người không có quyền vẫn thấy "Lịch hôm nay của tôi" ở Tổng quan.</div></div>'
+   +'<div class="f"><label>Tính năng</label><label class="chk"><input type="checkbox" id="a_pl"'+(u?.role==="owner"||(u?.person_id&&S.people[u.person_id]?.canPlan)?" checked":"")+(u?.role==="owner"?" disabled":"")+'><span>Kế hoạch tuần: dán lịch, bảng tuần, rà soát công việc</span></label><label class="chk"><input type="checkbox" id="a_lv"'+(u?.role==="owner"||(u?.person_id&&S.people[u.person_id]?.canLeave)?" checked":"")+(u?.role==="owner"?" disabled":"")+'><span>Duyệt đơn nghỉ phép, về sớm</span></label><div class="sub">Cần gắn với nhân sự. Người không có quyền vẫn thấy "Lịch hôm nay của tôi" ở Tổng quan.</div></div>'
    +(u?'':'<div class="f"><label for="a_pw">Mật khẩu cấp lần đầu (để trống: hệ thống tự tạo)</label><input id="a_pw" minlength="8" autocomplete="off"></div>')
    +'<div class="row"><button class="btn pri">'+(u?"Lưu":"Tạo tài khoản")+'</button><span class="sub" id="accM"></span></div></form>'
    +(u&&!isSelf?'<div class="panel" style="margin-top:12px"><div class="row" style="flex-wrap:wrap"><button class="btn" id="accPw">Đặt lại mật khẩu</button><button class="btn" id="accAct">'+(u.active?"Ngừng kích hoạt":"Kích hoạt lại")+'</button><button class="btn" id="accDel">Xóa tài khoản</button></div><div id="accOut" style="margin-top:8px"></div></div>':'')
@@ -511,6 +513,8 @@ function openAcc(id){
     if(r.error){ m.textContent=/already/i.test(r.error)?"Email này đã có tài khoản.":r.error; return; }
     const pid=body.person_id, pl=$("#a_pl")?.checked; if(pid&&S.people[pid]&&!!S.people[pid].canPlan!==!!pl&&body.role!=="owner") await upd("people",pid,{canPlan:!!pl});
     if(u?.person_id&&u.person_id!==pid&&S.people[u.person_id]?.canPlan&&!ACC.some(x=>x.id!==u.id&&x.person_id===u.person_id)) await upd("people",u.person_id,{canPlan:false});
+    const lv=$("#a_lv")?.checked; if(pid&&S.people[pid]&&!!S.people[pid].canLeave!==!!lv&&body.role!=="owner") await upd("people",pid,{canLeave:!!lv});
+    if(u?.person_id&&u.person_id!==pid&&S.people[u.person_id]?.canLeave&&!ACC.some(x=>x.id!==u.id&&x.person_id===u.person_id)) await upd("people",u.person_id,{canLeave:false});
     m.textContent="Đã lưu"; if(!u){ $("#accF").insertAdjacentHTML("afterend",pwBox(r.email,r.password)); bindCp(L); $("#accF").querySelector("button").disabled=true; } await loadAcc(); });
   $("#accPw")?.addEventListener("click",async()=>{ const r=await callAdmin({action:"reset_password",id:u.id}); if(r.error){ toast(r.error); return; } $("#accOut").innerHTML=pwBox(u.email,r.password); bindCp(L); loadAcc(); });
   $("#accAct")?.addEventListener("click",async()=>{ const r=await callAdmin({action:"set_active",id:u.id,active:!u.active}); if(r.error){ toast(r.error); return; } toast(u.active?"Đã khóa tài khoản":"Đã kích hoạt lại"); closeDrawer(); loadAcc(); });
@@ -1068,7 +1072,7 @@ function vOverview(){
   const cnt=k=>zs.filter(x=>x.s.k===k).length;
   const coded=zs.filter(x=>x.z.code&&!/^(DANGTHUCHIEN|TEST|YANNING)/.test(x.z.code)||x.z.step>=7).length;
   const g={A:0,B:0,C:0}; zs.forEach(x=>g[grp(x.z)]++);
-  let h='<div class="row between"><div><h1>Tổng quan</h1><div class="sub">Hôm nay '+dmy(todayStr())+' · '+zs.length+' vùng '+(ui.focus?'ưu tiên 1–2':'đang theo dõi')+' · cập nhật trực tiếp</div></div>'+(typeof isOwner==="function"&&isOwner()?'<div class="row" style="gap:8px"><button class="btn" id="expBtn">Xuất dữ liệu</button>'+focusBar()+'</div>':focusBar())+'</div>'+(()=>{ const t=todayStr(); const off=Object.values(S.leaves).filter(l=>leaveOn(l,t)&&l.status!=="pending"&&l.status!=="rejected"); const pend=Object.values(S.leaves).filter(l=>(l.status||"pending")==="pending").length; return (off.length||(pend&&canManage()))?'<div class="row" style="margin-top:8px">'+(off.length?'<span class="pill">Hôm nay nghỉ: '+off.map(l=>esc(pname(l.person))+(l.type==="early"?" (về sớm "+esc(l.time||"")+")":"")).join(", ")+'</span>':'')+(pend&&canManage()?'<a class="pill warn" href="#nhan-su">'+pend+' đơn nghỉ chờ duyệt</a>':'')+'</div>':''; })()+(me?quickBar():'<div class="alert" style="margin-top:8px">Chọn tên của bạn ở góc trên để thấy việc của mình và gửi báo cáo nhanh.</div>');
+  let h='<div class="row between"><div><h1>Tổng quan</h1><div class="sub">Hôm nay '+dmy(todayStr())+' · '+zs.length+' vùng '+(ui.focus?'ưu tiên 1–2':'đang theo dõi')+' · cập nhật trực tiếp</div></div>'+(typeof isOwner==="function"&&isOwner()?'<div class="row" style="gap:8px"><button class="btn" id="expBtn">Xuất dữ liệu</button>'+focusBar()+'</div>':focusBar())+'</div>'+(()=>{ const t=todayStr(); const off=Object.values(S.leaves).filter(l=>leaveOn(l,t)&&l.status!=="pending"&&l.status!=="rejected"); const pend=Object.values(S.leaves).filter(l=>(l.status||"pending")==="pending").length; return (off.length||(pend&&canManage()))?'<div class="row" style="margin-top:8px">'+(off.length?'<span class="pill">Hôm nay nghỉ: '+off.map(l=>esc(pname(l.person))+(l.type==="early"?" (về sớm "+esc(l.time||"")+")":"")).join(", ")+'</span>':'')+(pend&&canLeave()?'<a class="pill warn" href="#nhan-su">'+pend+' đơn nghỉ chờ duyệt</a>':'')+'</div>':''; })()+(me?quickBar():'<div class="alert" style="margin-top:8px">Chọn tên của bạn ở góc trên để thấy việc của mình và gửi báo cáo nhanh.</div>');
   { const sp=spMine().length; if(sp) h+='<div class="row" style="margin-top:8px"><a class="pill warn" href="#ho-tro">'+sp+' yêu cầu hỗ trợ đang chờ bạn</a></div>'; }
   h+=myPlanToday()+todayPanel()+teamWatch();
   { const fp=faqPending().length; if(fp&&canManage()) h+='<div class="row" style="margin-top:8px"><a class="pill warn" href="#faq">'+fp+' FAQ chờ duyệt</a></div>'; }
@@ -1597,14 +1601,14 @@ function leaveRow(id,l,mg){ return '<div style="padding:9px 0;border-top:1px sol
   +(mg&&(l.status||"pending")==="pending"?'<div class="row" style="margin-top:6px"><button class="btn sm pri" data-ldec="'+id+'|approved">Duyệt</button>'+(l.type==="leave"&&l.pay==="paid"?'<button class="btn sm" data-ldec="'+id+'|approved_unpaid">Duyệt nghỉ không lương</button>':'')+'<button class="btn sm" data-ldec="'+id+'|rejected">Không duyệt</button></div>':'')
   +((l.person===me&&(l.status||"pending")==="pending")?'<div class="row" style="margin-top:6px"><button class="btn sm" data-ldel="'+id+'">Rút đơn</button></div>':'')+'</div>'; }
 function leavePanel(){
-  const mg=canManage(), t=todayStr(), ls=Object.entries(S.leaves);
+  const mg=canLeave(), t=todayStr(), ls=Object.entries(S.leaves);
   const pend=ls.filter(([,l])=>(l.status||"pending")==="pending").sort((a,b)=>a[1].from.localeCompare(b[1].from));
   const now=ls.filter(([,l])=>leaveOn(l,t)&&l.status!=="pending");
   const mine=ls.filter(([,l])=>l.person===me).sort((a,b)=>b[1].from.localeCompare(a[1].from)).slice(0,6);
   const up=ls.filter(([,l])=>l.from>t&&(l.status==="approved"||l.status==="approved_unpaid")).sort((a,b)=>a[1].from.localeCompare(b[1].from)).slice(0,8);
   let h='<div class="panel" style="margin-top:12px"><div class="row between"><h2>Nghỉ phép, về sớm</h2>'+(me?'<button class="btn pri sm" data-newleave>Báo nghỉ / xin về sớm</button>':'<span class="sub">Chọn tên ở góc trên để báo nghỉ</span>')+'</div>';
   h+='<div class="sub" style="margin:4px 0 6px">Hôm nay: '+(now.length?now.map(([,l])=>esc(pname(l.person))+' ('+(l.type==="early"?"về sớm "+esc(l.time||""):LPAY[l.pay].toLowerCase())+')').join(", "):"không ai nghỉ")+'</div>';
-  if(pend.length) h+='<div style="margin-top:6px"><b>Chờ duyệt ('+pend.length+')</b>'+(mg?'':'<span class="sub"> · Lãnh đạo, Điều phối duyệt</span>')+pend.map(([k,l])=>leaveRow(k,l,mg)).join("")+'</div>';
+  if(pend.length) h+='<div style="margin-top:6px"><b>Chờ duyệt ('+pend.length+')</b>'+(mg?'':'<span class="sub"> · Anh Uy hoặc người được giao quyền duyệt</span>')+pend.map(([k,l])=>leaveRow(k,l,mg)).join("")+'</div>';
   if(up.length) h+='<div style="margin-top:10px"><b>Sắp nghỉ</b>'+up.map(([k,l])=>leaveRow(k,l,false)).join("")+'</div>';
   if(mine.length) h+='<div style="margin-top:10px"><b>Đơn của tôi</b>'+mine.map(([k,l])=>leaveRow(k,l,false)).join("")+'</div>';
   return h+'</div>';
@@ -3280,7 +3284,7 @@ function bindView(){
   A.querySelectorAll("[data-quick]").forEach(b=>b.addEventListener("click",openQuick));
   if(ui.view==="tong-quan"){ bindTaskLinks(A); maybeNudge(); }
   A.querySelectorAll("[data-newleave]").forEach(b=>b.addEventListener("click",openLeave));
-  A.querySelectorAll("[data-ldec]").forEach(b=>b.addEventListener("click",async()=>{ if(!canManage()) return; const [lid,st]=b.dataset.ldec.split("|"); if(await upd("leaves",lid,{status:st,decidedBy:me||"",decidedAt:new Date().toISOString()})) toast(LST[st]); }));
+  A.querySelectorAll("[data-ldec]").forEach(b=>b.addEventListener("click",async()=>{ if(!canLeave()){ toast("Bạn chưa được giao quyền duyệt nghỉ"); return; } const [lid,st]=b.dataset.ldec.split("|"); if(await upd("leaves",lid,{status:st,decidedBy:me||"",decidedAt:new Date().toISOString()})) toast(LST[st]); }));
   A.querySelectorAll("[data-ldel]").forEach(b=>b.addEventListener("click",async()=>{ if(b.dataset.c!=="1"){b.dataset.c="1";b.textContent="Bấm lần nữa để rút";return;} if(await del("leaves",b.dataset.ldel)) toast("Đã rút đơn"); }));
   A.querySelectorAll("[data-ev]").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();openEvent(b.dataset.ev);}));
   if(ui.view==="lich"){
