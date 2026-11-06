@@ -697,6 +697,8 @@ function vHs(){ ui.hs=ui.hs||{q:"",pri:"12",owner:"",item:"",miss:false,qm:"",qh
   const ppl=Object.entries(S.people).filter(([,p])=>p.active!==false).sort((a,b)=>a[1].name.localeCompare(b[1].name,"vi"));
   const holdOpts=[...HSHOLD,...ppl.map(([k,p])=>[k,p.name])];
   let h='<div><h1>Hồ sơ vùng trồng</h1><div class="sub">Biết từng bộ hồ sơ chính của vùng đang ra sao: bản cứng đủ chưa, ai đang giữ, đã scan lưu Drive và nhập FarmBase chưa. Chỉ ghi trạng thái, không ghi số CCCD, số sổ đỏ ở đây.</div></div>';
+  if(canDrv()){ const dz=zs.filter(([,z])=>z.drv); const lastS=dz.map(([,z])=>z.drvScanAt||"").sort().pop();
+    h+='<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px"><button class="btn sm pri" id="hssync" title="Đếm lại file trong các thư mục Drive và cập nhật trạng thái hồ sơ">Đồng bộ Drive</button><span class="sub" id="hssyncst">'+(lastS?'Đồng bộ gần nhất '+esc(dmy(lastS.slice(0,10)))+' '+esc(new Date(lastS).toLocaleTimeString("vi-VN",{hour:"2-digit",minute:"2-digit"})):'Chưa đồng bộ')+' · '+(canManage()?'quét tất cả vùng':'quét '+dz.length+' vùng đang xem')+'</span></div>'; }
   h+='<div class="focusbar" role="tablist" aria-label="Phần hồ sơ" style="margin-top:10px">'+[["","Bảng hồ sơ"],["bc","Bản cứng đưa dân ký"],["drv","Thư mục Drive"]].map(([k,l])=>'<button role="tab" data-hstab="'+k+'" aria-pressed="'+((f.tab||"")===k)+'">'+l+'</button>').join("")+'</div>';
   // tổng hợp theo loại
   const N=zs.length||1; const T=HS.map(([k,l])=>{ let ok=0,part=0,dr=0,fb=0,done=0; const hc={}; zs.forEach(([,z])=>{ const x=hsItem(z,k); if(x.hard==="ok"||x.hard==="na")ok++; else if(x.hard==="part")part++; if(x.drive||x.hard==="na")dr++; if(x.fb||x.hard==="na")fb++; if(hsDone(x))done++; if(x.holder&&x.hard&&x.hard!=="na") hc[x.holder]=(hc[x.holder]||0)+1; });
@@ -734,6 +736,9 @@ function bindHs(A){ const f=ui.hs; const rr=()=>render();
   $("#hsclr")?.addEventListener("click",()=>{ Object.assign(f,{q:"",pri:"12",owner:"",item:"",miss:false,hold:""}); rr(); });
   A.querySelectorAll("[data-hsitem]").forEach(a=>a.addEventListener("click",e=>{ e.preventDefault(); const k=a.dataset.hsitem; if(f.item===k){ f.item=""; f.miss=false; } else { f.item=k; f.miss=true; } rr(); }));
   A.querySelectorAll("[data-hstab]").forEach(b=>b.addEventListener("click",()=>{ f.tab=b.dataset.hstab; rr(); }));
+  $("#hssync")?.addEventListener("click",async e=>{ const b=e.target; b.disabled=true; b.textContent="Đang đồng bộ…";
+    if(canManage()) await drvScan(null); else { const dz=hsZones().filter(([,z])=>z.drv).slice(0,30); let i=0; for(const [id] of dz){ i++; const st=$("#hssyncst"); if(st) st.textContent="Đang quét "+i+"/"+dz.length+" vùng…"; if(!await drvScan(id,true)) break; } toast("Đã đồng bộ "+i+" vùng"); }
+    render(); });
   if(f.tab==="drv") bindDrv(A); if(f.tab==="bc") bindBc(A);
   A.querySelectorAll("[data-hsqm]").forEach(b=>b.addEventListener("click",()=>{ f.qm=b.dataset.hsqm; rr(); }));
   A.querySelectorAll("[data-hsz]").forEach(a=>a.addEventListener("click",e=>{ e.preventDefault(); openHs(a.dataset.hsz); }));
