@@ -429,7 +429,7 @@ async function callAdmin(body,anon){
     const res=await fetch(SB_URL+"/functions/v1/admin-users",{method:"POST",headers:h,body:JSON.stringify(body)}); return await res.json(); }catch(e){ return {error:"Không kết nối được máy chủ"}; } }
 async function callDrive(body){
   try{ const {data}=await SB.auth.getSession(); const h={"Content-Type":"application/json",apikey:SB_KEY,Authorization:"Bearer "+(data.session?.access_token||"")};
-    const res=await fetch(SB_URL+"/functions/v1/drive",{method:"POST",headers:h,body:JSON.stringify(body)}); return await res.json(); }catch(e){ return {error:"Không kết nối được máy chủ"}; } }
+    const res=await fetch(SB_URL+"/functions/v1/drive",{method:"POST",headers:h,body:JSON.stringify(body)}); let j=null; try{ j=await res.json(); }catch(_){} if(!res.ok&&!(j&&j.error)) return {error:res.status===546||res.status===504?"timeout":"http_"+res.status}; return j||{error:"http_"+res.status}; }catch(e){ return {error:"Không kết nối được máy chủ"}; } }
 function showChangePw(first){
   const html='<h1 style="margin-top:0">'+(first?'Đổi mật khẩu lần đầu':'Đổi mật khẩu')+'</h1><div class="sub" style="margin-bottom:10px">'+esc(PROFILE?.email||"")+(first?' · mật khẩu được cấp chỉ dùng một lần':'')+'</div><form id="cpf" class="grid" style="gap:8px"><div class="f"><label for="np1">Mật khẩu mới (từ 8 ký tự)</label><input id="np1" type="password" minlength="8" required autocomplete="new-password"></div><div class="f"><label for="np2">Nhập lại</label><input id="np2" type="password" minlength="8" required autocomplete="new-password"></div><button class="btn pri">Lưu mật khẩu</button><div class="sub" id="cpm"></div></form>'+(first?'<div style="margin-top:8px"><a href="#" id="lo2" class="sub">Đăng xuất</a></div>':'');
   if(first) authCard(html); else showDrawer('<div class="dh"><h2>Đổi mật khẩu</h2><button class="btn sm" data-close>Đóng</button></div><div class="db">'+html.replace(/<h1[^]*?<\/h1>/,"")+'</div>');
@@ -698,7 +698,7 @@ function vHs(){ ui.hs=ui.hs||{q:"",pri:"12",owner:"",item:"",miss:false,qm:"",qh
   const holdOpts=[...HSHOLD,...ppl.map(([k,p])=>[k,p.name])];
   let h='<div><h1>Hồ sơ vùng trồng</h1><div class="sub">Biết từng bộ hồ sơ chính của vùng đang ra sao: bản cứng đủ chưa, ai đang giữ, đã scan lưu Drive và nhập FarmBase chưa. Chỉ ghi trạng thái, không ghi số CCCD, số sổ đỏ ở đây.</div></div>';
   if(canDrv()){ const dz=zs.filter(([,z])=>z.drv); const lastS=dz.map(([,z])=>z.drvScanAt||"").sort().pop();
-    h+='<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px"><button class="btn sm pri" id="hssync" title="Đếm lại file trong các thư mục Drive và cập nhật trạng thái hồ sơ">Đồng bộ Drive</button><span class="sub" id="hssyncst">'+(lastS?'Đồng bộ gần nhất '+esc(dmy(lastS.slice(0,10)))+' '+esc(new Date(lastS).toLocaleTimeString("vi-VN",{hour:"2-digit",minute:"2-digit"})):'Chưa đồng bộ')+' · '+(canManage()?'quét tất cả vùng':'quét '+dz.length+' vùng đang xem')+'</span></div>'; }
+    h+='<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px"><button class="btn sm pri" id="hsdrvsync" title="Đếm lại file trong các thư mục Drive và cập nhật trạng thái hồ sơ">Đồng bộ Drive</button><span class="sub" id="hsdrvst">'+(lastS?'Đồng bộ gần nhất '+esc(dmy(lastS.slice(0,10)))+' '+esc(new Date(lastS).toLocaleTimeString("vi-VN",{hour:"2-digit",minute:"2-digit"})):'Chưa đồng bộ')+' · '+(canManage()?'quét tất cả vùng':'quét '+dz.length+' vùng đang xem')+'</span></div>'; }
   h+='<div class="focusbar" role="tablist" aria-label="Phần hồ sơ" style="margin-top:10px">'+[["","Bảng hồ sơ"],["bc","Bản cứng đưa dân ký"],["drv","Thư mục Drive"]].map(([k,l])=>'<button role="tab" data-hstab="'+k+'" aria-pressed="'+((f.tab||"")===k)+'">'+l+'</button>').join("")+'</div>';
   // tổng hợp theo loại
   const N=zs.length||1; const T=HS.map(([k,l])=>{ let ok=0,part=0,dr=0,fb=0,done=0; const hc={}; zs.forEach(([,z])=>{ const x=hsItem(z,k); if(x.hard==="ok"||x.hard==="na")ok++; else if(x.hard==="part")part++; if(x.drive||x.hard==="na")dr++; if(x.fb||x.hard==="na")fb++; if(hsDone(x))done++; if(x.holder&&x.hard&&x.hard!=="na") hc[x.holder]=(hc[x.holder]||0)+1; });
@@ -736,9 +736,9 @@ function bindHs(A){ const f=ui.hs; const rr=()=>render();
   $("#hsclr")?.addEventListener("click",()=>{ Object.assign(f,{q:"",pri:"12",owner:"",item:"",miss:false,hold:""}); rr(); });
   A.querySelectorAll("[data-hsitem]").forEach(a=>a.addEventListener("click",e=>{ e.preventDefault(); const k=a.dataset.hsitem; if(f.item===k){ f.item=""; f.miss=false; } else { f.item=k; f.miss=true; } rr(); }));
   A.querySelectorAll("[data-hstab]").forEach(b=>b.addEventListener("click",()=>{ f.tab=b.dataset.hstab; rr(); }));
-  $("#hssync")?.addEventListener("click",async e=>{ const b=e.target; b.disabled=true; b.textContent="Đang đồng bộ…";
-    if(canManage()) await drvScan(null); else { const dz=hsZones().filter(([,z])=>z.drv).slice(0,30); let i=0; for(const [id] of dz){ i++; const st=$("#hssyncst"); if(st) st.textContent="Đang quét "+i+"/"+dz.length+" vùng…"; if(!await drvScan(id,true)) break; } toast("Đã đồng bộ "+i+" vùng"); }
-    render(); });
+  $("#hsdrvsync")?.addEventListener("click",async e=>{ const b=e.target; b.disabled=true; b.textContent="Đang đồng bộ…"; const st=$("#hsdrvst");
+    const prog=(d,n)=>{ if(st) st.textContent="Đang quét "+d+"/"+n+" vùng…"; };
+    await drvScan(canManage()?null:hsZones().filter(([,z])=>z.drv).map(([id])=>id),false,prog); render(); });
   if(f.tab==="drv") bindDrv(A); if(f.tab==="bc") bindBc(A);
   A.querySelectorAll("[data-hsqm]").forEach(b=>b.addEventListener("click",()=>{ f.qm=b.dataset.hsqm; rr(); }));
   A.querySelectorAll("[data-hsz]").forEach(a=>a.addEventListener("click",e=>{ e.preventDefault(); openHs(a.dataset.hsz); }));
@@ -806,7 +806,7 @@ function drvN(z,k){ const v=(z.drvStat||{})[k]; return typeof v==="number"?v:nul
 function drvBadge(z,k){ const n=drvN(z,k); if(n==null) return '<span class="pill" title="Chưa quét">?</span>'; if(n<0) return '<span class="pill bad" title="Không đọc được thư mục">!</span>'; return n?'<span class="pill good">'+n+' file</span>':'<span class="pill">Rỗng</span>'; }
 function drvFill(z){ let f=0; DRV_LEAF.forEach(([k])=>{ if(drvN(z,k)>0) f++; }); return f; }
 async function drvCall(body){ if(typeof callDrive!=="function") return {error:"not_configured"}; return callDrive(body); }
-const DRV_ERR={not_configured:"Cầu nối Drive chưa được bật. Báo quản trị hoàn tất bước cài đặt.",no_folder:"Vùng này chưa có thư mục Drive.",too_big:"File quá lớn (tối đa khoảng 20 MB).",no_permission:"Tài khoản chỉ xem không tải file được.",bad_token:"Mã cầu nối Drive không khớp, báo quản trị.",outside_root:"Thư mục không nằm trong kho hồ sơ BVI."};
+const DRV_ERR={not_configured:"Cầu nối Drive chưa được bật. Báo quản trị hoàn tất bước cài đặt.",no_folder:"Vùng này chưa có thư mục Drive.",too_big:"File quá lớn (tối đa khoảng 20 MB).",no_permission:"Tài khoản chỉ xem không tải file được.",bad_token:"Mã cầu nối Drive không khớp, báo quản trị.",outside_root:"Thư mục không nằm trong kho hồ sơ BVI.",timeout:"Máy chủ quét quá lâu, thử lại với ít vùng hơn."};
 const drvErr=e=>DRV_ERR[e]||e||"Lỗi không rõ";
 function drvBlobB64(b){ return new Promise((ok,no)=>{ const r=new FileReader(); r.onload=()=>ok(String(r.result).split(",")[1]||""); r.onerror=()=>no(r.error); r.readAsDataURL(b); }); }
 async function drvShrink(f){ // ảnh lớn thu về cạnh dài 2400px, JPEG 85%, giữ nguyên file khác
@@ -824,11 +824,28 @@ async function drvUpload(zid,key,files){ files=[...files]; if(!files.length) ret
 function drvRedraw(){ document.querySelectorAll("[data-dup]").forEach(el=>{ el.innerHTML=drvProg(el.dataset.dup); }); }
 function drvProg(zid){ const s=DUP[zid]; if(!s) return ""; const pc=Math.round(100*s.done/(s.total||1));
   return '<div class="sub" style="margin-top:6px">'+(s.busy?'Đang tải '+s.done+'/'+s.total+' file vào '+esc(DRV_SHORT[s.key])+'…':'Xong: '+(s.total-s.fail.length)+'/'+s.total+' file vào '+esc(DRV_SHORT[s.key]))+'</div><div style="height:6px;border-radius:4px;background:var(--sunk);overflow:hidden;margin-top:4px"><div style="height:100%;width:'+pc+'%;background:'+(s.fail.length?'var(--warn)':'var(--good)')+'"></div></div>'+(s.fail.length?'<div class="sub" style="color:var(--bad);margin-top:4px">'+s.fail.slice(0,5).map(esc).join("<br>")+(s.fail.length>5?'<br>…':'')+'</div>':''); }
-async function drvApply(zid,m,at){ const z=S.zones[zid]; if(!z) return; const patch={drvStat:m,drvScanAt:at};
+async function drvApply(zid,m,at,deep){ const z=S.zones[zid]; if(!z) return; m={...m};
+  // Apps Script cũ không đếm thư mục con: không hạ số sổ đỏ, CCCD đã đếm trước đó
+  if(!deep) ["sodo","cccd"].forEach(k=>{ const o=(z.drvStat||{})[k]; if(typeof o==="number"&&o>(m[k]||0)) m[k]=o; });
+  const patch={drvStat:m,drvScanAt:at};
   const hs={...(z.hs||{})}; let hch=false; Object.entries(DRV_HS).forEach(([k,fs])=>{ if(fs.some(f=>m[f]>0)&&!(hs[k]||{}).drive){ hs[k]={...(hs[k]||{}),drive:true,by:me||"",at}; hch=true; } }); if(hch) patch.hs=hs;
-  if(JSON.stringify(z.drvStat||{})===JSON.stringify(m)&&!hch){ z.drvScanAt=at; return; } await upd("zones",zid,patch); }
-async function drvScan(zid,quiet){ const r=await drvCall(zid?{action:"scan",zone:zid}:{action:"scan"}); if(!r||r.error){ toast(drvErr(r?.error)); return false; }
-  for(const [id,m] of Object.entries(r.zones||{})) await drvApply(id,m,r.at); if(!quiet) toast(zid?"Đã quét lại thư mục":"Đã quét "+Object.keys(r.zones||{}).length+" vùng"); return true; }
+  if(JSON.stringify(z.drvStat||{})===JSON.stringify(m)&&!hch){ z.drvScanAt=at; await upd("zones",zid,{drvScanAt:at}); return; } await upd("zones",zid,patch); }
+// quét theo từng đợt nhỏ (4 vùng mỗi lần) để không vượt giới hạn thời gian của máy chủ
+async function drvScan(zid,quiet,onProg){ let ids;
+  if(zid) ids=Array.isArray(zid)?zid:[zid];
+  else { const l=await drvCall({action:"scan",list:true}); ids=l?.ids||Object.keys(S.zones).filter(k=>S.zones[k].drv); }
+  const B=4, fail=[]; let done=0, shallow=false;
+  for(let i=0;i<ids.length;i+=B){ const part=ids.slice(i,i+B); if(onProg) onProg(done,ids.length);
+    const r=await drvCall(part.length===1?{action:"scan",zone:part[0]}:{action:"scan",zones:part});
+    if(!r||r.error||!r.zones){ fail.push(...part); if(r?.error==="not_configured"||r?.error==="bad_token"){ toast(drvErr(r.error)); return false; } continue; }
+    if(!r.deep) shallow=true;
+    for(const [id,m] of Object.entries(r.zones)) await drvApply(id,m,r.at,r.deep);
+    done+=part.length; }
+  if(onProg) onProg(done,ids.length);
+  window.__drvShallow=shallow;
+  if(fail.length) toast("Quét được "+done+"/"+ids.length+" vùng. Lỗi: "+fail.map(id=>S.zones[id]?.name||id).slice(0,4).join(", ")+(fail.length>4?"…":""));
+  else if(!quiet) toast((ids.length===1?"Đã quét lại thư mục":"Đã quét "+done+" vùng")+(shallow?". Apps Script chưa cập nhật nên chưa đếm file trong thư mục con":""));
+  return !fail.length; }
 async function drvRename(zid){ const r=await drvCall({action:"rename",zone:zid}); if(r?.ok) toast("Đã đổi tên thư mục Drive: "+r.name); else if(r?.error&&r.error!=="not_configured") toast("Chưa đổi được tên thư mục Drive: "+drvErr(r.error)); }
 // khối tải lên dùng chung: chọn thư mục + chọn nhiều file
 function drvUpBox(zid,keys,def){ const z=S.zones[zid]; if(!z?.drv) return '<div class="sub">Vùng này chưa có thư mục Drive.</div>'; if(!canDrv()) return '';
@@ -864,7 +881,7 @@ function bindDrv(A){ const f=ui.hs;
   $("#drvk")?.addEventListener("change",e=>{ f.dk=e.target.value; f.de=f.de||"empty"; render(); });
   A.querySelectorAll("[data-drve]").forEach(b=>b.addEventListener("click",()=>{ f.de=b.dataset.drve; render(); }));
   A.querySelectorAll("[data-drvz]").forEach(a=>a.addEventListener("click",e=>{ e.preventDefault(); openHs(a.dataset.drvz,"drv"); }));
-  $("#drvall")?.addEventListener("click",async e=>{ e.target.disabled=true; e.target.textContent="Đang quét…"; await drvScan(null); render(); }); }
+  $("#drvall")?.addEventListener("click",async e=>{ const b=e.target; b.disabled=true; await drvScan(null,false,(d,n)=>{ b.textContent="Đang quét "+d+"/"+n+"…"; }); render(); }); }
 
 /* ---------- theo dõi bản cứng: thu bìa, in, đưa dân ký, lấy lại, scan, nộp ---------- */
 const BC_ST=[["bia","Đủ bìa"],["in","Đã in"],["ky","Đưa dân ký"],["lay","Đã lấy lại"],["scan","Đã scan"],["nop","Đã nộp"]];
