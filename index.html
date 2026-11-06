@@ -834,13 +834,17 @@ async function drvApply(zid,m,at,deep){ const z=S.zones[zid]; if(!z) return; m={
 async function drvScan(zid,quiet,onProg){ let ids;
   if(zid) ids=Array.isArray(zid)?zid:[zid];
   else { const l=await drvCall({action:"scan",list:true}); ids=l?.ids||Object.keys(S.zones).filter(k=>S.zones[k].drv); }
-  const B=4, fail=[]; let done=0, shallow=false;
-  for(let i=0;i<ids.length;i+=B){ const part=ids.slice(i,i+B); if(onProg) onProg(done,ids.length);
-    const r=await drvCall(part.length===1?{action:"scan",zone:part[0]}:{action:"scan",zones:part});
-    if(!r||r.error||!r.zones){ fail.push(...part); if(r?.error==="not_configured"||r?.error==="bad_token"){ toast(drvErr(r.error)); return false; } continue; }
+  const B=4, fail=[], parts=[]; let done=0, shallow=false, stop=false;
+  for(let i=0;i<ids.length;i+=B) parts.push(ids.slice(i,i+B));
+  if(onProg) onProg(0,ids.length);
+  const one=async part=>{ const r=await drvCall(part.length===1?{action:"scan",zone:part[0]}:{action:"scan",zones:part});
+    if(!r||r.error||!r.zones){ fail.push(...part); if(r?.error==="not_configured"||r?.error==="bad_token"){ stop=r.error; } return; }
     if(!r.deep) shallow=true;
-    for(const [id,m] of Object.entries(r.zones)) await drvApply(id,m,r.at,r.deep);
-    done+=part.length; }
+    for(const id of part){ const m=r.zones[id]; if(m){ await drvApply(id,m,r.at,r.deep); done++; } else fail.push(id); }
+    if(onProg) onProg(done,ids.length); };
+  // 3 đợt chạy song song
+  let k=0; await Promise.all([0,1,2].map(async()=>{ while(k<parts.length&&!stop){ await one(parts[k++]); } }));
+  if(stop){ toast(drvErr(stop)); return false; }
   if(onProg) onProg(done,ids.length);
   window.__drvShallow=shallow;
   if(fail.length) toast("Quét được "+done+"/"+ids.length+" vùng. Lỗi: "+fail.map(id=>S.zones[id]?.name||id).slice(0,4).join(", ")+(fail.length>4?"…":""));
