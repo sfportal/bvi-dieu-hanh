@@ -366,7 +366,7 @@ function finJoin(id){ const d=RAW.contracts?.[id]; if(!d) return null; const f=F
   o.items=(d.items||[]).map((it,i)=>({...it,price:f.prices?f.prices[i]:undefined}));
   o.payments=(d.payments||[]).map((p,i)=>({...p,paid:f.paid?!!f.paid[i]:false,paidDate:f.paidDate?f.paidDate[i]:null}));
   return o; }
-function rebuild(col){ if(col==="contracts"){ const o={}; Object.keys(RAW.contracts||{}).forEach(k=>o[k]=finJoin(k)); S.contracts=o; } else S[col]=RAW[col]||{}; }
+function rebuild(col){ if(col==="contracts"){ const o={}; Object.keys(RAW.contracts||{}).forEach(k=>o[k]=finJoin(k)); S.contracts=o; } else if(col==="tasks"){ const R=RAW.tasks||{}; const gone=(t,n)=>!!t.parent&&(!R[t.parent]||(n<5&&gone(R[t.parent],n+1))); const o={}; Object.entries(R).forEach(([k,t])=>{ if(!gone(t,0)) o[k]=t; }); S.tasks=o; } else S[col]=RAW[col]||{}; }
 let rT=null; function softRender(){ clearTimeout(rT); rT=setTimeout(()=>{ if(ready) render(); },120); }
 function errMsg(e){ const m=(e?.message||e?.code||"")+""; if(/row-level security|permission|not allowed|42501/i.test(m)) return "Bạn không có quyền thao tác này"; return "Chưa lưu được: "+m; }
 async function put(col,id,data){
@@ -996,12 +996,20 @@ function tSilent(t){ if(t.status==="done"||t.kind==="epic") return false; const 
 function myOpen(pid){ return Object.entries(S.tasks).filter(([id,t])=>t.kind!=="epic"&&t.status!=="done"&&t.R===pid&&!tOpenKids(id)).sort((a,b)=>(tLate(b[1])?1:0)-(tLate(a[1])?1:0)||prRank(a[1])-prRank(b[1])||(a[1].due||"9").localeCompare(b[1].due||"9")); }
 function workdaysBack(n){ const out=[]; let d=addDays(todayStr(),-1); while(out.length<n){ if(new Date(d+"T00:00:00").getDay()!==0) out.push(d); d=addDays(d,-1); } return out; }
 function isReporter(pid){ const p=S.people[pid]; return p&&p.team!=="thuengoai"&&p.team!=="lead"&&p.active!==false; }
-function todayPanel(){ if(!me||!S.people[me]) return '';
+function todayPanel(){ if(!me||!S.people[me]) return ''; if(!ui.ovr){ try{ ui.ovr=localStorage.getItem("bvi_ovr")||"7d"; }catch(_){ ui.ovr="7d"; } }
   const L=myOpen(me), top=L.slice(0,3), sil=L.filter(([,t])=>tSilent(t)), late=L.filter(([,t])=>tLate(t)).length, rep=S.daily[todayStr()+"_"+me], hr=new Date().getHours();
   const row=([id,t],i)=>'<div class="trow" style="padding-inline:0"><span class="t"><span class="pill" style="min-width:22px;justify-content:center">'+(i+1)+'</span><input type="checkbox" aria-label="Xong" data-tdone="'+id+'"><button class="btn sm" style="border:0;padding:0;background:none;text-align:left;font-weight:600" data-otask="'+id+'"><span class="tt">'+esc(t.title)+'</span></button>'+(t.zone&&S.zones[t.zone]?'<span class="pill">'+esc(zShort(S.zones[t.zone].name))+'</span>':'')+'</span><span class="row">'+prBadge(t)+(t.due?'<span class="sub mono">'+dm(t.due)+'</span>':'')+(t.status==="doing"?stBadge(t):'<button class="btn sm" data-tdoing="'+id+'">Bắt đầu</button>')+'</span></div>';
-  let h='<div class="panel" style="margin-top:12px;border-left:4px solid var(--brand)"><div class="row between"><h2>Việc của '+esc(pname(me))+' hôm nay</h2><span class="row" style="gap:6px">'+(late?'<span class="pill bad">'+late+' quá hạn</span>':'')+'<span class="pill">'+L.length+' việc đang mở</span></span></div>';
-  h+=top.length?'<div class="sub" style="margin:2px 0 4px">Làm theo thứ tự 1 → 3. Xong việc nào tick ngay việc đó.</div>'+top.map(row).join(""):'<div class="sub">Bạn chưa có việc nào đang mở.</div>';
-  if(L.length>3) h+='<div class="sub" style="margin-top:4px">Còn '+(L.length-3)+' việc khác ở trang <a href="#cong-viec">Công việc</a>.</div>';
+  // khoảng thời gian: hôm nay, tuần này, tuần này + tuần sau, 7 ngày tới (mặc định)
+  const t0=todayStr(), wd=(new Date(t0+"T00:00:00").getDay()+6)%7, sun=addDays(t0,6-wd);
+  const RG=[["today","Tới hạn hôm nay",t0],["wk","Tuần này",sun],["wk2","Tuần này + tuần sau",addDays(sun,7)],["7d","7 ngày tới",addDays(t0,7)]];
+  const rg=RG.find(x=>x[0]===ui.ovr)||RG[3], end=rg[2];
+  const lateL=L.filter(([,t])=>tLate(t)), inR=L.filter(([,t])=>!tLate(t)&&t.due&&t.due<=end), noDue=L.filter(([,t])=>!t.due).length;
+  const show=[...lateL,...inR.sort((x,y)=>x[1].due.localeCompare(y[1].due))];
+  let h='<div class="panel" style="margin-top:12px;border-left:4px solid var(--brand)"><div class="row between" style="flex-wrap:wrap;gap:6px"><h2>Việc của '+esc(pname(me))+'</h2><span class="row" style="gap:6px">'+(late?'<span class="pill bad">'+late+' quá hạn</span>':'')+'<span class="pill">'+L.length+' việc đang mở</span></span></div>';
+  h+='<div class="focusbar" role="group" aria-label="Khoảng thời gian" style="margin:6px 0">'+RG.map(([k,l])=>'<button data-ovr="'+k+'" aria-pressed="'+(rg[0]===k)+'">'+l+'</button>').join("")+'</div>';
+  h+='<div class="sub" style="margin:2px 0 4px">'+(rg[0]==="today"?'Hạn hôm nay '+dm(t0):'Hạn từ nay đến '+dm(end))+': '+inR.length+' việc'+(lateL.length?', cộng '+lateL.length+' việc đã quá hạn xếp đầu':'')+'. Xong việc nào tick ngay việc đó.</div>';
+  h+=show.length?show.slice(0,15).map(row).join(""):'<div class="sub">Không có việc nào tới hạn trong khoảng này.</div>';
+  if(show.length>15||noDue) h+='<div class="sub" style="margin-top:4px">'+(show.length>15?'Còn '+(show.length-15)+' việc nữa. ':'')+(noDue?noDue+' việc chưa đặt hạn. ':'')+'Xem đủ ở trang <a href="#cong-viec">Công việc</a>.</div>';
   if(sil.length) h+='<div class="alert warn" style="margin-top:8px">'+sil.length+' việc của bạn đã '+SILENT_DAYS+' ngày trở lên chưa cập nhật: '+sil.slice(0,4).map(([id,t])=>'<a href="#" data-otask="'+id+'">'+esc(t.title.slice(0,50))+'</a>').join(", ")+(sil.length>4?'…':'')+'. Mở việc, ghi tiến độ hoặc đổi trạng thái.</div>';
   if(!L.length&&!isReporter(me)) return '';
   return h+'</div>'; }
@@ -1028,6 +1036,7 @@ function bindTaskLinks(A){
   A.querySelectorAll("[data-tdone]").forEach(c=>c.addEventListener("change",async()=>{ if(await upd("tasks",c.dataset.tdone,{status:c.checked?"done":"doing",doneAt:c.checked?new Date().toISOString():null,...stamp()})) toast(c.checked?"Đã xong, sẽ tự vào báo cáo cuối ngày":"Đã mở lại"); }));
   A.querySelectorAll("[data-tdoing]").forEach(b=>b.addEventListener("click",async()=>{ if(await upd("tasks",b.dataset.tdoing,{status:"doing",...stamp()})) toast("Đã chuyển sang Đang làm"); }));
   A.querySelectorAll("[data-watch]").forEach(r=>r.addEventListener("click",()=>openWatch(r.dataset.watch)));
+  A.querySelectorAll("[data-ovr]").forEach(b=>b.addEventListener("click",()=>{ ui.ovr=b.dataset.ovr; try{ localStorage.setItem("bvi_ovr",ui.ovr); }catch(_){} render(); }));
 }
 function quickPrefill(){ const t0=todayStr();
   const done=Object.entries(S.tasks).filter(([id,t])=>t.kind!=="epic"&&t.R===me&&t.status==="done"&&tDone(t)===t0).map(([,t])=>t).map(t=>"• "+t.title);
@@ -1368,7 +1377,9 @@ function drawTask(id,preset){
     if(data.status==="done") data.doneAt=(t.status==="done"&&t.doneAt)?t.doneAt:new Date().toISOString(); else data.doneAt=null;
     const ok=await put("tasks",id||("t"+uid()),id?{...t,...data}:data); if(ok){ toast("Đã lưu"); closeDrawer(); }
   });
-  $("#tdel")?.addEventListener("click",async()=>{ const b=$("#tdel"); if(b.dataset.c!=="1"){ b.dataset.c="1"; b.textContent="Bấm lần nữa để xóa"; return; } if(await del("tasks",id)){ toast("Đã xóa"); closeDrawer(); } });
+  $("#tdel")?.addEventListener("click",async()=>{ const b=$("#tdel"); const kids=[]; const walk=pid=>Object.entries(S.tasks).forEach(([k,x])=>{ if(x.parent===pid&&!kids.includes(k)){ kids.push(k); walk(k); } }); walk(id);
+    if(b.dataset.c!=="1"){ b.dataset.c="1"; b.textContent=kids.length?"Bấm lần nữa để xóa cả "+kids.length+" việc con":"Bấm lần nữa để xóa"; return; }
+    for(const k of kids.reverse()) await del("tasks",k); if(await del("tasks",id)){ toast(kids.length?"Đã xóa việc và "+kids.length+" việc con":"Đã xóa"); closeDrawer(); } });
 }
 function raciMatrix(){
   const ppl=Object.entries(S.people).sort((a,b)=>a[1].name.localeCompare(b[1].name,"vi"));
