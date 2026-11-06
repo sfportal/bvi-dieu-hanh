@@ -737,7 +737,7 @@ function bindHs(A){ const f=ui.hs; const rr=()=>render();
   A.querySelectorAll("[data-hsitem]").forEach(a=>a.addEventListener("click",e=>{ e.preventDefault(); const k=a.dataset.hsitem; if(f.item===k){ f.item=""; f.miss=false; } else { f.item=k; f.miss=true; } rr(); }));
   A.querySelectorAll("[data-hstab]").forEach(b=>b.addEventListener("click",()=>{ f.tab=b.dataset.hstab; rr(); }));
   $("#hsdrvsync")?.addEventListener("click",async e=>{ const b=e.target; b.disabled=true; b.textContent="Đang đồng bộ…"; const st=$("#hsdrvst");
-    const prog=(d,n)=>{ if(st) st.textContent="Đang quét "+d+"/"+n+" vùng…"; };
+    const prog=(d,n,name)=>{ if(st) st.textContent=name?"Đang quét "+(d+1)+"/"+n+": "+name+"…":"Đã quét "+d+"/"+n+" vùng"; };
     await drvScan(canManage()?null:hsZones().filter(([,z])=>z.drv).map(([id])=>id),false,prog); render(); });
   if(f.tab==="drv") bindDrv(A); if(f.tab==="bc") bindBc(A);
   A.querySelectorAll("[data-hsqm]").forEach(b=>b.addEventListener("click",()=>{ f.qm=b.dataset.hsqm; rr(); }));
@@ -834,22 +834,19 @@ async function drvApply(zid,m,at,deep){ const z=S.zones[zid]; if(!z) return; m={
 async function drvScan(zid,quiet,onProg){ let ids;
   if(zid) ids=Array.isArray(zid)?zid:[zid];
   else { const l=await drvCall({action:"scan",list:true}); ids=l?.ids||Object.keys(S.zones).filter(k=>S.zones[k].drv); }
-  const B=4, fail=[], parts=[]; let done=0, shallow=false, stop=false;
-  for(let i=0;i<ids.length;i+=B) parts.push(ids.slice(i,i+B));
-  if(onProg) onProg(0,ids.length);
-  const one=async part=>{ const r=await drvCall(part.length===1?{action:"scan",zone:part[0]}:{action:"scan",zones:part});
-    if(!r||r.error||!r.zones){ fail.push(...part); if(r?.error==="not_configured"||r?.error==="bad_token"){ stop=r.error; } return; }
-    if(!r.deep) shallow=true;
-    for(const id of part){ const m=r.zones[id]; if(m){ await drvApply(id,m,r.at,r.deep); done++; } else fail.push(id); }
-    if(onProg) onProg(done,ids.length); };
-  // 3 đợt chạy song song
-  let k=0; await Promise.all([0,1,2].map(async()=>{ while(k<parts.length&&!stop){ await one(parts[k++]); } }));
-  if(stop){ toast(drvErr(stop)); return false; }
+  // quét lần lượt từng vùng, mỗi vùng một lần gọi, để không bị quá thời gian
+  const fail=[]; let done=0, shallow=false;
+  for(let i=0;i<ids.length;i++){ const id=ids[i]; if(onProg) onProg(i,ids.length,S.zones[id]?.name||id);
+    const r=await drvCall({action:"scan",zone:id});
+    if(r?.error==="not_configured"||r?.error==="bad_token"){ toast(drvErr(r.error)); return false; }
+    const m=r?.zones?.[id]; if(!r||r.error||!m){ fail.push(id); continue; }
+    if(!r.deep) shallow=true; await drvApply(id,m,r.at,r.deep); done++; }
   if(onProg) onProg(done,ids.length);
   window.__drvShallow=shallow;
   if(fail.length) toast("Quét được "+done+"/"+ids.length+" vùng. Lỗi: "+fail.map(id=>S.zones[id]?.name||id).slice(0,4).join(", ")+(fail.length>4?"…":""));
   else if(!quiet) toast((ids.length===1?"Đã quét lại thư mục":"Đã quét "+done+" vùng")+(shallow?". Apps Script chưa cập nhật nên chưa đếm file trong thư mục con":""));
   return !fail.length; }
+function drvAt(t){ if(!t) return "Chưa quét"; const d=new Date(t); return esc(dmy(t.slice(0,10)))+" "+esc(d.toLocaleTimeString("vi-VN",{hour:"2-digit",minute:"2-digit"})); }
 async function drvRename(zid){ const r=await drvCall({action:"rename",zone:zid}); if(r?.ok) toast("Đã đổi tên thư mục Drive: "+r.name); else if(r?.error&&r.error!=="not_configured") toast("Chưa đổi được tên thư mục Drive: "+drvErr(r.error)); }
 // khối tải lên dùng chung: chọn thư mục + chọn nhiều file
 function drvUpBox(zid,keys,def){ const z=S.zones[zid]; if(!z?.drv) return '<div class="sub">Vùng này chưa có thư mục Drive.</div>'; if(!canDrv()) return '';
@@ -877,15 +874,15 @@ function vDrv(zs){ const f=ui.hs; const cols=DRV_LEAF; const withD=zs.filter(([,
    +'<div class="filters" style="margin:8px 0 0"><select id="drvk" aria-label="Thư mục"><option value="">Lọc theo thư mục…</option>'+cols.map(([k,l,g,gl])=>'<option value="'+k+'"'+(fk===k?" selected":"")+'>'+esc((g!==k?gl.replace(/^\d+ /,"")+" › ":"")+l)+'</option>').join("")+'</select>'
    +(fk?'<div class="focusbar" role="group" aria-label="Rỗng hay có file">'+[["empty","Còn rỗng"],["full","Đã có file"]].map(([v,l])=>'<button data-drve="'+v+'" aria-pressed="'+((f.de||"empty")===v)+'">'+l+'</button>').join("")+'</div>':'')+'</div>'
    +'<div class="sub" style="margin-top:6px">Số trong ô là số file đang có. "Rỗng" là thư mục chưa có gì. Bấm số để mở đúng thư mục trên Drive, bấm tên vùng để tải file lên.</div></div>';
-  h+='<div class="tw hsg"><table><thead><tr><th>Vùng</th><th>Có file</th>'+cols.map(([k,l])=>'<th title="'+esc(l)+'">'+esc(DRV_SHORT[k])+'</th>').join("")+'</tr></thead><tbody>'
-   +(rows.map(([id,z])=>{ const n=drvFill(z); return '<tr><td><a href="#" data-drvz="'+id+'"><b>'+esc(z.name)+'</b></a><div class="sub">'+esc([z.ward,pname(z.owner)].filter(Boolean).join(" · "))+'</div></td><td><span class="pill '+(n===cols.length?"good":n?"warn":"")+'">'+n+'/'+cols.length+'</span></td>'
-     +cols.map(([k])=>{ const v=drvN(z,k); return '<td style="text-align:center">'+(z.drv[k]?'<a href="'+drvUrl(z.drv[k])+'" target="_blank" rel="noopener" class="pill '+(v>0?"good":v<0?"bad":"")+'" title="'+esc(DRV_SHORT[k])+'">'+(v==null?"?":v<0?"!":v||"Rỗng")+'</a>':'<span class="sub">·</span>')+'</td>'; }).join("")+'</tr>'; }).join("")||'<tr><td colspan="14" class="sub">Không có vùng khớp bộ lọc.</td></tr>')+'</tbody></table></div>';
+  h+='<div class="tw hsg"><table><thead><tr><th>Vùng</th><th>Quét lúc</th><th>Có file</th>'+cols.map(([k,l])=>'<th title="'+esc(l)+'">'+esc(DRV_SHORT[k])+'</th>').join("")+'</tr></thead><tbody>'
+   +(rows.map(([id,z])=>{ const n=drvFill(z); return '<tr><td><a href="#" data-drvz="'+id+'"><b>'+esc(z.name)+'</b></a><div class="sub">'+esc([z.ward,pname(z.owner)].filter(Boolean).join(" · "))+'</div></td><td class="sub" style="white-space:nowrap">'+drvAt(z.drvScanAt)+'</td><td><span class="pill '+(n===cols.length?"good":n?"warn":"")+'">'+n+'/'+cols.length+'</span></td>'
+     +cols.map(([k])=>{ const v=drvN(z,k); return '<td style="text-align:center">'+(z.drv[k]?'<a href="'+drvUrl(z.drv[k])+'" target="_blank" rel="noopener" class="pill '+(v>0?"good":v<0?"bad":"")+'" title="'+esc(DRV_SHORT[k])+'">'+(v==null?"?":v<0?"!":v||"Rỗng")+'</a>':'<span class="sub">·</span>')+'</td>'; }).join("")+'</tr>'; }).join("")||'<tr><td colspan="15" class="sub">Không có vùng khớp bộ lọc.</td></tr>')+'</tbody></table></div>';
   return h; }
 function bindDrv(A){ const f=ui.hs;
   $("#drvk")?.addEventListener("change",e=>{ f.dk=e.target.value; f.de=f.de||"empty"; render(); });
   A.querySelectorAll("[data-drve]").forEach(b=>b.addEventListener("click",()=>{ f.de=b.dataset.drve; render(); }));
   A.querySelectorAll("[data-drvz]").forEach(a=>a.addEventListener("click",e=>{ e.preventDefault(); openHs(a.dataset.drvz,"drv"); }));
-  $("#drvall")?.addEventListener("click",async e=>{ const b=e.target; b.disabled=true; await drvScan(null,false,(d,n)=>{ b.textContent="Đang quét "+d+"/"+n+"…"; }); render(); }); }
+  $("#drvall")?.addEventListener("click",async e=>{ const b=e.target; b.disabled=true; await drvScan(null,false,(d,n,name)=>{ b.textContent=name?"Đang quét "+(d+1)+"/"+n+": "+name+"…":"Đã quét "+d+"/"+n; }); render(); }); }
 
 /* ---------- theo dõi bản cứng: thu bìa, in, đưa dân ký, lấy lại, scan, nộp ---------- */
 const BC_ST=[["bia","Đủ bìa"],["in","Đã in"],["ky","Đưa dân ký"],["lay","Đã lấy lại"],["scan","Đã scan"],["nop","Đã nộp"]];
