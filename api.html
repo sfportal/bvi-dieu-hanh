@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BVI API cho đối tác</title>
+<meta name="description" content="Hướng dẫn kết nối API chỉ đọc của hệ thống BVI Điều hành: vùng trồng, công việc, lịch.">
+<style>
+:root{--bg:#f7f8f6;--card:#fff;--ink:#1d2420;--sub:#5d6862;--line:#e2e6e2;--brand:#1f5f3f;--brand2:#e6f1ea;--code:#f1f3f1;--warn:#8a5a00;--warnbg:#fff4d6}
+@media (prefers-color-scheme:dark){:root{--bg:#121614;--card:#1a1f1c;--ink:#e6ebe7;--sub:#9aa69f;--line:#2b332e;--brand:#7cc79d;--brand2:#1e2e25;--code:#222924;--warn:#f0c46a;--warnbg:#2e2614}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:920px;margin:0 auto;padding:28px 16px 64px}
+header{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.logo{display:grid;grid-template-columns:repeat(3,7px);gap:2px}.logo i{width:7px;height:7px;background:var(--brand);border-radius:1px}.logo i:nth-child(5){background:#d9a441}
+h1{font-size:28px;margin:8px 0 4px;line-height:1.25}
+h2{font-size:20px;margin:36px 0 8px;padding-top:8px;border-top:1px solid var(--line)}
+h3{font-size:16px;margin:22px 0 6px}
+.sub{color:var(--sub)}
+nav.toc{display:flex;flex-wrap:wrap;gap:6px;margin:16px 0 4px}
+nav.toc a{font-size:13px;padding:4px 10px;border:1px solid var(--line);border-radius:99px;color:var(--ink);text-decoration:none;background:var(--card)}
+code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px}
+code{background:var(--code);padding:1px 5px;border-radius:4px;overflow-wrap:anywhere}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow:auto;margin:8px 0;border:1px solid var(--line)}
+pre code{background:none;padding:0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:12px 0}
+.note{background:var(--warnbg);color:var(--ink);border-left:3px solid var(--warn);padding:10px 14px;border-radius:6px;margin:12px 0}
+.base{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.base code{font-size:14px;padding:6px 10px;flex:1;min-width:0}
+button{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:6px;padding:5px 10px;cursor:pointer}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--card);margin:8px 0}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;color:var(--sub);font-weight:600;background:var(--brand2)}
+tr:last-child td{border-bottom:0}
+td:first-child{white-space:nowrap}
+.pill{display:inline-block;font-size:12px;padding:1px 8px;border-radius:99px;background:var(--brand2);color:var(--brand);font-weight:600}
+footer{margin-top:40px;color:var(--sub);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><span class="logo"><i></i><i></i><i></i><i></i><i></i><i></i></span><b>BVI Điều hành</b></header>
+<h1>API cho đối tác</h1>
+<div class="sub">Lấy dữ liệu vùng trồng, công việc, lịch công tác và các dữ liệu liên quan từ hệ thống BVI Điều hành. API chỉ đọc, phiên bản v1.</div>
+<nav class="toc"><a href="#bat-dau">Bắt đầu</a><a href="#xac-thuc">Xác thực</a><a href="#duong-dan">Đường dẫn</a><a href="#tham-so">Tham số, phân trang</a><a href="#ket-qua">Kết quả</a><a href="#truong">Ý nghĩa các trường</a><a href="#vi-du">Ví dụ</a><a href="#loi">Mã lỗi</a></nav>
+
+<h2 id="bat-dau">Bắt đầu</h2>
+<ol>
+<li>Nhận khóa API từ BVI (dạng <code>bvi_</code> + 40 ký tự). Mỗi khóa chỉ đọc được các loại dữ liệu BVI đã cấp và có thể có thời hạn.</li>
+<li>Gọi địa chỉ gốc dưới đây kèm khóa trong header.</li>
+<li>Gọi <code>GET /v1</code> trước để xem khóa của bạn được đọc những gì.</li>
+</ol>
+<div class="box"><div class="sub" style="margin-bottom:6px">Địa chỉ gốc</div>
+<div class="base"><code id="base">https://pkckduidwfcncipwzdxa.supabase.co/functions/v1/api/v1</code><button data-copy="base">Sao chép</button></div></div>
+<div class="note">Giữ khóa như mật khẩu: chỉ dùng ở máy chủ của bạn, không đặt trong ứng dụng web hay app điện thoại công khai. Lộ khóa thì báo BVI để thu hồi và cấp khóa mới.</div>
+
+<h2 id="xac-thuc">Xác thực</h2>
+<p>Gửi khóa trong header <code>X-API-Key</code>. Cũng chấp nhận <code>Authorization: Bearer &lt;khóa&gt;</code>. Chỉ dùng phương thức <code>GET</code>.</p>
+<pre><code>X-API-Key: bvi_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</code></pre>
+<p>Giới hạn: <b>120 lượt mỗi phút</b> cho mỗi khóa. Vượt giới hạn trả mã 429, chờ 60 giây rồi gọi lại.</p>
+
+<h2 id="duong-dan">Đường dẫn</h2>
+<div class="tw"><table><thead><tr><th>Đường dẫn</th><th>Dữ liệu</th></tr></thead><tbody>
+<tr><td><code>GET /v1</code></td><td>Thông tin khóa, danh sách loại dữ liệu khóa được đọc</td></tr>
+<tr><td><code>GET /v1/zones</code></td><td>Vùng trồng (mã số vùng trồng): tiến độ, ưu tiên, dự kiến ra mã, vướng mắc, tình trạng hồ sơ</td></tr>
+<tr><td><code>GET /v1/tasks</code></td><td>Công việc: epic, việc, việc con, người phụ trách, hạn, trạng thái</td></tr>
+<tr><td><code>GET /v1/events</code></td><td>Lịch công tác, sự kiện</td></tr>
+<tr><td><code>GET /v1/leaves</code></td><td>Lịch nghỉ của nhân sự</td></tr>
+<tr><td><code>GET /v1/daily</code></td><td>Báo cáo ngày</td></tr>
+<tr><td><code>GET /v1/units</code></td><td>Công ty, khách hàng, đơn vị</td></tr>
+<tr><td><code>GET /v1/people</code></td><td>Nhân sự (tên, vai trò, nhóm, địa bàn)</td></tr>
+<tr><td><code>GET /v1/faqs</code></td><td>Hỏi đáp</td></tr>
+<tr><td><code>GET /v1/supports</code></td><td>Yêu cầu hỗ trợ</td></tr>
+<tr><td><code>GET /v1/contracts</code></td><td>Hợp đồng (hạng mục, điều kiện thanh toán theo %, không có số tiền)</td></tr>
+<tr><td><code>GET /v1/&lt;loại&gt;/&lt;id&gt;</code></td><td>Một bản ghi theo mã</td></tr>
+</tbody></table></div>
+<p class="sub">Vì lý do bảo mật, API không bao giờ trả số CCCD, sổ đỏ, số điện thoại, email, số tiền hợp đồng, link Google Drive và ảnh hiện trường.</p>
+
+<h2 id="tham-so">Tham số, phân trang</h2>
+<div class="tw"><table><thead><tr><th>Tham số</th><th>Ý nghĩa</th></tr></thead><tbody>
+<tr><td><code>limit</code></td><td>Số bản ghi mỗi trang, 1 đến 1000, mặc định 500</td></tr>
+<tr><td><code>offset</code></td><td>Bỏ qua N bản ghi đầu. Lấy trang tiếp bằng giá trị <code>next_offset</code> của trang trước</td></tr>
+<tr><td><code>updated_since</code></td><td>Thời điểm ISO 8601, ví dụ <code>2026-11-01T00:00:00Z</code>. Chỉ trả bản ghi sửa từ lúc đó, dùng để đồng bộ định kỳ</td></tr>
+</tbody></table></div>
+<p>Cách đồng bộ khuyến nghị: lần đầu lấy toàn bộ, lưu lại thời điểm bắt đầu gọi. Các lần sau gọi với <code>updated_since</code> bằng thời điểm đã lưu. Gọi 15 đến 60 phút một lần là đủ.</p>
+
+<h2 id="ket-qua">Kết quả</h2>
+<p>Dữ liệu trả dạng JSON, mã hóa UTF-8. Danh sách có dạng:</p>
+<pre><code>{
+  "resource": "zones",
+  "total": 105,
+  "offset": 0,
+  "limit": 500,
+  "next_offset": null,
+  "data": [
+    {
+      "id": "z014-hoi-buon-ho",
+      "updated_at": "2026-11-05T11:56:57Z",
+      "name": "VÙNG TRỒNG SẦU RIÊNG HỘI BUÔN HỒ",
+      "ward": "Xã Krông Búk",
+      "province": "Đắk Lắk",
+      "ha": 14.63,
+      "hh": 9,
+      "step": 5,
+      "priority": "1",
+      "eta": "15–20/11/2026",
+      "customer": "Yanning Hải Nam",
+      "next": "Nhận yêu cầu bổ sung của xã",
+      "blocker": "Chưa nhận yêu cầu bổ sung cụ thể của xã…",
+      "inspected": true
+    }
+  ]
+}</code></pre>
+<p>Một bản ghi (<code>/v1/zones/&lt;id&gt;</code>) trả <code>{"data": {...}}</code>. Bản ghi có thể thiếu trường khi chưa có dữ liệu, hãy xử lý trường vắng mặt như rỗng.</p>
+
+<h2 id="truong">Ý nghĩa các trường chính</h2>
+<h3>Vùng trồng <span class="pill">zones</span></h3>
+<div class="tw"><table><thead><tr><th>Trường</th><th>Ý nghĩa</th></tr></thead><tbody>
+<tr><td><code>name</code></td><td>Tên vùng trồng</td></tr>
+<tr><td><code>code</code></td><td>Mã số vùng trồng nội địa (khi đã có)</td></tr>
+<tr><td><code>ward</code>, <code>province</code></td><td>Xã/phường, tỉnh</td></tr>
+<tr><td><code>ha</code>, <code>hh</code>, <code>plots</code></td><td>Diện tích (ha), số hộ, số lô</td></tr>
+<tr><td><code>step</code></td><td>Bước tiến độ, xem bảng dưới</td></tr>
+<tr><td><code>priority</code></td><td><code>1</code>, <code>2</code>, <code>3</code> (ưu tiên) hoặc <code>GACC</code> (đã có mã nội địa, đang làm mã GACC)</td></tr>
+<tr><td><code>eta</code></td><td>Dự kiến ra mã nội địa</td></tr>
+<tr><td><code>customer</code>, <code>unitId</code></td><td>Khách hàng (công ty), mã đơn vị trong <code>units</code></td></tr>
+<tr><td><code>owner</code></td><td>Mã nhân sự phụ trách (trong <code>people</code>)</td></tr>
+<tr><td><code>next</code>, <code>blocker</code></td><td>Việc tiếp theo, vướng mắc hiện tại</td></tr>
+<tr><td><code>inspected</code></td><td>Xã đã kiểm tra thực địa hay chưa</td></tr>
+<tr><td><code>hs</code></td><td>Tình trạng từng loại hồ sơ (đã có trên Drive, bản cứng…), chỉ trạng thái, không có nội dung giấy tờ</td></tr>
+<tr><td><code>drvStat</code></td><td>Số file hiện có trong từng thư mục hồ sơ (flycam, kho, bẫy, thu hoạch, scan…)</td></tr>
+<tr><td><code>bc</code></td><td>Tình trạng hồ sơ bản cứng: bìa đủ hay thiếu, đã in, đã ký, đã lấy lại, đã nộp</td></tr>
+<tr><td><code>stepLog</code></td><td>Lịch sử chuyển bước</td></tr>
+<tr><td><code>active</code></td><td>Vùng còn theo dõi hay không</td></tr>
+</tbody></table></div>
+<div class="tw"><table><thead><tr><th>step</th><th>Bước</th></tr></thead><tbody>
+<tr><td>0</td><td>Mở quan hệ xã</td></tr><tr><td>1</td><td>Gom dân, chốt hình thức</td></tr><tr><td>2</td><td>Khảo sát từng lô</td></tr>
+<tr><td>3</td><td>Thu giấy tờ</td></tr><tr><td>4</td><td>Tập huấn, ký hồ sơ</td></tr><tr><td>5</td><td>Xã kiểm tra</td></tr>
+<tr><td>6</td><td>Nộp Cổng DVC, chờ mã nội địa</td></tr><tr><td>7</td><td>Phía Trung Quốc bổ sung</td></tr><tr><td>8</td><td>Có mã GACC, duy trì</td></tr>
+</tbody></table></div>
+
+<h3>Công việc <span class="pill">tasks</span></h3>
+<div class="tw"><table><thead><tr><th>Trường</th><th>Ý nghĩa</th></tr></thead><tbody>
+<tr><td><code>title</code>, <code>note</code></td><td>Tên việc, ghi chú</td></tr>
+<tr><td><code>kind</code></td><td><code>epic</code>, <code>task</code> (việc), <code>sub</code> (việc con)</td></tr>
+<tr><td><code>parent</code></td><td>Mã việc cha (rỗng nếu là epic)</td></tr>
+<tr><td><code>status</code></td><td><code>todo</code> chưa làm, <code>doing</code> đang làm, <code>done</code> xong</td></tr>
+<tr><td><code>due</code>, <code>doneAt</code></td><td>Hạn, thời điểm hoàn thành</td></tr>
+<tr><td><code>prio</code></td><td>Ưu tiên, <code>1</code> cao hơn <code>2</code></td></tr>
+<tr><td><code>zone</code></td><td>Mã vùng trồng liên quan</td></tr>
+<tr><td><code>R</code>, <code>A</code>, <code>C</code>, <code>I</code></td><td>Phân vai RACI: người làm, người chịu trách nhiệm, người tham vấn, người được báo (mã nhân sự)</td></tr>
+<tr><td><code>planDate</code>, <code>planSes</code></td><td>Ngày, buổi đã lên kế hoạch làm</td></tr>
+</tbody></table></div>
+
+<h3>Lịch công tác <span class="pill">events</span></h3>
+<div class="tw"><table><thead><tr><th>Trường</th><th>Ý nghĩa</th></tr></thead><tbody>
+<tr><td><code>title</code>, <code>purpose</code>, <code>report</code></td><td>Tiêu đề, mục đích, báo cáo sau chuyến đi</td></tr>
+<tr><td><code>kind</code></td><td><code>congtac</code> (đi công tác) hoặc <code>sukien</code></td></tr>
+<tr><td><code>date</code>, <code>end</code>, <code>time</code></td><td>Ngày bắt đầu, ngày kết thúc, giờ</td></tr>
+<tr><td><code>place</code>, <code>zoneId</code>, <code>unitId</code></td><td>Địa điểm, vùng trồng, đơn vị liên quan</td></tr>
+<tr><td><code>lead</code>, <code>people</code></td><td>Trưởng đoàn, người đi (mã nhân sự)</td></tr>
+<tr><td><code>taskIds</code></td><td>Các công việc gắn với chuyến đi</td></tr>
+</tbody></table></div>
+
+<h3>Lịch nghỉ <span class="pill">leaves</span></h3>
+<div class="tw"><table><thead><tr><th>Trường</th><th>Ý nghĩa</th></tr></thead><tbody>
+<tr><td><code>person</code></td><td>Mã nhân sự</td></tr>
+<tr><td><code>from</code>, <code>to</code>, <code>fromSes</code>, <code>toSes</code></td><td>Từ ngày, đến ngày, buổi (<code>sang</code>, <code>chieu</code>)</td></tr>
+<tr><td><code>status</code></td><td><code>pending</code> chờ duyệt, <code>approved</code> đã duyệt, <code>rejected</code> từ chối</td></tr>
+<tr><td><code>handover</code></td><td>Bàn giao công việc khi nghỉ</td></tr>
+</tbody></table></div>
+<p class="sub">Các mã nhân sự (<code>owner</code>, <code>R</code>, <code>lead</code>, <code>person</code>…) tra tên trong <code>/v1/people</code>. Mã đơn vị tra trong <code>/v1/units</code>.</p>
+
+<h2 id="vi-du">Ví dụ</h2>
+<h3>curl</h3>
+<pre><code>curl -H "X-API-Key: $BVI_API_KEY" \
+  "https://pkckduidwfcncipwzdxa.supabase.co/functions/v1/api/v1/zones?limit=100"</code></pre>
+<h3>JavaScript (Node 18+)</h3>
+<pre><code>const BASE = "https://pkckduidwfcncipwzdxa.supabase.co/functions/v1/api/v1";
+async function getAll(resource, since) {
+  const out = [];
+  let offset = 0;
+  while (offset !== null) {
+    const q = new URLSearchParams({ limit: "1000", offset: String(offset) });
+    if (since) q.set("updated_since", since);
+    const r = await fetch(`${BASE}/${resource}?${q}`, { headers: { "X-API-Key": process.env.BVI_API_KEY } });
+    if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+    const page = await r.json();
+    out.push(...page.data);
+    offset = page.next_offset;
+  }
+  return out;
+}
+const zones = await getAll("zones");</code></pre>
+<h3>Python</h3>
+<pre><code>import os, requests
+BASE = "https://pkckduidwfcncipwzdxa.supabase.co/functions/v1/api/v1"
+H = {"X-API-Key": os.environ["BVI_API_KEY"]}
+
+def get_all(resource, since=None):
+    out, offset = [], 0
+    while offset is not None:
+        p = {"limit": 1000, "offset": offset}
+        if since: p["updated_since"] = since
+        r = requests.get(f"{BASE}/{resource}", headers=H, params=p, timeout=30)
+        r.raise_for_status()
+        page = r.json()
+        out += page["data"]
+        offset = page["next_offset"]
+    return out
+
+tasks = get_all("tasks", since="2026-11-01T00:00:00Z")</code></pre>
+
+<h2 id="loi">Mã lỗi</h2>
+<div class="tw"><table><thead><tr><th>HTTP</th><th>error</th><th>Ý nghĩa</th></tr></thead><tbody>
+<tr><td>401</td><td><code>missing_api_key</code></td><td>Chưa gửi khóa hoặc khóa sai định dạng</td></tr>
+<tr><td>401</td><td><code>invalid_api_key</code></td><td>Khóa không tồn tại</td></tr>
+<tr><td>401</td><td><code>revoked_api_key</code></td><td>Khóa đã bị thu hồi</td></tr>
+<tr><td>401</td><td><code>expired_api_key</code></td><td>Khóa đã hết hạn</td></tr>
+<tr><td>403</td><td><code>forbidden_resource</code></td><td>Khóa không được cấp quyền đọc loại dữ liệu này</td></tr>
+<tr><td>404</td><td><code>unknown_resource</code>, <code>not_found</code></td><td>Sai đường dẫn hoặc không có bản ghi</td></tr>
+<tr><td>405</td><td><code>method_not_allowed</code></td><td>API chỉ đọc, chỉ dùng GET</td></tr>
+<tr><td>429</td><td><code>rate_limited</code></td><td>Gọi quá 120 lượt mỗi phút</td></tr>
+<tr><td>500</td><td><code>server_error</code></td><td>Lỗi máy chủ, thử lại sau</td></tr>
+</tbody></table></div>
+
+<footer>Công ty CP BVI. Cần cấp khóa, thêm quyền hoặc báo lỗi, liên hệ người phụ trách của BVI.</footer>
+</div>
+<script>
+document.querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click",()=>{const t=document.getElementById(b.dataset.copy).textContent;try{navigator.clipboard.writeText(t).then(()=>{b.textContent="Đã chép";setTimeout(()=>b.textContent="Sao chép",1500)},()=>{})}catch(e){}}));
+</script>
+</body>
+</html>
