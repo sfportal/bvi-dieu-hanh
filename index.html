@@ -559,7 +559,7 @@ function openBulk(){
 
 /* ---------- nhật ký hoạt động (owner, quản lý) ---------- */
 const LOG_ACT={login:["Đăng nhập","good"],open:["Mở ứng dụng",""],logout:["Đăng xuất",""],password:["Mật khẩu",""],create:["Thêm","good"],update:["Sửa","warn"],delete:["Xóa","bad"],finance:["Thanh toán","warn"],account:["Tài khoản","bad"],import:["Nhập file","bad"]};
-const LOG_COL={zones:"Vùng",people:"Nhân sự",tasks:"Việc",contracts:"Hợp đồng",daily:"Báo cáo",units:"Đơn vị",events:"Lịch",leaves:"Nghỉ phép",faqs:"FAQ",supports:"Hỗ trợ",contacts:"Liên hệ",accounts:"Tài khoản"};
+const LOG_COL={zones:"Vùng",people:"Nhân sự",tasks:"Việc",contracts:"Hợp đồng",daily:"Báo cáo",units:"Đơn vị",events:"Lịch",leaves:"Nghỉ phép",faqs:"FAQ",supports:"Hỗ trợ",contacts:"Liên hệ",accounts:"Tài khoản",api_keys:"Khóa API"};
 const LG={t:0,p:"7",from:"",to:"",who:"",act:"",q:"",rows:null,n:200,err:""};
 function lgRange(){ const d0=new Date(); d0.setHours(0,0,0,0); let a=new Date(d0), b=null;
   if(LG.p==="7") a.setDate(a.getDate()-6); else if(LG.p==="30") a.setDate(a.getDate()-29); else if(LG.p==="month") a.setDate(1);
@@ -613,6 +613,79 @@ function bindLog(A){
   const OP={zones:openZone,tasks:id=>openTask(id),contracts:openContract,events:openEvent,units:openUnit,people:openPerson,faqs:openFaq,leaves:openLeave,supports:id=>openSupport(id),contacts:id=>openContact(id)};
   A.querySelectorAll("[data-lgo]").forEach(a=>a.addEventListener("click",e=>{ e.preventDefault(); const [c,id]=a.dataset.lgo.split("|"); const f=OP[c]; if(f) f(id); else toast("Mục này không mở chi tiết được"); }));
 }
+/* ---------- API cho đối tác (chỉ owner) ---------- */
+const API_BASE=SB_URL+"/functions/v1/api/v1";
+const API_RES={zones:"Vùng trồng",tasks:"Công việc",events:"Lịch công tác",leaves:"Lịch nghỉ",daily:"Báo cáo ngày",units:"Công ty, khách hàng",people:"Nhân sự",faqs:"Hỏi đáp",supports:"Yêu cầu hỗ trợ",contracts:"Hợp đồng (không có số tiền)"};
+let APIK=null, APIERR="";
+async function callApiAdmin(body){
+  try{ const {data}=await SB.auth.getSession(); const res=await fetch(SB_URL+"/functions/v1/api/admin",{method:"POST",headers:{"Content-Type":"application/json",apikey:SB_KEY,Authorization:"Bearer "+(data.session?.access_token||"")},body:JSON.stringify(body)});
+    let j=null; try{ j=await res.json(); }catch(_){} return j||{error:"http_"+res.status}; }catch(e){ return {error:"Không kết nối được máy chủ"}; } }
+async function loadApiKeys(){ const r=await callApiAdmin({action:"list"}); if(r.error){ APIERR=r.error==="owner_only"?"Chỉ owner quản lý API.":r.error; APIK=[]; } else { APIERR=""; APIK=r.keys||[]; } if(ui.view==="api") render(); }
+function apiTime(x){ if(!x) return '<span class="sub">—</span>'; const d=new Date(x); return d.toLocaleDateString("vi-VN")+' '+String(d.getHours()).padStart(2,"0")+':'+String(d.getMinutes()).padStart(2,"0"); }
+function apiState(k){ if(k.revoked_at) return '<span class="pill bad">Đã thu hồi</span>'; if(k.expires_at&&new Date(k.expires_at)<new Date()) return '<span class="pill warn">Hết hạn</span>'; return '<span class="pill good">Đang dùng</span>'; }
+function vApi(){
+  if(!isOwner()) return '<div class="alert bad">Chỉ owner quản lý API.</div>';
+  if(APIK===null){ loadApiKeys(); return '<div class="empty">Đang tải danh sách khóa API…</div>'; }
+  let h='<div class="row between"><div><h1>API cho đối tác</h1><div class="sub">Chỉ owner thấy trang này. Đối tác dùng khóa để <b>đọc</b> dữ liệu, không sửa được gì. API không bao giờ trả CCCD, sổ đỏ, số điện thoại, số tiền hợp đồng, link Drive.</div></div><div class="row"><button class="btn" id="apiRe">Tải lại</button><button class="btn pri" id="apiAdd">Tạo khóa mới</button></div></div>';
+  if(APIERR) h+='<div class="alert bad" style="margin-top:8px">'+esc(APIERR)+'</div>';
+  if(!APIK.length) h+='<div class="empty" style="margin-top:12px">Chưa có khóa nào. Bấm "Tạo khóa mới" để cấp cho một đối tác.</div>';
+  else h+='<div class="tw panel" style="margin-top:12px"><table><thead><tr><th>Đối tác</th><th>Khóa</th><th>Dữ liệu được đọc</th><th>Tạo</th><th>Hết hạn</th><th>Dùng gần nhất</th><th>Lượt gọi</th><th>Trạng thái</th><th></th></tr></thead><tbody>'
+    +APIK.map(k=>'<tr><td><b>'+esc(k.name)+'</b></td><td class="mono">'+esc(k.prefix)+'…</td><td style="max-width:260px">'+(k.scopes||[]).map(s=>'<span class="pill" style="margin:1px">'+esc(API_RES[s]||s)+'</span>').join("")+'</td><td>'+apiTime(k.created_at)+'<div class="sub">'+esc(k.created_by||"")+'</div></td><td>'+(k.expires_at?apiTime(k.expires_at):'<span class="sub">Không hạn</span>')+'</td><td>'+apiTime(k.last_used_at)+(k.last_ip?'<div class="sub mono">'+esc(k.last_ip)+'</div>':'')+'</td><td>'+(k.use_count||0)+'</td><td>'+apiState(k)+'</td><td><div class="row" style="gap:4px;flex-wrap:nowrap">'
+      +(k.revoked_at?'':'<button class="btn sm" data-apied="'+k.id+'">Sửa quyền</button><button class="btn sm" data-apirv="'+k.id+'">Thu hồi</button>')+'<button class="btn sm" data-apidel="'+k.id+'">Xóa</button></div></td></tr>').join("")+'</tbody></table></div>';
+  const ex=API_BASE+"/zones?limit=100";
+  h+='<div class="panel" style="margin-top:12px"><h2>Hướng dẫn gửi đối tác</h2>'
+   +'<div class="sub">Địa chỉ gốc:</div><div class="row" style="gap:6px;margin:4px 0 10px"><code class="mono" style="flex:1;min-width:0;overflow-wrap:anywhere">'+esc(API_BASE)+'</code><button class="btn sm" id="apiCpBase">Sao chép</button></div>'
+   +'<div class="sub">Gửi khóa trong header <code>X-API-Key</code> (hoặc <code>Authorization: Bearer &lt;khóa&gt;</code>). Chỉ dùng GET.</div>'
+   +'<div class="tw" style="margin-top:8px"><table><thead><tr><th>Đường dẫn</th><th>Dữ liệu</th></tr></thead><tbody>'
+   +'<tr><td class="mono">GET /v1</td><td>Thông tin khóa và các loại dữ liệu được đọc</td></tr>'
+   +Object.entries(API_RES).map(([k,l])=>'<tr><td class="mono">GET /v1/'+k+'</td><td>'+esc(l)+'</td></tr>').join("")
+   +'<tr><td class="mono">GET /v1/&lt;loại&gt;/&lt;id&gt;</td><td>Một bản ghi</td></tr></tbody></table></div>'
+   +'<div class="sub" style="margin-top:8px">Tham số: <code>limit</code> (1 đến 1000, mặc định 500), <code>offset</code>, <code>updated_since</code> (ISO 8601, chỉ lấy bản ghi sửa từ thời điểm đó). Kết quả có <code>total</code> và <code>next_offset</code> để lấy trang tiếp. Tối đa 120 lượt mỗi phút cho mỗi khóa.</div>'
+   +'<textarea id="apiEx" readonly rows="6" class="mono" style="width:100%;margin-top:8px">curl -H "X-API-Key: bvi_..." "'+esc(ex)+'"\n\n// JavaScript\nconst r = await fetch("'+esc(ex)+'", { headers: { "X-API-Key": "bvi_..." } });\nconst { data, total, next_offset } = await r.json();</textarea>'
+   +'<div class="row" style="margin-top:6px"><button class="btn sm" id="apiCpEx">Sao chép ví dụ</button></div>'
+   +'<div class="sub" style="margin-top:8px">Mã lỗi: 401 thiếu khóa, khóa sai, đã thu hồi hoặc hết hạn; 403 khóa không được đọc loại dữ liệu đó; 404 không có; 429 gọi quá nhanh.</div></div>';
+  return h;
+}
+function apiScopeBoxes(sel){ return '<div class="row" style="flex-wrap:wrap;gap:6px 14px;margin-top:4px">'+Object.entries(API_RES).map(([k,l])=>'<label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-apis="'+k+'"'+(sel.includes(k)?" checked":"")+'> '+esc(l)+'</label>').join("")+'</div>'; }
+function apiPicked(){ return [...$("#layer").querySelectorAll("[data-apis]")].filter(x=>x.checked).map(x=>x.dataset.apis); }
+function openApiNew(){
+  showDrawer('<div class="dh"><div><h2>Tạo khóa API</h2><div class="sub">Khóa chỉ hiện một lần sau khi tạo. Hãy gửi cho đối tác qua kênh riêng.</div></div><button class="btn sm" data-close>Đóng</button></div><div class="db">'
+   +'<label>Tên đối tác hoặc mục đích<input id="apiN" maxlength="80" placeholder="Ví dụ: Yanning Hải Nam, đồng bộ báo cáo"></label>'
+   +'<div style="margin-top:10px"><b>Dữ liệu được đọc</b>'+apiScopeBoxes(["zones","tasks","events"])+'</div>'
+   +'<label style="margin-top:10px">Thời hạn<select id="apiD"><option value="30">30 ngày</option><option value="90" selected>90 ngày</option><option value="365">1 năm</option><option value="0">Không hạn</option></select></label>'
+   +'<div class="row" style="margin-top:14px"><button class="btn pri" id="apiGo">Tạo khóa</button><span class="sub" id="apiMsg"></span></div></div>');
+  $("#apiGo").addEventListener("click",async()=>{ const b=$("#apiGo"); const name=$("#apiN").value.trim(), scopes=apiPicked();
+    if(!name){ $("#apiMsg").textContent="Cần nhập tên"; return; } if(!scopes.length){ $("#apiMsg").textContent="Chọn ít nhất một loại dữ liệu"; return; }
+    b.disabled=true; $("#apiMsg").textContent="Đang tạo…"; const r=await callApiAdmin({action:"create",name,scopes,days:Number($("#apiD").value)});
+    if(r.error){ b.disabled=false; $("#apiMsg").textContent=r.error; return; }
+    APIK=null; loadApiKeys(); showApiKey(r.key,r.meta); });
+}
+function showApiKey(key,m){
+  showDrawer('<div class="dh"><div><h2>Khóa API cho '+esc(m.name)+'</h2></div><button class="btn sm" data-close>Đóng</button></div><div class="db">'
+   +'<div class="alert bad">Sao chép và lưu khóa ngay. Đóng cửa sổ này là không xem lại được. Mất khóa thì tạo khóa mới và thu hồi khóa cũ.</div>'
+   +'<textarea id="apiKeyT" readonly rows="2" class="mono" style="width:100%;margin-top:10px">'+esc(key)+'</textarea>'
+   +'<div class="row" style="margin-top:8px"><button class="btn pri" id="apiKeyC">Sao chép khóa</button></div>'
+   +'<div class="sub" style="margin-top:10px">Địa chỉ gốc: <span class="mono">'+esc(API_BASE)+'</span></div></div>');
+  $("#apiKeyC").addEventListener("click",()=>{ navigator.clipboard?.writeText(key).then(()=>toast("Đã sao chép khóa"),()=>{ $("#apiKeyT").select(); toast("Chọn và sao chép thủ công"); }); });
+}
+function openApiEdit(id){ const k=(APIK||[]).find(x=>x.id===id); if(!k) return;
+  showDrawer('<div class="dh"><div><h2>Sửa quyền khóa</h2><div class="sub mono">'+esc(k.prefix)+'…</div></div><button class="btn sm" data-close>Đóng</button></div><div class="db">'
+   +'<label>Tên<input id="apiN" maxlength="80" value="'+esc(k.name)+'"></label><div style="margin-top:10px"><b>Dữ liệu được đọc</b>'+apiScopeBoxes(k.scopes||[])+'</div>'
+   +'<div class="row" style="margin-top:14px"><button class="btn pri" id="apiSave">Lưu</button><span class="sub" id="apiMsg"></span></div></div>');
+  $("#apiSave").addEventListener("click",async()=>{ const scopes=apiPicked(); if(!scopes.length){ $("#apiMsg").textContent="Chọn ít nhất một loại dữ liệu"; return; }
+    $("#apiMsg").textContent="Đang lưu…"; const r=await callApiAdmin({action:"update",id,name:$("#apiN").value.trim(),scopes}); if(r.error){ $("#apiMsg").textContent=r.error; return; }
+    closeDrawer(); toast("Đã lưu"); loadApiKeys(); });
+}
+function bindApi(A){
+  $("#apiAdd")?.addEventListener("click",openApiNew);
+  $("#apiRe")?.addEventListener("click",()=>{ APIK=null; render(); });
+  const cp=t=>navigator.clipboard?.writeText(t).then(()=>toast("Đã sao chép"),()=>toast("Chọn và sao chép thủ công"));
+  $("#apiCpBase")?.addEventListener("click",()=>cp(API_BASE)); $("#apiCpEx")?.addEventListener("click",()=>cp($("#apiEx").value));
+  A.querySelectorAll("[data-apied]").forEach(b=>b.addEventListener("click",()=>openApiEdit(b.dataset.apied)));
+  const twice=(b,label,fn)=>b.addEventListener("click",async()=>{ if(b.dataset.arm!=="1"){ b.dataset.arm="1"; b.textContent=label; b.classList.add("bad"); setTimeout(()=>{ if(b.isConnected){ b.dataset.arm=""; render(); } },4000); return; } b.disabled=true; await fn(); });
+  A.querySelectorAll("[data-apirv]").forEach(b=>twice(b,"Bấm lần nữa để thu hồi",async()=>{ const r=await callApiAdmin({action:"revoke",id:b.dataset.apirv}); toast(r.error||"Đã thu hồi, khóa không dùng được nữa"); loadApiKeys(); }));
+  A.querySelectorAll("[data-apidel]").forEach(b=>twice(b,"Bấm lần nữa để xóa",async()=>{ const r=await callApiAdmin({action:"delete",id:b.dataset.apidel}); toast(r.error||"Đã xóa khóa"); loadApiKeys(); }));
+}
 
 const stamp=()=>({updatedAt:new Date().toISOString(),updatedBy:me||""});
 
@@ -624,9 +697,9 @@ document.addEventListener("toggle",e=>taFitIn(e.target),true);
 window.addEventListener("resize",()=>document.querySelectorAll("textarea").forEach(taFit));
 new MutationObserver(ms=>{ ms.forEach(m=>m.addedNodes.forEach(taFitIn)); }).observe(document.documentElement,{childList:true,subtree:true});
 /* ---------- shell ---------- */
-const NAV=[["g-tq","Tổng quan","Tổng",["tong-quan"]],["g-viec","Công việc","Việc",["cong-viec","ke-hoach","lich","ho-tro"]],["g-bc","Báo cáo","Báo cáo",["bao-cao","thong-ke"]],["g-vung","Vùng, khách hàng","Vùng",["vung","ho-so","hop-dong","cong-ty"]],["g-doi","Đội ngũ","Đội ngũ",["nhan-su","lien-he"]],["g-tg","Trợ giúp","Trợ giúp",["huong-dan","faq"]],["g-qt","Quản trị","Quản trị",["tai-khoan","nhat-ky"]]];
-const VLAB={"tai-khoan":"Tài khoản","nhat-ky":"Nhật ký"}; const GICON={"g-qt":'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'};
-function navOk(v){ if(v==="ke-hoach") return canPlan(); if(v==="tai-khoan"||v==="nhat-ky") return typeof isOwner==="function"&&isOwner(); return VIEWS.some(x=>x[0]===v); }
+const NAV=[["g-tq","Tổng quan","Tổng",["tong-quan"]],["g-viec","Công việc","Việc",["cong-viec","ke-hoach","lich","ho-tro"]],["g-bc","Báo cáo","Báo cáo",["bao-cao","thong-ke"]],["g-vung","Vùng, khách hàng","Vùng",["vung","ho-so","hop-dong","cong-ty"]],["g-doi","Đội ngũ","Đội ngũ",["nhan-su","lien-he"]],["g-tg","Trợ giúp","Trợ giúp",["huong-dan","faq"]],["g-qt","Quản trị","Quản trị",["tai-khoan","nhat-ky","api"]]];
+const VLAB={"tai-khoan":"Tài khoản","nhat-ky":"Nhật ký","api":"API đối tác"}; const GICON={"g-qt":'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'};
+function navOk(v){ if(v==="ke-hoach") return canPlan(); if(v==="tai-khoan"||v==="nhat-ky"||v==="api") return typeof isOwner==="function"&&isOwner(); return VIEWS.some(x=>x[0]===v); }
 function navGroup(v){ v=v==="khach"?"cong-ty":v; return NAV.find(g=>g[3].includes(v))||NAV[0]; }
 function navLabel(v){ return VLAB[v]||(VIEWS.find(x=>x[0]===v)||[,v])[1]; }
 function renderNav(){ ui.navLast=ui.navLast||{}; const cur=ui.view==="khach"?"cong-ty":ui.view, G=navGroup(cur); ui.navLast[G[0]]=cur;
@@ -641,7 +714,7 @@ function renderShell(){
 }
 function route(){
   const h=(location.hash||"").replace("#","");
-  ui.view=VIEWS.some(v=>v[0]===h)||h==="khach"||h==="tai-khoan"||h==="nhat-ky"?h:"tong-quan";
+  ui.view=VIEWS.some(v=>v[0]===h)||h==="khach"||h==="tai-khoan"||h==="nhat-ky"||h==="api"?h:"tong-quan";
   renderNav();
   if(ready) render();
 }
@@ -671,6 +744,7 @@ function render(){
   else if(v==="thong-ke") el.innerHTML=vStats();
   else if(v==="tai-khoan") el.innerHTML=vAccounts();
   else if(v==="nhat-ky") el.innerHTML=vLog();
+  else if(v==="api") el.innerHTML=vApi();
   bindView(); if(v==="ho-so") bindHs(el);
   if(ui.drawer) ui.drawer();
 }
@@ -3228,6 +3302,7 @@ function bindView(){
   A.querySelectorAll("[data-focus]").forEach(b=>b.addEventListener("click",()=>{ ui.focus=b.dataset.focus==="1"; saveUi(); render(); }));
   if(ui.view==="thong-ke") bindStats(A);
   if(ui.view==="nhat-ky") bindLog(A);
+  if(ui.view==="api") bindApi(A);
   if(ui.view==="tai-khoan"){ $("#accAdd")?.addEventListener("click",()=>openAcc(null)); $("#accBulk")?.addEventListener("click",openBulk); A.querySelectorAll("[data-acc]").forEach(r=>r.addEventListener("click",()=>openAcc(r.dataset.acc))); $("#impJson")?.addEventListener("change",e=>{ const f=e.target.files[0]; e.target.value=""; if(f) importJson(f); }); }
   if(ui.view==="ho-tro") bindSupport(A);
   if(ui.view==="bao-cao") bindReports(A);
