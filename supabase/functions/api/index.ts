@@ -44,6 +44,11 @@ export function clean(col: string, d: Record<string, unknown>): Record<string, u
   return scrub(x) as Record<string, unknown>;
 }
 
+function lastMod(r: any): string {
+  const c = [r.updated_at, r.data?.updatedAt, r.data?.createdAt, r.data?.at, r.data?.decidedAt, r.data?.doneAt]
+    .map((x) => { const d = new Date(x); return x && !isNaN(+d) ? d.toISOString() : ""; }).filter(Boolean).sort();
+  return c[c.length - 1] || "";
+}
 async function sha256(s: string) {
   const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
   return Array.from(new Uint8Array(b), (x) => x.toString(16).padStart(2, "0")).join("");
@@ -155,18 +160,25 @@ async function handleData(req: Request, parts: string[]) {
     const { data, error } = await db.from("docs").select("id,data,updated_at").eq("col", res).eq("id", id).maybeSingle();
     if (error) return json({ error: "server_error" }, 500);
     if (!data) return json({ error: "not_found" }, 404);
-    return json({ data: { id: data.id, updated_at: data.updated_at, ...clean(res, data.data) } });
+    return json({ data: { id: data.id, ...clean(res, data.data), updated_at: lastMod(data) } });
   }
   const u = new globalThis.URL(req.url);
   const limit = Math.min(1000, Math.max(1, Number(u.searchParams.get("limit")) || 500));
   const offset = Math.max(0, Number(u.searchParams.get("offset")) || 0);
-  let q = db.from("docs").select("id,data,updated_at", { count: "exact" }).eq("col", res).order("id").range(offset, offset + limit - 1);
   const since = u.searchParams.get("updated_since");
-  if (since) { const d = new Date(since); if (isNaN(+d)) return json({ error: "bad_updated_since" }, 400); q = q.gte("updated_at", d.toISOString()); }
-  const { data, count, error } = await q;
-  if (error) return json({ error: "server_error" }, 500);
-  const rows = (data || []).map((r) => ({ id: r.id, updated_at: r.updated_at, ...clean(res, r.data) }));
-  const next = offset + rows.length < (count || 0) ? offset + rows.length : null;
+  let sinceIso = "";
+  if (since) { const d = new Date(since); if (isNaN(+d)) return json({ error: "bad_updated_since" }, 400); sinceIso = d.toISOString(); }
+  // Thời điểm sửa thật nằm trong data.updatedAt (cột updated_at chỉ ghi lúc tạo), nên lọc sau khi đọc.
+  const all: any[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await db.from("docs").select("id,data,updated_at").eq("col", res).order("id").range(from, from + 999);
+    if (error) return json({ error: "server_error" }, 500);
+    all.push(...(data || [])); if (!data || data.length < 1000) break;
+  }
+  const list = all.map((r) => ({ r, t: lastMod(r) })).filter((x) => !sinceIso || x.t >= sinceIso);
+  const count = list.length;
+  const rows = list.slice(offset, offset + limit).map(({ r, t }) => ({ id: r.id, ...clean(res, r.data), updated_at: t }));
+  const next = offset + rows.length < count ? offset + rows.length : null;
   return json({ resource: res, total: count, offset, limit, next_offset: next, data: rows });
 }
 

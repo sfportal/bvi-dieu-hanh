@@ -353,7 +353,7 @@ function stBadge(t){ const late=tLate(t); return '<span class="st '+(late?"late"
 /* ---------- ứng dụng độc lập: Supabase ---------- */
 window.__APP=true;
 const SB_URL="https://pkckduidwfcncipwzdxa.supabase.co", SB_KEY="sb_publishable_ZHvz0flMvyIsxmT-tKS_Hw_q_Vz_7RF";
-const COLS=["zones","people","tasks","contracts","daily","units","events","leaves","faqs","supports","contacts"];
+const COLS=["zones","people","tasks","contracts","daily","units","events","leaves","faqs","supports","contacts","shares"];
 let SB=null, PROFILE=null, FIN={}, RAW={};
 const ROLE_L={owner:"Owner",manager:"Quản lý",staff:"Nhân viên",viewer:"Chỉ xem"};
 function canFin(){ return !!PROFILE&&(PROFILE.role==="owner"||PROFILE.can_finance); }
@@ -559,7 +559,7 @@ function openBulk(){
 
 /* ---------- nhật ký hoạt động (owner, quản lý) ---------- */
 const LOG_ACT={login:["Đăng nhập","good"],open:["Mở ứng dụng",""],logout:["Đăng xuất",""],password:["Mật khẩu",""],create:["Thêm","good"],update:["Sửa","warn"],delete:["Xóa","bad"],finance:["Thanh toán","warn"],account:["Tài khoản","bad"],import:["Nhập file","bad"]};
-const LOG_COL={zones:"Vùng",people:"Nhân sự",tasks:"Việc",contracts:"Hợp đồng",daily:"Báo cáo",units:"Đơn vị",events:"Lịch",leaves:"Nghỉ phép",faqs:"FAQ",supports:"Hỗ trợ",contacts:"Liên hệ",accounts:"Tài khoản",api_keys:"Khóa API"};
+const LOG_COL={zones:"Vùng",people:"Nhân sự",tasks:"Việc",contracts:"Hợp đồng",daily:"Báo cáo",units:"Đơn vị",events:"Lịch",leaves:"Nghỉ phép",faqs:"FAQ",supports:"Hỗ trợ",contacts:"Liên hệ",accounts:"Tài khoản",api_keys:"Khóa API",shares:"Bản gửi khách"};
 const LG={t:0,p:"7",from:"",to:"",who:"",act:"",q:"",rows:null,n:200,err:""};
 function lgRange(){ const d0=new Date(); d0.setHours(0,0,0,0); let a=new Date(d0), b=null;
   if(LG.p==="7") a.setDate(a.getDate()-6); else if(LG.p==="30") a.setDate(a.getDate()-29); else if(LG.p==="month") a.setDate(1);
@@ -687,6 +687,78 @@ function bindApi(A){
   const twice=(b,label,fn)=>b.addEventListener("click",async()=>{ if(b.dataset.arm!=="1"){ b.dataset.arm="1"; b.textContent=label; b.classList.add("bad"); setTimeout(()=>{ if(b.isConnected){ b.dataset.arm=""; render(); } },4000); return; } b.disabled=true; await fn(); });
   A.querySelectorAll("[data-apirv]").forEach(b=>twice(b,"Bấm lần nữa để thu hồi",async()=>{ const r=await callApiAdmin({action:"revoke",id:b.dataset.apirv}); toast(r.error||"Đã thu hồi, khóa không dùng được nữa"); loadApiKeys(); }));
   A.querySelectorAll("[data-apidel]").forEach(b=>twice(b,"Bấm lần nữa để xóa",async()=>{ const r=await callApiAdmin({action:"delete",id:b.dataset.apidel}); toast(r.error||"Đã xóa khóa"); loadApiKeys(); }));
+}
+/* ---------- Link báo cáo công khai cho khách: nhân sự soạn, quản lý duyệt và phát hành ---------- */
+const SH_PUB="https://uyducminh.github.io/bvi-dieu-hanh/bao-cao.html?t=";
+let SHL=null;
+async function callShare(body){
+  try{ const {data}=await SB.auth.getSession(); const res=await fetch(SB_URL+"/functions/v1/share",{method:"POST",headers:{"Content-Type":"application/json",apikey:SB_KEY,Authorization:"Bearer "+(data.session?.access_token||"")},body:JSON.stringify(body)});
+    let j=null; try{ j=await res.json(); }catch(_){} return j||{error:"http_"+res.status}; }catch(e){ return {error:"Không kết nối được máy chủ"}; } }
+async function loadShl(){ if(!canManage()) return; const r=await callShare({action:"list"}); SHL=r.shares||[]; if(ui.view==="khach") softRender(); }
+function shKey(){ return "d_"+custIds().slice().sort().join("_"); }
+function shDraft(){ return (S.shares||{})[shKey()]||{}; }
+function shLive(id,z){ const g=cGrp(z); return {prog:z.custNote||"",blk:z.blocker||"",rem:zRemain(id).join("\n")||(z.next||""),eta:g==="gacc"?(realCode(z)||""):(z.eta||"")}; }
+function shVal(d,id,z,f){ const o=(d.z||{})[id]||{}; return o[f]!==undefined?o[f]:shLive(id,z)[f]; }
+function shProg(id){ const ts=Object.values(S.tasks).filter(t=>t.zone===id&&t.kind!=="epic"); return {done:ts.filter(t=>t.status==="done").length,total:ts.length}; }
+function shActs(zs){ const ids=new Set(zs.map(([id])=>id)); const zn=id=>zShort(S.zones[id]?.name||""); const now=Date.now(), out=[];
+  Object.entries(S.tasks).forEach(([tid,t])=>{ if(!ids.has(t.zone)||t.status!=="done"||!t.doneAt) return; const d=new Date(t.doneAt); if(now-d>30*864e5) return;
+    out.push({k:"d:"+tid,kind:"done",date:t.doneAt.slice(0,10),zone:zn(t.zone),text:tTitle(t,S.zones[t.zone])}); });
+  const td=todayStr(), lim=new Date(now+14*864e5).toISOString().slice(0,10);
+  Object.entries(S.events||{}).forEach(([eid,e])=>{ if(!e.date||e.date<td||e.date>lim) return; (e.taskIds||[]).forEach(tid=>{ const t=S.tasks[tid]; if(!t||!ids.has(t.zone)||t.status==="done") return;
+    out.push({k:"u:"+eid+":"+tid,kind:"plan",date:e.date,zone:zn(t.zone),text:tTitle(t,S.zones[t.zone])}); }); });
+  return out.sort((a,b)=>a.kind===b.kind?(a.kind==="done"?b.date.localeCompare(a.date):a.date.localeCompare(b.date)):a.kind==="plan"?-1:1); }
+const shSafe=v=>typeof v==="string"?v.replace(/(?:\+?84)?\d(?:[\s.\-]?\d){8,}/g,"•••"):Array.isArray(v)?v.map(shSafe):v&&typeof v==="object"?Object.fromEntries(Object.entries(v).map(([k,x])=>[k,shSafe(x)])):v;
+function shSnap(){ return shSafe(shSnap0()); }
+function shSnap0(){ const d=shDraft(); const {zs,G,ha,multi}=custData(); const hideZ=id=>!!((d.z||{})[id]||{}).hide; const vis=zs.filter(([id])=>!hideZ(id));
+  const groups=Object.keys(CGRP).map(g=>{ const L=G[g].filter(([id])=>!hideZ(id)); if(!L.length) return null;
+    return {k:g,label:CGRP[g],crit:CGRP_CRIT[g],eta:g==="gacc"?"Đã có":g==="tbd"?"Chưa xác định":grpEta(L),n:L.length,ha:+ha(L).toFixed(2),
+      zones:L.map(([id,z])=>{ const p=shProg(id); return {name:zShort(z.name),place:zPlace(z,multi),ha:+(+z.ha||0).toFixed(2),step:z.step??null,stepName:z.step!=null&&STEPS[z.step]?STEPS[z.step].name:"",status:custStatus(z),
+        eta:shVal(d,id,z,"eta"),prog:shVal(d,id,z,"prog"),blk:shVal(d,id,z,"blk"),rem:String(shVal(d,id,z,"rem")||"").split("\n").map(s=>s.trim()).filter(Boolean),done:p.done,total:p.total}; })}; }).filter(Boolean);
+  const hx=d.x||{}; const acts=shActs(vis).filter(a=>!hx[a.k]).map(({kind,date,zone,text})=>({kind,date,zone,text}));
+  return {v:1,title:"Báo cáo tiến độ mã số vùng trồng",legal:custLegal(),date:dmy(todayStr()),at:new Date().toISOString(),intro:d.intro||"",n:vis.length,ha:+ha(vis).toFixed(2),groups,acts,
+    note:"Các mốc là dự kiến. Mã nội địa do cơ quan nhà nước xét duyệt, mã GACC do phía Trung Quốc phê duyệt."}; }
+async function shSave(patch){ const k=shKey(); const cur=shDraft(); return await put("shares",k,{...cur,...patch,unitIds:custIds(),legal:custLegal(),updatedAt:new Date().toISOString(),updatedBy:me||""}); }
+function shPanel(){ const d=shDraft(); const pub=d.token?SH_PUB+d.token:""; const s=pub&&SHL?SHL.find(x=>x.token===d.token):null; if(pub&&SHL===null&&canManage()) loadShl();
+  const changed=d.token&&d.updatedAt&&d.pubAt&&d.updatedAt>d.pubAt;
+  let h='<div class="panel" style="margin-top:12px;border-left:3px solid var(--brand)"><div class="row between" style="flex-wrap:wrap;gap:8px"><div style="min-width:0"><h2 style="margin:0">Link công khai cho khách</h2><div class="sub">Nhân sự soạn bản gửi khách, quản lý hoặc owner duyệt rồi phát hành. Khách chỉ thấy bản đã phát hành, không thấy bản nháp.</div>'
+   +'<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px">'+(pub?'<span class="pill good">Đã phát hành '+esc(d.pubAt?new Date(d.pubAt).toLocaleString("vi-VN"):"")+(d.pubBy?' · '+esc(d.pubBy):'')+'</span>':'<span class="pill">Chưa phát hành</span>')
+   +(s?'<span class="pill">'+s.views+' lượt xem'+(s.lastView?' · gần nhất '+esc(new Date(s.lastView).toLocaleString("vi-VN")):'')+'</span>':'')
+   +(d.review&&(!d.pubAt||d.review.at>d.pubAt)?'<span class="pill warn">Chờ duyệt · '+esc(pname(d.review.by)||"")+'</span>':'')+(changed?'<span class="pill warn">Bản nháp đã sửa sau lần phát hành</span>':'')+'</div></div>'
+   +'<div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn'+(ui.shEdit?' pri':'')+'" id="shEdit">'+(ui.shEdit?'Xong, đóng soạn thảo':'Soạn bản gửi khách')+'</button>'
+   +(canManage()?'<button class="btn pri" id="shPub">'+(pub?'Cập nhật bản phát hành':'Duyệt và phát hành')+'</button>':'<button class="btn" id="shAsk">Gửi quản lý duyệt</button>')+'</div></div>';
+  if(pub) h+='<div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap"><a class="mono" href="'+esc(pub)+'" target="_blank" rel="noopener" style="flex:1;min-width:0;overflow-wrap:anywhere;color:var(--brand)">'+esc(pub)+'</a><button class="btn sm" id="shCopy">Sao chép link</button>'+(canManage()?'<button class="btn sm" id="shRevoke">Thu hồi link</button>':'')+'</div>';
+  return h+'</div>'; }
+function shEditor(){ const d=shDraft(); const {zs}=custData(); const z0=d.z||{};
+  let h='<div class="panel" style="margin-top:12px"><h2>Lời nhắn đầu báo cáo</h2><div class="sub">Tóm tắt tuần hoặc lưu ý gửi khách. Không ghi số điện thoại, CCCD, số sổ đỏ, chi phí.</div><textarea id="shIntro" rows="3" style="width:100%;margin-top:6px" placeholder="Ví dụ: Tuần này BVI đã nộp hồ sơ cứng cho Phòng Kinh tế 3 vùng…">'+esc(d.intro||"")+'</textarea></div>';
+  h+='<div class="panel" style="margin-top:12px"><h2>Từng vùng</h2><div class="sub">Mặc định lấy từ hệ thống. Sửa ở đây chỉ đổi bản gửi khách, không đổi dữ liệu vùng. Bỏ tick "Hiện" để ẩn vùng khỏi báo cáo.</div>';
+  zs.forEach(([id,z])=>{ const o=z0[id]||{}, live=shLive(id,z), p=shProg(id); const ed=["prog","blk","rem","eta"].some(f=>o[f]!==undefined&&o[f]!==live[f]);
+    const fld=(f,lab,rows)=>'<div class="f"><label>'+lab+(o[f]!==undefined&&o[f]!==live[f]?' <span class="pill warn" style="font-size:11px">đã sửa</span>':'')+'</label>'+(rows?'<textarea rows="'+rows+'" data-shz="'+esc(id)+'" data-shf="'+f+'">'+esc(shVal(d,id,z,f))+'</textarea>':'<input data-shz="'+esc(id)+'" data-shf="'+f+'" value="'+esc(shVal(d,id,z,f))+'">')+'</div>';
+    h+='<div style="border-top:1px solid var(--line);padding:12px 0'+(o.hide?';opacity:.55':'')+'"><div class="row between" style="flex-wrap:wrap;gap:6px"><div><b>'+esc(zShort(z.name))+'</b> <span class="sub">'+fmtHa(z.ha)+' ha · '+CGRP[cGrp(z)]+(p.total?' · việc xong '+p.done+'/'+p.total:'')+'</span></div><div class="row" style="gap:8px"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-shhide="'+esc(id)+'"'+(o.hide?'':' checked')+'> Hiện</label>'+(ed?'<button class="btn sm" data-shreset="'+esc(id)+'">Lấy lại từ hệ thống</button>':'')+'</div></div>'
+      +(o.hide?'':'<div class="f2">'+fld("prog","Tiến độ",2)+fld("blk","Vướng mắc",2)+'</div><div class="f2">'+fld("rem","Việc còn lại (mỗi dòng một việc)",3)+fld("eta",cGrp(z)==="gacc"?"Mã nội địa":"Dự kiến có mã nội địa",0)+'</div>')+'</div>'; });
+  h+='</div>';
+  const acts=shActs(zs.filter(([id])=>!(z0[id]||{}).hide)), hx=d.x||{};
+  h+='<div class="panel" style="margin-top:12px"><h2>Hoạt động đưa vào báo cáo</h2><div class="sub">Lịch đi thực địa 14 ngày tới và việc đã xong 30 ngày qua của các vùng trên. Bỏ tick việc không muốn khách thấy.</div>';
+  if(!acts.length) h+='<div class="empty">Chưa có hoạt động.</div>';
+  ["plan","done"].forEach(kd=>{ const L=acts.filter(a=>a.kind===kd); if(!L.length) return; h+='<h3 style="margin:12px 0 4px">'+(kd==="plan"?"Sắp tới":"Đã hoàn thành")+'</h3>';
+    L.forEach(a=>{ h+='<label style="display:flex;gap:8px;align-items:flex-start;padding:4px 0"><input type="checkbox" data-shx="'+esc(a.k)+'"'+(hx[a.k]?'':' checked')+'><span><span class="mono sub">'+dmy(a.date).slice(0,5)+'</span> <b>'+esc(a.zone)+'</b>: '+esc(a.text)+'</span></label>'; }); });
+  return h+'</div>';
+}
+function bindShare(){
+  $("#shEdit")?.addEventListener("click",()=>{ ui.shEdit=!ui.shEdit; render(); });
+  $("#shAsk")?.addEventListener("click",async()=>{ if(await shSave({review:{at:new Date().toISOString(),by:me||""}})) toast("Đã gửi quản lý duyệt"); });
+  $("#shCopy")?.addEventListener("click",()=>{ const u=SH_PUB+shDraft().token; navigator.clipboard?.writeText(u).then(()=>toast("Đã sao chép link"),()=>toast("Chọn và sao chép thủ công")); });
+  const b=$("#shPub"); b?.addEventListener("click",async()=>{ if(b.dataset.arm!=="1"){ b.dataset.arm="1"; b.textContent="Bấm lần nữa để phát hành cho khách"; setTimeout(()=>{ if(b.isConnected){ b.dataset.arm=""; render(); } },5000); return; }
+    b.disabled=true; b.textContent="Đang phát hành…"; const d=shDraft(); const r=await callShare({action:"publish",key:shKey(),token:d.token||null,snap:shSnap()});
+    if(r.error){ toast(r.error==="manager_only"?"Chỉ quản lý hoặc owner phát hành được":"Chưa phát hành được: "+r.error); render(); return; }
+    await shSave({token:r.token,pubAt:r.at,pubBy:r.by}); SHL=null; toast("Đã phát hành. Gửi link cho khách."); });
+  const rv=$("#shRevoke"); rv?.addEventListener("click",async()=>{ if(rv.dataset.arm!=="1"){ rv.dataset.arm="1"; rv.textContent="Bấm lần nữa để thu hồi"; setTimeout(()=>{ if(rv.isConnected){ rv.dataset.arm=""; render(); } },5000); return; }
+    rv.disabled=true; const r=await callShare({action:"revoke",token:shDraft().token}); if(r.error){ toast(r.error); render(); return; } await shSave({token:"",pubAt:"",pubBy:""}); SHL=null; toast("Đã thu hồi, link cũ không mở được nữa"); });
+  $("#shIntro")?.addEventListener("change",e=>shSave({intro:e.target.value.slice(0,2000)}));
+  document.querySelectorAll("[data-shf]").forEach(el=>el.addEventListener("change",()=>{ const d=shDraft(), id=el.dataset.shz, f=el.dataset.shf; const z=JSON.parse(JSON.stringify(d.z||{})); const o=z[id]||(z[id]={}); const live=shLive(id,S.zones[id])[f];
+    if(el.value===live) delete o[f]; else o[f]=el.value.slice(0,2000); shSave({z}); }));
+  document.querySelectorAll("[data-shhide]").forEach(el=>el.addEventListener("change",()=>{ const z=JSON.parse(JSON.stringify(shDraft().z||{})); const id=el.dataset.shhide; (z[id]||(z[id]={})).hide=!el.checked; if(!z[id].hide) delete z[id].hide; shSave({z}); }));
+  document.querySelectorAll("[data-shreset]").forEach(el=>el.addEventListener("click",()=>{ const z=JSON.parse(JSON.stringify(shDraft().z||{})); const id=el.dataset.shreset; z[id]=z[id]?.hide?{hide:true}:{}; shSave({z}); }));
+  document.querySelectorAll("[data-shx]").forEach(el=>el.addEventListener("change",()=>{ const x={...(shDraft().x||{})}; if(el.checked) delete x[el.dataset.shx]; else x[el.dataset.shx]=true; shSave({x}); }));
 }
 
 const stamp=()=>({updatedAt:new Date().toISOString(),updatedBy:me||""});
@@ -1774,6 +1846,7 @@ function vCustomer(){
   if(!ui.cust) return h+'<div class="empty">Chưa có đơn vị liên kết nào.</div>';
   const others=units.filter(([k])=>k!==ui.cust);
   if(others.length) h+='<details class="panel" style="margin-top:10px"'+((ui.custAdd||[]).length?" open":"")+'><summary style="cursor:pointer"><b>Gộp thêm đơn vị vào báo cáo</b>'+((ui.custAdd||[]).length?' <span class="pill">'+ui.custAdd.length+' đơn vị</span>':'')+'</summary><div class="multi" style="margin-top:8px">'+others.map(([k,u])=>'<label><input type="checkbox" data-custadd="'+k+'"'+((ui.custAdd||[]).includes(k)?" checked":"")+'>'+esc(u.name)+'</label>').join("")+'</div></details>';
+  h+=shPanel(); if(ui.shEdit) return h+shEditor();
   const {zs,G,ha,multi}=custData();
   h+='<div class="panel custhead" style="margin-top:12px"><h2 style="font-size:18px">Báo cáo tiến độ mã số vùng trồng</h2><div><b>'+esc(custLegal())+'</b></div><div class="sub">Số liệu cập nhật '+dmy(todayStr())+' · Công ty CP BVI</div></div>';
   h+='<div class="row" style="flex-wrap:wrap;gap:6px;margin-top:10px"><span class="pill">'+zs.length+' vùng · '+fmtHa(ha(zs))+' ha</span>'+(G.gacc.length?'<span class="pill good">'+G.gacc.length+' đã có mã nội địa</span>':'')+(G.ut1.length?'<span class="pill info">Ưu tiên 1: '+G.ut1.length+' vùng'+(grpEta(G.ut1)?', có mã '+esc(etaShort(grpEta(G.ut1))):'')+'</span>':'')+(G.ut2.length?'<span class="pill warn">Ưu tiên 2: '+G.ut2.length+' vùng'+(grpEta(G.ut2)?', có mã '+esc(etaShort(grpEta(G.ut2))):'')+'</span>':'')+(G.tbd.length?'<span class="pill bad">'+G.tbd.length+' chưa xác định ngày</span>':'')+'</div>';
@@ -3371,7 +3444,7 @@ function bindView(){
     $("#emine")?.addEventListener("change",e=>{ui.ef.mine=e.target.checked;render();});
   }
   if(ui.view==="khach"){
-    $("#docxRep")?.addEventListener("click",exportCustDocx);
+    $("#docxRep")?.addEventListener("click",exportCustDocx); bindShare();
     $("#custSel")?.addEventListener("change",e=>{ui.cust=e.target.value;render();});
     document.querySelectorAll("[data-custadd]").forEach(c=>c.addEventListener("change",()=>{ const k=c.dataset.custadd; const a=new Set(ui.custAdd||[]); c.checked?a.add(k):a.delete(k); ui.custAdd=[...a]; render(); }));
     $("#copyRep")?.addEventListener("click",()=>{ const t=custSummary(); navigator.clipboard.writeText(t).then(()=>toast("Đã sao chép tóm tắt"),()=>{ showDrawer('<div class="dh"><h2>Tóm tắt gửi khách</h2><button class="btn sm" data-close>Đóng</button></div><div class="db"><textarea rows="18" style="width:100%">'+esc(t)+'</textarea><div class="sub">Chọn toàn bộ rồi sao chép.</div></div>'); ui.drawer=()=>{}; }); });

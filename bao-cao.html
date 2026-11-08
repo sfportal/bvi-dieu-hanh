@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Báo cáo tiến độ mã vùng trồng</title>
+<style>
+:root{--bg:#f6f7f4;--card:#fff;--ink:#1c2420;--sub:#5f6a64;--line:#e3e7e2;--brand:#1f5f3f;--brand2:#e7f1ea;--g1:#2f7d4f;--g2:#c08a1e;--g3:#8a6d3b;--bar:#e9ece8;--warnbg:#fff6e0}
+@media (prefers-color-scheme:dark){:root{--bg:#121614;--card:#1a1f1c;--ink:#e7ece8;--sub:#9aa69f;--line:#2b332e;--brand:#7cc79d;--brand2:#1e2e25;--g1:#7cc79d;--g2:#e7b75a;--g3:#c9a46a;--bar:#2a312d;--warnbg:#2c2615}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:980px;margin:0 auto;padding:24px 16px 56px}
+.brand{display:flex;align-items:center;gap:8px;font-weight:700;color:var(--brand);font-size:14px}
+.logo{display:grid;grid-template-columns:repeat(3,6px);gap:2px}.logo i{width:6px;height:6px;background:var(--brand);border-radius:1px}.logo i:nth-child(5){background:#d9a441}
+h1{font-size:26px;line-height:1.25;margin:10px 0 2px}
+.legal{font-weight:600;font-size:17px}
+.sub{color:var(--sub);font-size:13px}
+.intro{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--brand);border-radius:10px;padding:12px 14px;margin:16px 0;white-space:pre-wrap}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:16px 0}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.kpi b{display:block;font-size:24px;line-height:1.2;font-variant-numeric:tabular-nums}
+.kpi span{color:var(--sub);font-size:13px}
+h2{font-size:19px;margin:28px 0 4px}
+.gsub{color:var(--sub);font-size:13px;margin-bottom:10px}
+.zs{display:grid;gap:10px}
+.z{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.zh{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline}
+.zn{font-weight:700;font-size:16px}
+.tag{display:inline-block;font-size:12px;font-weight:600;padding:2px 9px;border-radius:99px;background:var(--brand2);color:var(--brand);white-space:nowrap}
+.meta{color:var(--sub);font-size:13px;margin-top:2px}
+.bar{height:6px;background:var(--bar);border-radius:99px;overflow:hidden;margin:10px 0 4px}.bar i{display:block;height:100%;background:var(--g1)}
+.steps{display:flex;gap:3px;margin:10px 0 2px}.steps i{flex:1;height:6px;border-radius:2px;background:var(--bar)}.steps i.on{background:var(--g1)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 18px;margin-top:10px}
+.grid div{min-width:0}
+.lab{font-size:12px;color:var(--sub);font-weight:600;text-transform:uppercase;letter-spacing:.02em}
+.blk{background:var(--warnbg);border-radius:6px;padding:2px 6px}
+ul{margin:2px 0 0;padding-left:18px}
+.acts{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px 16px}
+.act{display:flex;gap:12px;padding:8px 0;border-top:1px solid var(--line)}.act:first-child{border-top:0}
+.act .d{flex:0 0 46px;font-variant-numeric:tabular-nums;color:var(--sub);font-size:13px;padding-top:1px}
+.note{color:var(--sub);font-size:13px;margin-top:28px;border-top:1px solid var(--line);padding-top:12px}
+.empty{text-align:center;padding:60px 16px;color:var(--sub)}
+@media (max-width:640px){.grid{grid-template-columns:1fr}h1{font-size:22px}}
+@media print{body{background:#fff}.z,.kpi,.acts,.intro{break-inside:avoid}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="empty">Đang tải báo cáo…</div></div>
+<script>
+const API="https://pkckduidwfcncipwzdxa.supabase.co/functions/v1/share";
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const ha=n=>(Number(n)||0).toLocaleString("vi-VN",{maximumFractionDigits:2});
+const dm=s=>s?s.slice(8,10)+"/"+s.slice(5,7):"";
+function render(r){
+  const s=r.snap, el=document.getElementById("app");
+  document.title=(s.legal?s.legal+" · ":"")+"Báo cáo tiến độ";
+  let h='<div class="brand"><span class="logo"><i></i><i></i><i></i><i></i><i></i><i></i></span>Công ty CP BVI</div>'
+   +'<h1>'+esc(s.title||"Báo cáo tiến độ")+'</h1><div class="legal">'+esc(s.legal||"")+'</div>'
+   +'<div class="sub">Cập nhật '+esc(new Date(r.publishedAt||s.at).toLocaleString("vi-VN",{hour:"2-digit",minute:"2-digit",day:"2-digit",month:"2-digit",year:"numeric"}))+'</div>';
+  if(s.intro) h+='<div class="intro">'+esc(s.intro)+'</div>';
+  h+='<div class="kpis"><div class="kpi"><b>'+(s.n||0)+'</b><span>vùng · '+ha(s.ha)+' ha</span></div>'
+   +(s.groups||[]).map(g=>'<div class="kpi"><b>'+g.n+'</b><span>'+esc(g.label)+(g.eta&&g.k!=="gacc"&&g.k!=="tbd"?', có mã '+esc(g.eta):'')+'</span></div>').join("")+'</div>';
+  (s.groups||[]).forEach(g=>{
+    h+='<h2>'+esc(g.label)+' · '+g.n+' vùng · '+ha(g.ha)+' ha</h2><div class="gsub">'+esc(g.crit||"")+(g.eta&&g.k!=="gacc"?' · Dự kiến mã nội địa: '+esc(g.eta):'')+'</div><div class="zs">';
+    g.zones.forEach(z=>{
+      const pct=z.total?Math.round(z.done*100/z.total):null;
+      h+='<div class="z"><div class="zh"><div><div class="zn">'+esc(z.name)+'</div><div class="meta">'+[z.place,ha(z.ha)+" ha"].filter(Boolean).map(esc).join(" · ")+'</div></div><span class="tag">'+esc(z.status||"")+'</span></div>';
+      if(z.step!=null) h+='<div class="steps" title="Bước '+(z.step+1)+'/9">'+Array.from({length:9},(_,i)=>'<i class="'+(i<=z.step?'on':'')+'"></i>').join("")+'</div><div class="meta">Bước '+(z.step+1)+'/9: '+esc(z.stepName||"")+'</div>';
+      if(pct!==null) h+='<div class="bar"><i style="width:'+pct+'%"></i></div><div class="meta">Công việc: xong '+z.done+'/'+z.total+' ('+pct+'%)</div>';
+      h+='<div class="grid">'
+        +(z.prog?'<div><div class="lab">Tiến độ</div>'+esc(z.prog)+'</div>':'')
+        +(z.eta?'<div><div class="lab">'+(g.k==="gacc"?"Mã nội địa":"Dự kiến có mã")+'</div>'+esc(z.eta)+'</div>':'')
+        +(z.blk?'<div><div class="lab">Vướng mắc</div><span class="blk">'+esc(z.blk)+'</span></div>':'')
+        +(z.rem&&z.rem.length?'<div><div class="lab">Việc còn lại</div><ul>'+z.rem.map(x=>'<li>'+esc(x)+'</li>').join("")+'</ul></div>':'')
+        +'</div></div>';
+    });
+    h+='</div>';
+  });
+  const plan=(s.acts||[]).filter(a=>a.kind==="plan"), done=(s.acts||[]).filter(a=>a.kind==="done");
+  const actList=L=>'<div class="acts">'+L.map(a=>'<div class="act"><span class="d">'+dm(a.date)+'</span><div><b>'+esc(a.zone)+'</b>: '+esc(a.text)+'</div></div>').join("")+'</div>';
+  if(plan.length) h+='<h2>Lịch làm việc sắp tới</h2><div class="gsub">Các buổi đi thực địa, làm hồ sơ đã lên lịch.</div>'+actList(plan);
+  if(done.length) h+='<h2>Việc đã hoàn thành gần đây</h2><div class="gsub">30 ngày qua.</div>'+actList(done);
+  h+='<div class="note">'+esc(s.note||"")+'<br>Báo cáo do Công ty CP BVI phát hành. Liên hệ người phụ trách của BVI nếu cần thêm thông tin.</div>';
+  el.innerHTML=h;
+}
+(async()=>{
+  const t=new URLSearchParams(location.search).get("t")||"";
+  const el=document.getElementById("app");
+  if(!/^[A-Za-z0-9]{22}$/.test(t)){ el.innerHTML='<div class="empty">Link không hợp lệ. Vui lòng kiểm tra lại link BVI đã gửi.</div>'; return; }
+  try{ const res=await fetch(API+"?t="+encodeURIComponent(t),{cache:"no-store"}); const j=await res.json();
+    if(!res.ok||!j.snap){ el.innerHTML='<div class="empty">Báo cáo không còn được chia sẻ hoặc link đã thay đổi. Vui lòng liên hệ BVI để nhận link mới.</div>'; return; }
+    render(j);
+  }catch(e){ el.innerHTML='<div class="empty">Không tải được báo cáo. Kiểm tra mạng rồi tải lại trang.</div>'; }
+})();
+</script>
+</body>
+</html>
