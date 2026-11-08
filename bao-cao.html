@@ -36,6 +36,7 @@ h2{font-size:19px;margin:28px 0 4px}
 .lab{font-size:12px;color:var(--sub);font-weight:600;text-transform:uppercase;letter-spacing:.02em}
 .blk{background:var(--warnbg);border-radius:6px;padding:2px 6px}
 ul{margin:2px 0 0;padding-left:18px}
+.act .st{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--sub);margin-left:4px;white-space:nowrap}.act .st.ok{color:var(--brand);border-color:var(--brand)}.act .m{font-size:13px;color:var(--sub);margin-top:2px}.act small{font-size:11px;color:var(--sub)}
 .acts{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px 16px}
 .act{display:flex;gap:12px;padding:8px 0;border-top:1px solid var(--line)}.act:first-child{border-top:0}
 .act .d{flex:0 0 46px;font-variant-numeric:tabular-nums;color:var(--sub);font-size:13px;padding-top:1px}
@@ -79,7 +80,8 @@ function render(r){
   });
   const plan=(s.acts||[]).filter(a=>a.kind==="plan"), done=(s.acts||[]).filter(a=>a.kind==="done");
   const actList=L=>'<div class="acts">'+L.map(a=>'<div class="act"><span class="d">'+dm(a.date)+'</span><div><b>'+esc(a.zone)+'</b>: '+esc(a.text)+'</div></div>').join("")+'</div>';
-  if(plan.length) h+='<h2>Lịch làm việc sắp tới</h2><div class="gsub">Các buổi đi thực địa, làm hồ sơ đã lên lịch.</div>'+actList(plan);
+  const planList=L=>'<div class="acts">'+L.map(a=>'<div class="act"><span class="d">'+dm(a.date)+(a.end?'<br><small>đến '+dm(a.end)+'</small>':'')+'</span><div><b>'+esc(a.zone)+'</b>: '+esc(a.text)+(a.st?' <span class="st'+(a.st==="Đã chốt"?' ok':'')+'">'+esc(a.st)+'</span>':'')+((a.time||a.place)?'<div class="m">'+esc([a.time,a.place].filter(Boolean).join(" · "))+'</div>':'')+'</div></div>').join("")+'</div>';
+  if(plan.length) h+='<h2>Lịch triển khai tại vùng trồng</h2><div class="gsub">Các buổi đi thực địa, làm việc với xã và nông hộ. "Đã chốt" là lịch đã duyệt, "Dự kiến" có thể thay đổi.</div>'+planList(plan);
   if(done.length) h+='<h2>Việc đã hoàn thành gần đây</h2><div class="gsub">30 ngày qua.</div>'+actList(done);
   h+='<div class="note">'+esc(s.note||"")+'<br>Báo cáo do Công ty CP BVI phát hành. Liên hệ người phụ trách của BVI nếu cần thêm thông tin.</div>';
   el.innerHTML=h;
