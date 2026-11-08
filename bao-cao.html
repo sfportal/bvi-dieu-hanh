@@ -37,6 +37,11 @@ h2{font-size:19px;margin:28px 0 4px}
 .blk{background:var(--warnbg);border-radius:6px;padding:2px 6px}
 ul{margin:2px 0 0;padding-left:18px}
 .act .st{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--sub);margin-left:4px;white-space:nowrap}.act .st.ok{color:var(--brand);border-color:var(--brand)}.act .m{font-size:13px;color:var(--sub);margin-top:2px}.act small{font-size:11px;color:var(--sub)}
+.fb{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:16px 0;display:grid;gap:8px}
+.fbr{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.fbr span{color:var(--sub);font-size:13px;flex:0 0 100%}.fbr code{background:var(--brand2);padding:3px 8px;border-radius:6px;font-size:14px;overflow-wrap:anywhere;min-width:0;flex:1 1 120px}
+.fbr button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:6px;padding:3px 10px;font:inherit;font-size:13px;cursor:pointer}
+.fbgo{display:block;text-align:center;background:var(--brand);color:#fff;text-decoration:none;font-weight:600;padding:11px;border-radius:8px}
+@media (prefers-color-scheme:dark){.fbgo{color:#0e1a13}}
 .acts{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px 16px}
 .act{display:flex;gap:12px;padding:8px 0;border-top:1px solid var(--line)}.act:first-child{border-top:0}
 .act .d{flex:0 0 46px;font-variant-numeric:tabular-nums;color:var(--sub);font-size:13px;padding-top:1px}
@@ -60,6 +65,11 @@ function render(r){
    +'<h1>'+esc(s.title||"Báo cáo tiến độ")+'</h1><div class="legal">'+esc(s.legal||"")+'</div>'
    +'<div class="sub">Cập nhật '+esc(new Date(r.publishedAt||s.at).toLocaleString("vi-VN",{hour:"2-digit",minute:"2-digit",day:"2-digit",month:"2-digit",year:"numeric"}))+'</div>';
   if(s.intro) h+='<div class="intro">'+esc(s.intro)+'</div>';
+  if(s.fb&&s.fb.org&&s.fb.login) h+='<div class="fb"><div class="fbh"><b>Xem chi tiết vùng trồng trên FarmBase</b><div class="gsub">Bản đồ lô, hồ sơ và nhật ký từng vùng.</div></div>'
+    +'<div class="fbr"><span>Mã tổ chức</span><code id="fbOrg">'+esc(s.fb.org)+'</code><button data-cp="fbOrg">Sao chép</button></div>'
+    +'<div class="fbr"><span>Email đăng nhập</span><code id="fbLogin">'+esc(s.fb.login)+'</code><button data-cp="fbLogin">Sao chép</button></div>'
+    +'<div class="gsub">Mật khẩu BVI gửi riêng qua Zalo. Vui lòng đổi mật khẩu ở lần đăng nhập đầu tiên.</div>'
+    +'<a class="fbgo" href="https://app.farmbase.vn/" target="_blank" rel="noopener">Mở FarmBase</a></div>';
   h+='<div class="kpis"><div class="kpi"><b>'+(s.n||0)+'</b><span>vùng · '+ha(s.ha)+' ha</span></div>'
    +(s.groups||[]).map(g=>'<div class="kpi"><b>'+g.n+'</b><span>'+esc(g.label)+(g.eta&&g.k!=="gacc"&&g.k!=="tbd"?', có mã '+esc(g.eta):'')+'</span></div>').join("")+'</div>';
   (s.groups||[]).forEach(g=>{
@@ -85,6 +95,7 @@ function render(r){
   if(done.length) h+='<h2>Việc đã hoàn thành gần đây</h2><div class="gsub">30 ngày qua.</div>'+actList(done);
   h+='<div class="note">'+esc(s.note||"")+'<br>Báo cáo do Công ty CP BVI phát hành. Liên hệ người phụ trách của BVI nếu cần thêm thông tin.</div>';
   el.innerHTML=h;
+  el.querySelectorAll("[data-cp]").forEach(btn=>btn.addEventListener("click",()=>{ const t=document.getElementById(btn.dataset.cp).textContent; try{ navigator.clipboard.writeText(t).then(()=>{ btn.textContent="Đã chép"; setTimeout(()=>btn.textContent="Sao chép",1500); },()=>{}); }catch(e){} }));
 }
 (async()=>{
   const t=new URLSearchParams(location.search).get("t")||"";

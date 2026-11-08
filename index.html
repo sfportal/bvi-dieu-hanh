@@ -715,7 +715,8 @@ function shActs(zs){ const ids=new Set(zs.map(([id])=>id)); const zn=id=>zShort(
     out.push({k:"e:"+eid,kind:"plan",date:e.date,end:e.end&&e.end!==e.date?e.end:"",time:e.time||"",place:e.place||"",st:e.status==="draft"?"Dự kiến":"Đã chốt",zone:[...zz].map(zn).join(", ")||"Chung",text:tt.length?(tt.slice(0,4).join("; ")+(tt.length>4?" và "+(tt.length-4)+" việc khác":"")):(e.title||"Làm việc tại vùng trồng")}); });
   return out.sort((a,b)=>a.kind===b.kind?(a.kind==="done"?b.date.localeCompare(a.date):a.date.localeCompare(b.date)):a.kind==="plan"?-1:1); }
 const shSafe=v=>typeof v==="string"?v.replace(/(?:\+?84)?\d(?:[\s.\-]?\d){8,}/g,"•••"):Array.isArray(v)?v.map(shSafe):v&&typeof v==="object"?Object.fromEntries(Object.entries(v).map(([k,x])=>[k,shSafe(x)])):v;
-function shSnap(){ return shSafe(shSnap0()); }
+function shFb(){ const f=shDraft().fb||{}; const org=String(f.org||"").trim().slice(0,60), login=String(f.login||"").trim().slice(0,120); return f.on!==false&&org&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(login)?{org,login,url:"https://app.farmbase.vn/"}:null; }
+function shSnap(){ const s=shSafe(shSnap0()); s.fb=shFb(); return s; }
 function shSnap0(){ const d=shDraft(); const {zs,G,ha,multi}=custData(); const hideZ=id=>!!((d.z||{})[id]||{}).hide; const vis=zs.filter(([id])=>!hideZ(id));
   const groups=Object.keys(CGRP).map(g=>{ const L=G[g].filter(([id])=>!hideZ(id)); if(!L.length) return null;
     return {k:g,label:CGRP[g],crit:CGRP_CRIT[g],eta:g==="gacc"?"Đã có":g==="tbd"?"Chưa xác định":grpEta(L),n:L.length,ha:+ha(L).toFixed(2),
@@ -739,6 +740,11 @@ function shPanel(){ const d=shDraft(); const pub=d.token?SH_PUB+d.token:""; cons
   return h+'</div>'; }
 function shEditor(){ const d=shDraft(); const {zs}=custData(); const z0=d.z||{};
   let h='<div class="panel" style="margin-top:12px"><h2>Lời nhắn đầu báo cáo</h2><div class="sub">Tóm tắt tuần hoặc lưu ý gửi khách. Không ghi số điện thoại, CCCD, số sổ đỏ, chi phí.</div><textarea id="shIntro" rows="3" style="width:100%;margin-top:6px" placeholder="Ví dụ: Tuần này BVI đã nộp hồ sơ cứng cho Phòng Kinh tế 3 vùng…">'+esc(d.intro||"")+'</textarea></div>';
+  const fb=d.fb||{};
+  h+='<div class="panel" style="margin-top:12px"><h2>Xem vùng trồng trên FarmBase</h2><div class="sub">Báo cáo sẽ có nút vào <b>app.farmbase.vn</b> kèm mã tổ chức và email đăng nhập của khách. <b>Không ghi mật khẩu ở đây.</b> Mật khẩu nhắn riêng cho khách qua Zalo, báo khách đổi mật khẩu ở lần đăng nhập đầu.</div>'
+   +'<div class="f2" style="margin-top:8px"><div class="f"><label for="shFbOrg">Mã tổ chức</label><input id="shFbOrg" maxlength="60" autocomplete="off" value="'+esc(fb.org||"")+'"></div><div class="f"><label for="shFbLogin">Email đăng nhập của khách</label><input id="shFbLogin" type="email" maxlength="120" autocomplete="off" value="'+esc(fb.login||"")+'"></div></div>'
+   +'<label class="chk" style="margin-top:6px"><input type="checkbox" id="shFbOn"'+(fb.on===false?'':' checked')+'><span>Hiện phần này trong báo cáo</span></label>'
+   +((fb.org||fb.login)&&!shFb()&&fb.on!==false?'<div class="sub" style="color:var(--warn)">Cần đủ mã tổ chức và email hợp lệ thì báo cáo mới hiện phần này.</div>':'')+'</div>';
   h+='<div class="panel" style="margin-top:12px"><h2>Từng vùng</h2><div class="sub">Mặc định lấy từ hệ thống. Sửa ở đây chỉ đổi bản gửi khách, không đổi dữ liệu vùng. Bỏ tick "Hiện" để ẩn vùng khỏi báo cáo.</div>';
   zs.forEach(([id,z])=>{ const o=z0[id]||{}, live=shLive(id,z), p=shProg(id); const ed=["prog","blk","rem","eta"].some(f=>o[f]!==undefined&&o[f]!==live[f]);
     const fld=(f,lab,rows)=>'<div class="f"><label>'+lab+(o[f]!==undefined&&o[f]!==live[f]?' <span class="pill warn" style="font-size:11px">đã sửa</span>':'')+'</label>'+(rows?'<textarea rows="'+rows+'" data-shz="'+esc(id)+'" data-shf="'+f+'">'+esc(shVal(d,id,z,f))+'</textarea>':'<input data-shz="'+esc(id)+'" data-shf="'+f+'" value="'+esc(shVal(d,id,z,f))+'">')+'</div>';
@@ -763,6 +769,8 @@ function bindShare(){
   const rv=$("#shRevoke"); rv?.addEventListener("click",async()=>{ if(rv.dataset.arm!=="1"){ rv.dataset.arm="1"; rv.textContent="Bấm lần nữa để thu hồi"; setTimeout(()=>{ if(rv.isConnected){ rv.dataset.arm=""; render(); } },5000); return; }
     rv.disabled=true; const r=await callShare({action:"revoke",token:shDraft().token,key:shKey()}); if(r.error){ toast(r.error); render(); return; } SHD=SHD||{}; SHD[shKey()]=r.draft||{...shDraft(),token:"",pubAt:"",pubBy:""}; render(); SHL=null; toast("Đã thu hồi, link cũ không mở được nữa"); });
   $("#shIntro")?.addEventListener("change",e=>shSave({intro:e.target.value.slice(0,2000)}));
+  const fbSave=()=>shSave({fb:{org:($("#shFbOrg")?.value||"").trim().slice(0,60),login:($("#shFbLogin")?.value||"").trim().slice(0,120),on:!!$("#shFbOn")?.checked}});
+  ["#shFbOrg","#shFbLogin","#shFbOn"].forEach(k=>$(k)?.addEventListener("change",fbSave));
   document.querySelectorAll("[data-shf]").forEach(el=>el.addEventListener("change",()=>{ const d=shDraft(), id=el.dataset.shz, f=el.dataset.shf; const z=JSON.parse(JSON.stringify(d.z||{})); const o=z[id]||(z[id]={}); const live=shLive(id,S.zones[id])[f];
     if(el.value===live) delete o[f]; else o[f]=el.value.slice(0,2000); shSave({z}); }));
   document.querySelectorAll("[data-shhide]").forEach(el=>el.addEventListener("change",()=>{ const z=JSON.parse(JSON.stringify(shDraft().z||{})); const id=el.dataset.shhide; (z[id]||(z[id]={})).hide=!el.checked; if(!z[id].hide) delete z[id].hide; shSave({z}); }));
