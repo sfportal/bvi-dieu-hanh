@@ -43,7 +43,7 @@ footer{margin-top:40px;color:var(--sub);font-size:13px}
 <header><span class="logo"><i></i><i></i><i></i><i></i><i></i><i></i></span><b>BVI Điều hành</b></header>
 <h1>API cho đối tác</h1>
 <div class="sub">Lấy dữ liệu vùng trồng, công việc, lịch công tác và các dữ liệu liên quan từ hệ thống BVI Điều hành. API chỉ đọc, phiên bản v1.</div>
-<nav class="toc"><a href="#bat-dau">Bắt đầu</a><a href="#xac-thuc">Xác thực</a><a href="#duong-dan">Đường dẫn</a><a href="#tham-so">Tham số, phân trang</a><a href="#ket-qua">Kết quả</a><a href="#truong">Ý nghĩa các trường</a><a href="#vi-du">Ví dụ</a><a href="#loi">Mã lỗi</a></nav>
+<nav class="toc"><a href="#bat-dau">Bắt đầu</a><a href="#xac-thuc">Xác thực</a><a href="#duong-dan">Đường dẫn</a><a href="#tham-so">Tham số, phân trang</a><a href="#ket-qua">Kết quả</a><a href="#truong">Ý nghĩa các trường</a><a href="#vi-du">Ví dụ</a><a href="#loi">Mã lỗi</a><a href="#mcp">Kết nối AI (MCP)</a></nav>
 
 <h2 id="bat-dau">Bắt đầu</h2>
 <ol>
@@ -224,6 +224,42 @@ tasks = get_all("tasks", since="2026-11-01T00:00:00Z")</code></pre>
 <tr><td>429</td><td><code>rate_limited</code></td><td>Gọi quá 120 lượt mỗi phút</td></tr>
 <tr><td>500</td><td><code>server_error</code></td><td>Lỗi máy chủ, thử lại sau</td></tr>
 </tbody></table></div>
+
+<h2 id="mcp">Kết nối AI (MCP)</h2>
+<p>Ngoài REST, hệ thống có máy chủ MCP để trợ lý AI (Claude, các ứng dụng hỗ trợ MCP) tự tra dữ liệu bằng câu hỏi tự nhiên, ví dụ "vùng nào đang vướng ở bước xã kiểm tra", "việc quá hạn của tuần này". Dùng chung khóa API ở trên, chỉ đọc, cùng quyền và cùng giới hạn 120 lượt mỗi phút.</p>
+<div class="base"><code id="mcpUrl">https://pkckduidwfcncipwzdxa.supabase.co/functions/v1/api/mcp</code><button class="btn" data-copy="mcpUrl">Sao chép</button></div>
+<p>Giao thức Streamable HTTP (POST JSON-RPC). Gửi khóa theo một trong ba cách: header <code>X-API-Key</code> (khuyến nghị), <code>Authorization: Bearer &lt;khóa&gt;</code>, hoặc nối vào đường dẫn <code>?key=&lt;khóa&gt;</code> khi ứng dụng không cho đặt header.</p>
+<h3>Claude Code</h3>
+<pre><code id="mcpCc">claude mcp add --transport http bvi https://pkckduidwfcncipwzdxa.supabase.co/functions/v1/api/mcp --header "X-API-Key: bvi_xxxxxxxx"</code></pre>
+<h3>Claude Desktop</h3>
+<p>Mở Settings, Developer, Edit Config và thêm vào <code>claude_desktop_config.json</code> (cần Node.js):</p>
+<pre><code>{
+  "mcpServers": {
+    "bvi": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://pkckduidwfcncipwzdxa.supabase.co/functions/v1/api/mcp",
+               "--header", "X-API-Key:${BVI_KEY}"],
+      "env": { "BVI_KEY": "bvi_xxxxxxxx" }
+    }
+  }
+}</code></pre>
+<h3>Claude trên web (claude.ai), Cursor, ứng dụng khác</h3>
+<p>Thêm custom connector với URL có khóa:</p>
+<pre><code>https://pkckduidwfcncipwzdxa.supabase.co/functions/v1/api/mcp?key=bvi_xxxxxxxx</code></pre>
+<div class="note">Khóa nằm trong URL dễ lộ hơn header (lịch sử, ảnh chụp màn hình). Nên tạo một khóa riêng cho việc này để thu hồi được ngay khi cần.</div>
+<h3>Công cụ AI dùng được</h3>
+<div class="tw"><table><thead><tr><th>Công cụ</th><th>Việc làm</th></tr></thead><tbody>
+<tr><td><code>bvi_overview</code></td><td>Tổng quan: số vùng theo bước, vướng mắc, việc mở và quá hạn, lịch 7 ngày tới, ai đang nghỉ</td></tr>
+<tr><td><code>bvi_search_zones</code></td><td>Tìm vùng theo tên, ưu tiên, khoảng bước, có vướng mắc</td></tr>
+<tr><td><code>bvi_get_zone</code></td><td>Chi tiết một vùng kèm việc và lịch liên quan</td></tr>
+<tr><td><code>bvi_list_tasks</code></td><td>Lọc việc theo vùng, trạng thái, người, hạn, quá hạn</td></tr>
+<tr><td><code>bvi_list_events</code></td><td>Lịch công tác theo khoảng ngày, người, vùng</td></tr>
+<tr><td><code>bvi_list_leaves</code></td><td>Lịch nghỉ phép</td></tr>
+<tr><td><code>bvi_list_people</code>, <code>bvi_list_units</code></td><td>Nhân sự, khách hàng (không có số điện thoại)</td></tr>
+<tr><td><code>bvi_daily_reports</code></td><td>Báo cáo ngày theo khoảng ngày, người</td></tr>
+<tr><td><code>bvi_get_records</code></td><td>Bản ghi thô của một loại dữ liệu, có phân trang</td></tr>
+</tbody></table></div>
+<p class="sub">AI chỉ thấy các công cụ thuộc loại dữ liệu mà khóa được cấp. Không có công cụ ghi hay sửa.</p>
 
 <footer>Công ty CP BVI. Cần cấp khóa, thêm quyền hoặc báo lỗi, liên hệ người phụ trách của BVI.</footer>
 </div>

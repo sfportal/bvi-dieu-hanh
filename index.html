@@ -636,6 +636,7 @@ function vApi(){
   const DOC="https://uyducminh.github.io/bvi-dieu-hanh/api.html";
   h+='<div class="panel" style="margin-top:12px"><h2>Hướng dẫn gửi đối tác</h2>'
    +'<div class="sub">Trang hướng dẫn công khai (không chứa khóa), gửi link này cùng khóa cho đối tác:</div><div class="row" style="gap:6px;margin:4px 0 12px"><a class="mono" href="'+DOC+'" target="_blank" rel="noopener" style="flex:1;min-width:0;overflow-wrap:anywhere;color:var(--brand)">'+DOC+'</a><button class="btn sm" id="apiCpDoc">Sao chép link</button></div>'
+   +'<div class="sub">Kết nối AI (MCP, dùng chung khóa, xem mục "Kết nối AI" trong trang hướng dẫn):</div><div class="row" style="gap:6px;margin:4px 0 12px"><code class="mono" style="flex:1;min-width:0;overflow-wrap:anywhere">'+esc(API_BASE.replace(/\/v1$/,"")+"/mcp")+'</code><button class="btn sm" id="apiCpMcp">Sao chép</button></div>'
    +'<div class="sub">Địa chỉ gốc:</div><div class="row" style="gap:6px;margin:4px 0 10px"><code class="mono" style="flex:1;min-width:0;overflow-wrap:anywhere">'+esc(API_BASE)+'</code><button class="btn sm" id="apiCpBase">Sao chép</button></div>'
    +'<div class="sub">Gửi khóa trong header <code>X-API-Key</code> (hoặc <code>Authorization: Bearer &lt;khóa&gt;</code>). Chỉ dùng GET.</div>'
    +'<div class="tw" style="margin-top:8px"><table><thead><tr><th>Đường dẫn</th><th>Dữ liệu</th></tr></thead><tbody>'
@@ -682,7 +683,7 @@ function bindApi(A){
   $("#apiAdd")?.addEventListener("click",openApiNew);
   $("#apiRe")?.addEventListener("click",()=>{ APIK=null; render(); });
   const cp=t=>navigator.clipboard?.writeText(t).then(()=>toast("Đã sao chép"),()=>toast("Chọn và sao chép thủ công"));
-  $("#apiCpBase")?.addEventListener("click",()=>cp(API_BASE)); $("#apiCpDoc")?.addEventListener("click",()=>cp("https://uyducminh.github.io/bvi-dieu-hanh/api.html")); $("#apiCpEx")?.addEventListener("click",()=>cp($("#apiEx").value));
+  $("#apiCpBase")?.addEventListener("click",()=>cp(API_BASE)); $("#apiCpMcp")?.addEventListener("click",()=>cp(API_BASE.replace(/\/v1$/,"")+"/mcp")); $("#apiCpDoc")?.addEventListener("click",()=>cp("https://uyducminh.github.io/bvi-dieu-hanh/api.html")); $("#apiCpEx")?.addEventListener("click",()=>cp($("#apiEx").value));
   A.querySelectorAll("[data-apied]").forEach(b=>b.addEventListener("click",()=>openApiEdit(b.dataset.apied)));
   const twice=(b,label,fn)=>b.addEventListener("click",async()=>{ if(b.dataset.arm!=="1"){ b.dataset.arm="1"; b.textContent=label; b.classList.add("bad"); setTimeout(()=>{ if(b.isConnected){ b.dataset.arm=""; render(); } },4000); return; } b.disabled=true; await fn(); });
   A.querySelectorAll("[data-apirv]").forEach(b=>twice(b,"Bấm lần nữa để thu hồi",async()=>{ const r=await callApiAdmin({action:"revoke",id:b.dataset.apirv}); toast(r.error||"Đã thu hồi, khóa không dùng được nữa"); loadApiKeys(); }));
