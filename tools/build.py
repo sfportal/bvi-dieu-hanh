@@ -1,5 +1,7 @@
 import re,sys
-src=open('../web/bvi-dieu-hanh.html').read(); core=open('core.js').read()
+import os
+os.chdir(os.path.dirname(os.path.abspath(__file__)))  # chạy được từ bất kỳ thư mục nào
+src=open('source.html').read(); core=open('core.js').read()
 s=src
 def R(a,b,cnt=1):
     global s; assert s.count(a)==cnt,(s.count(a),a[:70]); s=s.replace(a,b)
@@ -25,10 +27,12 @@ R('''<input type="number" data-it="'+i+'" data-k="price" value="'+esc(it.price)+
 R('''<input type="checkbox" data-pay="'+i+'"'+(p.paid?" checked":"")+'>''','''<input type="checkbox" data-pay="'+i+'"'+(p.paid?" checked":"")+(canFin()?'':' disabled')+'>''')
 R('''(pm.paid?'<span class="pill good">Đã thu</span>':ok?''','''(pm.paid&&canFin()?'<span class="pill good">Đã thu</span>':ok?''')
 # routes: accounts page
-R('ui.view=VIEWS.some(v=>v[0]===h)||h==="khach"?h:"tong-quan";','ui.view=VIEWS.some(v=>v[0]===h)||h==="khach"||h==="tai-khoan"||h==="nhat-ky"?h:"tong-quan";')
-R('  else if(v==="thong-ke") el.innerHTML=vStats();','  else if(v==="thong-ke") el.innerHTML=vStats();\n  else if(v==="tai-khoan") el.innerHTML=vAccounts();\n  else if(v==="nhat-ky") el.innerHTML=vLog();')
+R('ui.view=VIEWS.some(v=>v[0]===h)||h==="khach"?h:"tong-quan";','ui.view=VIEWS.some(v=>v[0]===h)||h==="khach"||h==="tai-khoan"||h==="nhat-ky"||h==="api"||h==="thu-chi"?h:"tong-quan";')
+R('  else if(v==="thong-ke") el.innerHTML=vStats();','  else if(v==="thong-ke") el.innerHTML=vStats();\n  else if(v==="tai-khoan") el.innerHTML=vAccounts();\n  else if(v==="nhat-ky") el.innerHTML=vLog();\n  else if(v==="api") el.innerHTML=vApi();\n  else if(v==="thu-chi") el.innerHTML=vExp();')
 R('  if(ui.view==="thong-ke") bindStats(A);','''  if(ui.view==="thong-ke") bindStats(A);
   if(ui.view==="nhat-ky") bindLog(A);
+  if(ui.view==="api") bindApi(A);
+  if(ui.view==="thu-chi") bindExp(A);
   if(ui.view==="tai-khoan"){ $("#accAdd")?.addEventListener("click",()=>openAcc(null)); $("#accBulk")?.addEventListener("click",openBulk); A.querySelectorAll("[data-acc]").forEach(r=>r.addEventListener("click",()=>openAcc(r.dataset.acc))); $("#impJson")?.addEventListener("change",e=>{ const f=e.target.files[0]; e.target.value=""; if(f) importJson(f); }); }''')
 # texts that referenced claude.ai
 s=s.replace('Hãy mở trang khi đã đăng nhập claude.ai; nếu vẫn vậy, tải lại trang.','Tải lại trang.')
@@ -39,4 +43,12 @@ R('.faqq{','label:has(> input[data-drive]){display:none}\na.btn{color:inherit;te
 R("""(canManage()?'<label class="btn" style="cursor:pointer">Nhập từ FarmBase""","""(isOwner()?'<label class="btn" style="cursor:pointer">Nhập từ FarmBase""")
 R('async function startImport(file){','async function startImport(file){ if(!isOwner()){ toast("Chỉ owner được nhập từ FarmBase"); return; }')
 assert 'claude.use' not in s, [m.start() for m in re.finditer('claude.use',s)]
-open('index.html','w').write(s); print('built',len(s))
+# link công khai cho khách
+R("  const {zs,G,ha,multi}=custData();\n  h+='<div class=\"panel custhead\"","  h+=shPanel(); if(ui.shEdit) return h+shEditor();\n  const {zs,G,ha,multi}=custData();\n  h+='<div class=\"panel custhead\"")
+R('    $("#docxRep")?.addEventListener("click",exportCustDocx);','    $("#docxRep")?.addEventListener("click",exportCustDocx); bindShare();')
+R('  if(v==="tong-quan") el.innerHTML=vOverview();','  if(v==="tong-quan") el.innerHTML=exQuick()+vOverview();')
+R('  if(ui.view==="tong-quan"){ bindTaskLinks(A); maybeNudge(); }','  if(ui.view==="tong-quan"){ bindTaskLinks(A); maybeNudge(); bindExpFile(A); }')
+import os
+out=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','index.html')
+open(out,'w').write(s); print('built',len(s),'->',os.path.normpath(out))
+
