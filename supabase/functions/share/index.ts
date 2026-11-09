@@ -16,8 +16,11 @@ const PFX = "share:", VIEW = "shareview:", DRAFT = "sharedraft:";
 
 // Lưới an toàn: xóa chuỗi số dài (SĐT, CCCD, số sổ đỏ) và mọi khóa nhạy cảm còn sót trong bản gửi khách.
 const DENY = new Set(["phone", "sdt", "tel", "email", "cccd", "price", "amount", "cost", "chiphi", "link", "url", "drv", "owner", "by"]);
+// Báo cáo gửi khách không nhắc tên BVI.
+const nbR = (_m: string, o: number, str: string) => (/(^|[.!?:\n]\s*)$/.test(str.slice(0, o)) ? "Đơn vị triển khai" : "đơn vị triển khai");
+export const noBvi = (t: string) => t.replace(/c[oô]ng\s+ty\s+(?:cp|c[oổ]\s*ph[aầ]n)\s+bvi\b/gi, nbR).replace(/\bBVI\b/gi, nbR);
 export function safe(v: unknown, d = 0): unknown {
-  if (typeof v === "string") return v.replace(/(?:\+?84)?\d(?:[\s.\-]?\d){8,}/g, "•••").slice(0, 4000);
+  if (typeof v === "string") return noBvi(v.replace(/(?:\+?84)?\d(?:[\s.\-]?\d){8,}/g, "•••")).slice(0, 4000);
   if (d > 6 || v === null || typeof v !== "object") return v;
   if (Array.isArray(v)) return v.slice(0, 500).map((x) => safe(x, d + 1));
   const o: Record<string, unknown> = {};
@@ -45,7 +48,7 @@ Deno.serve(async (req) => {
         await db.from("app_secrets").upsert({ k: VIEW + t, v: JSON.stringify(v) });
       })().catch(() => {});
       (globalThis as any).EdgeRuntime?.waitUntil?.(bump);
-      return json({ snap: rec.snap, publishedAt: rec.at }, 200, { "Cache-Control": "no-store" });
+      return json({ snap: safe(rec.snap), publishedAt: rec.at }, 200, { "Cache-Control": "no-store" });
     }
     if (req.method !== "POST") return json({ error: "method" }, 405);
     const jwt = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
