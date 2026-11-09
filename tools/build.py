@@ -48,6 +48,10 @@ R("  const {zs,G,ha,multi}=custData();\n  h+='<div class=\"panel custhead\"","  
 R('    $("#docxRep")?.addEventListener("click",exportCustDocx);','    $("#docxRep")?.addEventListener("click",exportCustDocx); bindShare();')
 R('  if(v==="tong-quan") el.innerHTML=vOverview();','  if(v==="tong-quan") el.innerHTML=exQuick()+vOverview();')
 R('  if(ui.view==="tong-quan"){ bindTaskLinks(A); maybeNudge(); }','  if(ui.view==="tong-quan"){ bindTaskLinks(A); maybeNudge(); bindExpFile(A); }')
+# Báo cáo khách: không nhắc BVI, thêm phần đăng nhập FarmBase vào file Word
+R('    const blob=await buildDocx(custDocxBody());','    const blob=await buildDocx(noBvi(custDocxBody()));')
+R('  let sec=0; const H=t=>wH((++sec)+". "+t);\n  b+=H("Tổng quan theo mức ưu tiên");','  b+=fbDocx();\n  let sec=0; const H=t=>wH((++sec)+". "+t);\n  b+=H("Tổng quan theo mức ưu tiên");')
+R('  return t+"\\nCác mốc là dự kiến; mã nội địa do cơ quan nhà nước xét duyệt, mã GACC do phía Trung Quốc phê duyệt.";','  const f=shFb(); if(f) t+="\\nXem vùng trồng và truy xuất nguồn gốc (TXNG): https://app.farmbase.vn/\\nMã tổ chức: "+f.org+"\\nEmail đăng nhập: "+f.login+"\\nMật khẩu gửi riêng qua Zalo, vui lòng đổi ở lần đăng nhập đầu.\\n";\n  return noBvi(t+"\\nCác mốc là dự kiến; mã nội địa do cơ quan nhà nước xét duyệt, mã GACC do phía Trung Quốc phê duyệt.");')
 import os
 out=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','index.html')
 open(out,'w').write(s); print('built',len(s),'->',os.path.normpath(out))

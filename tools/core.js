@@ -364,7 +364,13 @@ function shActs(zs){ const ids=new Set(zs.map(([id])=>id)); const zn=id=>zShort(
   return out.sort((a,b)=>a.kind===b.kind?(a.kind==="done"?b.date.localeCompare(a.date):a.date.localeCompare(b.date)):a.kind==="plan"?-1:1); }
 const shSafe=v=>typeof v==="string"?v.replace(/(?:\+?84)?\d(?:[\s.\-]?\d){8,}/g,"•••"):Array.isArray(v)?v.map(shSafe):v&&typeof v==="object"?Object.fromEntries(Object.entries(v).map(([k,x])=>[k,shSafe(x)])):v;
 function shFb(){ const f=shDraft().fb||{}; const org=String(f.org||"").trim().slice(0,60), login=String(f.login||"").trim().slice(0,120); return f.on!==false&&org&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(login)?{org,login,url:"https://app.farmbase.vn/"}:null; }
-function shSnap(){ const s=shSafe(shSnap0()); s.fb=shFb(); return s; }
+// Báo cáo gửi khách không nhắc tên BVI: thay bằng "đơn vị triển khai" ở mọi chữ trong báo cáo, file Word, tóm tắt.
+const noBviR=(m,o,str)=>/(^|[.!?:\n]\s*)$/.test(str.slice(0,o))?"Đơn vị triển khai":"đơn vị triển khai";
+const noBvi=v=>typeof v==="string"?v.replace(/c[oô]ng\s+ty\s+(?:cp|c[oổ]\s*ph[aầ]n)\s+bvi\b/gi,noBviR).replace(/\bBVI\b/gi,noBviR):Array.isArray(v)?v.map(noBvi):v&&typeof v==="object"?Object.fromEntries(Object.entries(v).map(([k,x])=>[k,noBvi(x)])):v;
+function shSnap(){ const s=noBvi(shSafe(shSnap0())); s.fb=shFb(); return s; }
+function fbDocx(){ const f=shFb(); if(!f) return "";
+  return wH("Xem vùng trồng và truy xuất nguồn gốc (TXNG) trên FarmBase")
+   +wTable([["Địa chỉ","https://app.farmbase.vn/"],["Mã tổ chức",{t:f.org,b:true}],["Email đăng nhập",{t:f.login,b:true}],["Mật khẩu","Gửi riêng qua Zalo. Vui lòng đổi mật khẩu ở lần đăng nhập đầu tiên."]].map(r=>[{t:r[0],b:true,fill:"E8EFE6"},typeof r[1]==="string"?{t:r[1],fill:"FFFFFF"}:{...r[1],fill:"FFFFFF"}]),[3200,11638]); }
 function shSnap0(){ const d=shDraft(); const {zs,G,ha,multi}=custData(); const hideZ=id=>!!((d.z||{})[id]||{}).hide; const vis=zs.filter(([id])=>!hideZ(id));
   const groups=Object.keys(CGRP).map(g=>{ const L=G[g].filter(([id])=>!hideZ(id)); if(!L.length) return null;
     return {k:g,label:CGRP[g],crit:CGRP_CRIT[g],eta:g==="gacc"?"Đã có":g==="tbd"?"Chưa xác định":grpEta(L),n:L.length,ha:+ha(L).toFixed(2),
@@ -387,7 +393,7 @@ function shPanel(){ const d=shDraft(); const pub=d.token?SH_PUB+d.token:""; cons
   if(pub) h+='<div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap"><a class="mono" href="'+esc(pub)+'" target="_blank" rel="noopener" style="flex:1;min-width:0;overflow-wrap:anywhere;color:var(--brand)">'+esc(pub)+'</a><button class="btn sm" id="shCopy">Sao chép link</button>'+(canManage()?'<button class="btn sm" id="shRevoke">Thu hồi link</button>':'')+'</div>';
   return h+'</div>'; }
 function shEditor(){ const d=shDraft(); const {zs}=custData(); const z0=d.z||{};
-  let h='<div class="panel" style="margin-top:12px"><h2>Lời nhắn đầu báo cáo</h2><div class="sub">Tóm tắt tuần hoặc lưu ý gửi khách. Không ghi số điện thoại, CCCD, số sổ đỏ, chi phí.</div><textarea id="shIntro" rows="3" style="width:100%;margin-top:6px" placeholder="Ví dụ: Tuần này BVI đã nộp hồ sơ cứng cho Phòng Kinh tế 3 vùng…">'+esc(d.intro||"")+'</textarea></div>';
+  let h='<div class="panel" style="margin-top:12px"><h2>Lời nhắn đầu báo cáo</h2><div class="sub">Tóm tắt tuần hoặc lưu ý gửi khách. Không ghi số điện thoại, CCCD, số sổ đỏ, chi phí. Báo cáo gửi khách không nhắc tên BVI: chữ BVI tự đổi thành "đơn vị triển khai".</div><textarea id="shIntro" rows="3" style="width:100%;margin-top:6px" placeholder="Ví dụ: Tuần này BVI đã nộp hồ sơ cứng cho Phòng Kinh tế 3 vùng…">'+esc(d.intro||"")+'</textarea></div>';
   const fb=d.fb||{};
   h+='<div class="panel" style="margin-top:12px"><h2>Xem vùng trồng trên FarmBase</h2><div class="sub">Báo cáo sẽ có nút vào <b>app.farmbase.vn</b> kèm mã tổ chức và email đăng nhập của khách. <b>Không ghi mật khẩu ở đây.</b> Mật khẩu nhắn riêng cho khách qua Zalo, báo khách đổi mật khẩu ở lần đăng nhập đầu.</div>'
    +'<div class="f2" style="margin-top:8px"><div class="f"><label for="shFbOrg">Mã tổ chức</label><input id="shFbOrg" maxlength="60" autocomplete="off" value="'+esc(fb.org||"")+'"></div><div class="f"><label for="shFbLogin">Email đăng nhập của khách</label><input id="shFbLogin" type="email" maxlength="120" autocomplete="off" value="'+esc(fb.login||"")+'"></div></div>'
