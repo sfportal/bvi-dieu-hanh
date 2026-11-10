@@ -87,7 +87,7 @@ Thêm một trang mới: thêm mã trang vào `NAV`, `VLAB` và `navOk` trong `s
 
 Quyền ghi `docs`: owner, manager ghi mọi loại; staff ghi mọi loại trừ people, units, contracts; viewer chỉ đọc.
 
-Quyền tính năng bật theo từng nhân sự (trong `docs` loại people): `canPlan` (kế hoạch tuần), `canLeave` (duyệt nghỉ phép), `canExpense` (ghi thu chi). Owner bật trong trang Tài khoản.
+Quyền tính năng bật theo từng nhân sự (trong `docs` loại people): `canPlan` (kế hoạch tuần), `canLeave` (duyệt nghỉ phép), `canExpense` (ghi thu chi), `canRecon` (trang Đối soát việc; quản lý luôn có). Owner bật trong trang Tài khoản.
 
 Storage: bucket `files` (công khai, tệp đính kèm thường), bucket `receipts` (riêng tư, ảnh chứng từ thu chi, chỉ xem qua link ký có hạn).
 

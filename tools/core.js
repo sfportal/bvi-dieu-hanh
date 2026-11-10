@@ -145,7 +145,7 @@ function accForm(u){
    +'<div class="f"><label for="a_p">Gắn với nhân sự (để thấy việc của mình)</label><select id="a_p"><option value="">— Chưa gắn —</option>'+people.map(([k,p])=>'<option value="'+k+'"'+(u?.person_id===k?" selected":"")+'>'+esc(p.name)+'</option>').join("")+'</select></div>'
    +'<div class="f2"><div class="f"><label for="a_r">Vai trò</label><select id="a_r"'+(isSelf?" disabled":"")+'>'+Object.entries(ROLE_L).filter(([k])=>k!=="owner"||u?.role==="owner").map(([k,l])=>'<option value="'+k+'"'+((u?.role||"staff")===k?" selected":"")+'>'+l+'</option>').join("")+'</select></div>'
    +'<div class="f"><label>Tài chính</label><label class="chk"><input type="checkbox" id="a_f"'+(u?.can_finance||u?.role==="owner"?" checked":"")+(isSelf?" disabled":"")+'><span>Được xem số tiền hợp đồng</span></label></div></div>'
-   +'<div class="f"><label>Tính năng</label><label class="chk"><input type="checkbox" id="a_pl"'+(u?.role==="owner"||(u?.person_id&&S.people[u.person_id]?.canPlan)?" checked":"")+(u?.role==="owner"?" disabled":"")+'><span>Kế hoạch tuần: dán lịch, bảng tuần, rà soát công việc</span></label><label class="chk"><input type="checkbox" id="a_lv"'+(u?.role==="owner"||(u?.person_id&&S.people[u.person_id]?.canLeave)?" checked":"")+(u?.role==="owner"?" disabled":"")+'><span>Duyệt đơn nghỉ phép, về sớm</span></label><label class="chk"><input type="checkbox" id="a_ex"'+(u?.role==="owner"||(u?.person_id&&S.people[u.person_id]?.canExpense)?" checked":"")+(u?.role==="owner"?" disabled":"")+'><span>Ghi thu chi: chụp chứng từ thanh toán (chỉ thấy phiếu của mình)</span></label><div class="sub">Cần gắn với nhân sự. Người không có quyền vẫn thấy "Lịch hôm nay của tôi" ở Tổng quan.</div></div>'
+   +'<div class="f"><label>Tính năng</label><label class="chk"><input type="checkbox" id="a_pl"'+(u?.role==="owner"||(u?.person_id&&S.people[u.person_id]?.canPlan)?" checked":"")+(u?.role==="owner"?" disabled":"")+'><span>Kế hoạch tuần: dán lịch, bảng tuần, rà soát công việc</span></label><label class="chk"><input type="checkbox" id="a_lv"'+(u?.role==="owner"||(u?.person_id&&S.people[u.person_id]?.canLeave)?" checked":"")+(u?.role==="owner"?" disabled":"")+'><span>Duyệt đơn nghỉ phép, về sớm</span></label><label class="chk"><input type="checkbox" id="a_ex"'+(u?.role==="owner"||(u?.person_id&&S.people[u.person_id]?.canExpense)?" checked":"")+(u?.role==="owner"?" disabled":"")+'><span>Ghi thu chi: chụp chứng từ thanh toán (chỉ thấy phiếu của mình)</span></label><label class="chk"><input type="checkbox" id="a_rc"'+(u?.role==="owner"||(u?.person_id&&S.people[u.person_id]?.canRecon)?" checked":"")+(u?.role==="owner"?" disabled":"")+'><span>Đối soát việc: xem việc trễ, lệch giữa lịch, báo cáo, tiến độ, hồ sơ vùng</span></label><div class="sub">Cần gắn với nhân sự. Người không có quyền vẫn thấy "Lịch hôm nay của tôi" ở Tổng quan.</div></div>'
    +(u?'':'<div class="f"><label for="a_pw">Mật khẩu cấp lần đầu (để trống: hệ thống tự tạo)</label><input id="a_pw" minlength="8" autocomplete="off"></div>')
    +'<div class="row"><button class="btn pri">'+(u?"Lưu":"Tạo tài khoản")+'</button><span class="sub" id="accM"></span></div></form>'
    +(u&&!isSelf?'<div class="panel" style="margin-top:12px"><div class="row" style="flex-wrap:wrap"><button class="btn" id="accPw">Đặt lại mật khẩu</button><button class="btn" id="accAct">'+(u.active?"Ngừng kích hoạt":"Kích hoạt lại")+'</button><button class="btn" id="accDel">Xóa tài khoản</button></div><div id="accOut" style="margin-top:8px"></div></div>':'')
@@ -162,6 +162,8 @@ function openAcc(id){
     const pid=body.person_id, pl=$("#a_pl")?.checked; if(pid&&S.people[pid]&&!!S.people[pid].canPlan!==!!pl&&body.role!=="owner") await upd("people",pid,{canPlan:!!pl});
     if(u?.person_id&&u.person_id!==pid&&S.people[u.person_id]?.canPlan&&!ACC.some(x=>x.id!==u.id&&x.person_id===u.person_id)) await upd("people",u.person_id,{canPlan:false});
     const lv=$("#a_lv")?.checked; if(pid&&S.people[pid]&&!!S.people[pid].canLeave!==!!lv&&body.role!=="owner") await upd("people",pid,{canLeave:!!lv});
+    const rcx=$("#a_rc")?.checked; if(pid&&S.people[pid]&&!!S.people[pid].canRecon!==!!rcx&&body.role!=="owner") await upd("people",pid,{canRecon:!!rcx});
+    if(u?.person_id&&u.person_id!==pid&&S.people[u.person_id]?.canRecon&&!ACC.some(x=>x.id!==u.id&&x.person_id===u.person_id)) await upd("people",u.person_id,{canRecon:false});
     const ex=$("#a_ex")?.checked; if(pid&&S.people[pid]&&!!S.people[pid].canExpense!==!!ex&&body.role!=="owner") await upd("people",pid,{canExpense:!!ex});
     if(u?.person_id&&u.person_id!==pid&&S.people[u.person_id]?.canExpense&&!ACC.some(x=>x.id!==u.id&&x.person_id===u.person_id)) await upd("people",u.person_id,{canExpense:false});
     if(u?.person_id&&u.person_id!==pid&&S.people[u.person_id]?.canLeave&&!ACC.some(x=>x.id!==u.id&&x.person_id===u.person_id)) await upd("people",u.person_id,{canLeave:false});
@@ -435,6 +437,7 @@ function bindShare(){
 /* ---------- Thu chi: chụp chứng từ thanh toán, tự đọc dữ liệu ---------- */
 const EX_CO=[["salefronts","Salefronts"],["bvi","BVI"],["annong","HTX An Nông"],["other","Khác"]], EX_COL=Object.fromEntries(EX_CO);
 let EXL=null, EXM=todayStr().slice(0,7), EXF={co:"",st:"",who:""}, EXBUSY=false;
+function canRecon(){ return (typeof canManage==="function"&&canManage())||!!(PROFILE&&PROFILE.role!=="viewer"&&typeof me!=="undefined"&&me&&S.people[me]?.canRecon===true); }
 function canExp(){ return isOwner()||!!(typeof me!=="undefined"&&me&&S.people[me]?.canExpense===true); }
 function canExpView(){ return canExp()||canFin(); }
 async function callExp(body){
@@ -547,7 +550,7 @@ function bindExp(A){ bindExpFile(A);
   $("#exFw")?.addEventListener("change",e=>{ EXF.who=e.target.value; render(); });
   A.querySelectorAll("[data-exid]").forEach(b=>b.addEventListener("click",()=>openExp(b.dataset.exid))); }
 
-/* ---------- Đối soát tuần: một trang cho quản lý thấy việc xong/chưa và chỗ lệch giữa báo cáo nhanh, lịch, công việc, tiến độ vùng, hồ sơ cứng ---------- */
+/* ---------- Đối soát việc: một trang cho quản lý (hoặc nhân sự được cấp quyền) thấy việc xong/chưa và chỗ lệch giữa báo cáo nhanh, lịch, công việc, tiến độ vùng, hồ sơ cứng ---------- */
 let RC={w:null,who:"",grp:"",showAck:false,zOpen:false,mode:"",dr:"30",ds:"open",dw:"",all:false,dg:"zone"};
 // Trang quản lý chỉ tập trung vùng ưu tiên 1, 2 (bật "Tất cả vùng" để xem hết)
 const rcZOk=zid=>RC.all||!!(zid&&S.zones[zid]&&isFocus(S.zones[zid]));
@@ -632,7 +635,7 @@ function rcHsBlock(zid){ const z=S.zones[zid]; if(!z) return ""; const s=hsStat(
       +'<div class="sub" style="font-size:11px;margin-top:3px">'+esc(h==="na"?"Không cần":"Cứng: "+HSHARD[h].toLowerCase())+'</div></div>'; }).join("")+'</div>'
    +'<textarea data-rchn="'+zid+'" rows="2" maxlength="600" placeholder="Ghi chú hồ sơ: thiếu gì, ai đang giữ, hẹn ngày bổ sung…" style="width:100%;margin-top:6px;box-sizing:border-box">'+esc(z.hsNote||"")+'</textarea>'
    +(z.hsNoteAt?'<div class="sub" style="font-size:11px">Ghi chú sửa '+dm(z.hsNoteAt.slice(0,10))+(z.hsNoteBy?' bởi '+esc(pname(z.hsNoteBy)):'')+'</div>':'')+'</div>'; }
-function rcModeBar(){ return '<div class="row between" style="gap:8px;margin-bottom:12px"><div class="focusbar" role="group" aria-label="Chế độ xem">'+[["","Đối soát tuần"],["due","Việc đến hôm nay"]].map(([k,l])=>'<button data-rcm="'+k+'" aria-pressed="'+(RC.mode===k)+'">'+l+'</button>').join("")+'</div>'
+function rcModeBar(){ return '<div class="row between" style="gap:8px;margin-bottom:12px"><div class="focusbar" role="group" aria-label="Chế độ xem">'+[["","Đối soát theo tuần"],["due","Việc đến hôm nay"]].map(([k,l])=>'<button data-rcm="'+k+'" aria-pressed="'+(RC.mode===k)+'">'+l+'</button>').join("")+'</div>'
   +'<div class="focusbar" role="group" aria-label="Phạm vi vùng"><button data-rcall="" aria-pressed="'+(!RC.all)+'">Vùng ưu tiên 1, 2</button><button data-rcall="1" aria-pressed="'+RC.all+'">Tất cả</button></div></div>'; }
 function rcZoneTasks(zid,skip){
   // mọi việc khác của vùng (ngoài các việc đã hiện ở trên) để đối chiếu
@@ -688,14 +691,14 @@ function vDueToday(){
   return h;
 }
 function vRecon(){
-  if(!canManage()) return '<div class="panel">Trang này dành cho quản lý.</div>';
+  if(!canRecon()) return '<div class="panel">Bạn chưa được cấp quyền Đối soát việc. Nhờ owner bật trong trang Tài khoản.</div>';
   if(RC.mode==="due") return rcModeBar()+vDueToday();
   return rcModeBar()+vRecon0();
 }
 function vRecon0(){
   const st=rcWeekStats(), all=rcIssues(), open=all.filter(i=>!i.ack);
   const pick=all.filter(i=>(RC.showAck||!i.ack)&&(!RC.grp||i.grp===RC.grp)&&(!RC.who||rcPersonOf(i)===RC.who));
-  let h='<div class="row between" style="align-items:flex-end;gap:10px"><div><h1>Đối soát tuần</h1><div class="sub">Việc xong hay chưa, và chỗ báo cáo nhanh, lịch, công việc, tiến độ vùng, hồ sơ cứng chưa khớp. Kiểm với nhân sự rồi sửa ngay tại đây.</div></div>'
+  let h='<div class="row between" style="align-items:flex-end;gap:10px"><div><h1>Đối soát việc</h1><div class="sub">Việc xong hay chưa, và chỗ báo cáo nhanh, lịch, công việc, tiến độ vùng, hồ sơ cứng chưa khớp. Kiểm với nhân sự rồi sửa ngay tại đây.</div></div>'
    +'<div class="row" style="gap:6px;flex-wrap:nowrap"><button class="btn sm" id="rcPrev" aria-label="Tuần trước">‹</button><b style="white-space:nowrap">'+dm(st.w0)+' – '+dm(st.w1)+'</b><button class="btn sm" id="rcNext" aria-label="Tuần sau">›</button>'+(st.w0!==wkStart(todayStr())?'<button class="btn sm" id="rcNow">Tuần này</button>':'')+'</div></div>';
   const tile=(v,l,cls,extra,act)=>'<'+(act?'button data-rcg="'+act+'"':'div')+' class="tile '+(cls||"")+'"><span class="v">'+v+'</span><span class="l">'+l+'</span>'+(extra||"")+'</'+(act?'button':'div')+'>';
   h+='<div class="grid kpis" style="margin-top:12px">'
@@ -748,7 +751,7 @@ function rcMsg(pid){ const L=(RC._last||rcIssues()).filter(i=>!i.ack&&rcPersonOf
   return pname(pid)+", nhờ kiểm và cập nhật giúp trên hệ thống BVI Điều hành (tuần "+dm(rcWeek())+"–"+dm(addDays(rcWeek(),6))+"):\n"+L.map((i,n)=>(n+1)+". "+RC_T[i.type][1]+": "+i.text+(i.type==="daily_miss"?" ("+i.sub+")":"")).join("\n")+"\nXong thì báo lại giúp. Cảm ơn."; }
 async function rcSetAck(i,on){
   const by=me||"", at=new Date().toISOString();
-  if(i.type==="daily_miss"){ const p=S.people[i.rid]; const r={...(p.rcDaily||{})}; i.dates.forEach(d=>{ if(on) r[d]={at,by}; else delete r[d]; }); return upd("people",i.rid,{rcDaily:r}); }
+  if(i.type==="daily_miss"){ if(!canManage()){ toast("Chỉ quản lý đánh dấu được mục báo cáo nhanh."); return false; } const p=S.people[i.rid]; const r={...(p.rcDaily||{})}; i.dates.forEach(d=>{ if(on) r[d]={at,by}; else delete r[d]; }); return upd("people",i.rid,{rcDaily:r}); }
   const rec=S[i.col]?.[i.rid]; if(!rec) return false; const rc={...(rec.rc||{})}; const key=i.akey||i.type;
   if(on) rc[key]={at,by,sig:i.sig}; else delete rc[key]; return upd(i.col,i.rid,{rc}); }
 function bindRecon(A){
