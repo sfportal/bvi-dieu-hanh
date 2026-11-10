@@ -986,6 +986,19 @@ function rcHsBlock(zid){ const z=S.zones[zid]; if(!z) return ""; const s=hsStat(
    +(z.hsNoteAt?'<div class="sub" style="font-size:11px">Ghi chú sửa '+dm(z.hsNoteAt.slice(0,10))+(z.hsNoteBy?' bởi '+esc(pname(z.hsNoteBy)):'')+'</div>':'')+'</div>'; }
 function rcModeBar(){ return '<div class="row between" style="gap:8px;margin-bottom:12px"><div class="focusbar" role="group" aria-label="Chế độ xem">'+[["","Đối soát tuần"],["due","Việc đến hôm nay"]].map(([k,l])=>'<button data-rcm="'+k+'" aria-pressed="'+(RC.mode===k)+'">'+l+'</button>').join("")+'</div>'
   +'<div class="focusbar" role="group" aria-label="Phạm vi vùng"><button data-rcall="" aria-pressed="'+(!RC.all)+'">Vùng ưu tiên 1, 2</button><button data-rcall="1" aria-pressed="'+RC.all+'">Tất cả</button></div></div>'; }
+function rcZoneTasks(zid,skip){
+  // mọi việc khác của vùng (ngoài các việc đã hiện ở trên) để đối chiếu
+  const t=todayStr(), sk=new Set(skip||[]);
+  const L=Object.entries(S.tasks).filter(([id,x])=>x.zone===zid&&x.kind!=="epic"&&!sk.has(id));
+  const op=L.filter(([,x])=>x.status!=="done").sort((a,b)=>(a[1].due||"9").localeCompare(b[1].due||"9"));
+  const dn=L.filter(([,x])=>x.status==="done").sort((a,b)=>(b[1].doneAt||"").localeCompare(a[1].doneAt||""));
+  const all=[...op,...dn], open=(RC.ztOpen||{})[zid];
+  const row=([id,x])=>{ const late=x.status!=="done"&&x.due&&x.due<t;
+    const pill=x.status==="done"?'<span class="pill good">Xong'+(x.doneAt?' '+dm(x.doneAt.slice(0,10)):'')+'</span>':late?'<span class="pill bad">Trễ '+diffDays(t,x.due)+' ngày</span>':'<span class="pill">'+esc(TSTAT[x.status]||x.status||"Chưa làm")+'</span>';
+    return '<div style="border:1px solid var(--line);border-radius:8px;padding:6px 10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap'+(x.status==="done"?';opacity:.75':'')+'"><div style="flex:1;min-width:200px"><div style="font-weight:600;overflow-wrap:anywhere">'+esc(tTitle(x,S.zones[zid]))+'</div><div class="sub">'+(x.due?'Hạn '+dm(x.due):'Chưa có hạn')+' · '+esc(pname(x.R)||"Chưa giao")+'</div></div><div class="row" style="gap:6px">'+pill+'<button class="btn sm" data-rcot="'+id+'">Mở</button></div></div>'; };
+  return '<details style="margin-top:6px" data-rczt="'+zid+'"'+(open?' open':'')+'><summary class="sub" style="cursor:pointer">Mọi việc khác của vùng: '+op.length+' chưa xong · '+dn.length+' đã xong</summary>'
+    +(all.length?'<div style="display:grid;gap:6px;margin-top:6px">'+all.map(row).join("")+'</div>':'<div class="sub" style="margin-top:6px">Vùng chưa có việc nào khác.</div>')+'</details>';
+}
 function vDueToday(){
   const t=todayStr(), from=RC.dr==="7"?wkStart(t):RC.dr==="30"?addDays(t,-30):"";
   const all=Object.entries(S.tasks).filter(([id,x])=>x.kind!=="epic"&&!tOpenKids(id)&&x.due&&x.due<=t&&(!from||x.due>=from)&&(!RC.dw||x.R===RC.dw)&&rcTOk(x));
@@ -1019,7 +1032,7 @@ function vDueToday(){
     h+='<div class="row between" style="margin:12px 0 6px;gap:6px"><span class="sub">'+L.length+' việc ở '+ks.length+' vùng</span><button class="btn sm" data-rcresort>Sắp xếp lại</button></div>';
     ks.forEach(k=>{ const z=S.zones[k], Lz=G[k], lt=Lz.filter(([,x])=>x.status!=="done"&&x.due<t).length;
       h+='<div class="panel" style="margin-top:8px;padding:10px 12px"><div class="row between" style="gap:6px;margin-bottom:8px"><div style="min-width:0">'+(z?'<button class="btn sm" style="border:0;background:none;padding:0;font-weight:700;font-size:15px;text-align:left" data-rcz="'+k+'">'+esc(zShort(z.name))+'</button><div class="sub">'+esc(PRI[z.priority]||"")+(z.step!=null?' · Bước '+z.step+': '+esc(STEPS[z.step]?.name||""):'')+(z.eta?' · dự kiến mã '+esc(etaShort(z.eta)):'')+' · hồ sơ cứng '+hsStat(z).hard+'/'+hsStat(z).n+'</div>':'<b>Việc chung, không gắn vùng</b>')+'</div>'
-        +'<div class="row" style="gap:6px">'+(lt?'<span class="pill bad">'+lt+' việc trễ</span>':'<span class="pill good">Không trễ</span>')+(z?'<button class="btn sm pri" data-rcnew="'+k+'">+ Việc</button>':'')+'</div></div><div style="display:grid;gap:6px">'+Lz.map(r=>card(r,true)).join("")+'</div>'+(z?'<details style="margin-top:8px" data-rchso="'+k+'"'+((RC.hsOpen||{})[k]?' open':'')+'><summary class="sub" style="cursor:pointer">Hồ sơ của vùng: bản cứng '+hsStat(z).hard+'/'+hsStat(z).n+(z.hsNote?' · có ghi chú':'')+'</summary>'+rcHsBlock(k)+'</details>':'')+'</div>'; });
+        +'<div class="row" style="gap:6px">'+(lt?'<span class="pill bad">'+lt+' việc trễ</span>':'<span class="pill good">Không trễ</span>')+(z?'<button class="btn sm pri" data-rcnew="'+k+'">+ Việc</button>':'')+'</div></div><div style="display:grid;gap:6px">'+Lz.map(r=>card(r,true)).join("")+'</div>'+(z?'<details style="margin-top:8px" data-rchso="'+k+'"'+((RC.hsOpen||{})[k]?' open':'')+'><summary class="sub" style="cursor:pointer">Hồ sơ của vùng: bản cứng '+hsStat(z).hard+'/'+hsStat(z).n+(z.hsNote?' · có ghi chú':'')+'</summary>'+rcHsBlock(k)+'</details>'+rcZoneTasks(k,Lz.map(r=>r[0])):'')+'</div>'; });
     return h; }
   h+='<div class="row between" style="margin:12px 0 6px;gap:6px"><span class="sub">'+L.length+' việc</span><button class="btn sm" data-rcresort>Sắp xếp lại</button></div><div style="display:grid;gap:6px">'+L.map(([id,x])=>'<div style="border:1px solid var(--line);border-left:4px solid var(--'+(x.status!=="done"?(x.due<t?"bad":"warn"):(dDone(x)>x.due?"warn":"good"))+');border-radius:8px;padding:8px 12px;background:var(--surface);display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
     +'<div style="flex:1;min-width:220px"><div style="font-weight:600;overflow-wrap:anywhere">'+esc(tTitle(x,S.zones[x.zone]))+'</div><div class="sub">Hạn '+dm(x.due)+(zn(x)?' · '+esc(zn(x)):'')+' · '+esc(pname(x.R)||"Chưa giao")+' · '+(TSTAT[x.status]||x.status)+(x.status==="done"&&dDone(x)?' ngày '+dm(dDone(x)):'')+'</div></div>'
@@ -1109,6 +1122,7 @@ function bindRecon(A){
   A.querySelectorAll("[data-rcw]").forEach(b=>b.addEventListener("click",()=>{ RC.who=RC.who===b.dataset.rcw?"":b.dataset.rcw; render(); }));
   A.querySelectorAll("[data-rcz]").forEach(r=>r.addEventListener("click",()=>openZone(r.dataset.rcz)));
   A.querySelectorAll("[data-rchso]").forEach(d=>d.addEventListener("toggle",()=>{ RC.hsOpen=RC.hsOpen||{}; RC.hsOpen[d.dataset.rchso]=d.open; }));
+  A.querySelectorAll("[data-rczt]").forEach(d=>d.addEventListener("toggle",()=>{ RC.ztOpen=RC.ztOpen||{}; RC.ztOpen[d.dataset.rczt]=d.open; }));
   A.querySelectorAll("[data-rcnew]").forEach(b=>b.addEventListener("click",()=>{ const id=b.dataset.rcnew, z=S.zones[id]; openTask(null,{zone:id,kind:"task"});
     const own=z?.owner||Object.values(S.tasks).find(x=>x.zone===id&&x.status!=="done"&&x.R)?.R; const r=$("#tR"); if(own&&r&&[...r.options].some(o=>o.value===own)) r.value=own;
     const d=$("#tdue"); if(d&&!d.value) d.value=addDays(todayStr(),3); $("#tt")?.focus(); }));
