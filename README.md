@@ -82,7 +82,7 @@ Thêm một trang mới: thêm mã trang vào `NAV`, `VLAB` và `navOk` trong `s
 | `docs` | Mọi dữ liệu nghiệp vụ dạng JSON: cột `col` (loại), `id`, `data`. Các loại `col` được phép: zones, people, tasks, contracts, daily, units, events, leaves, faqs, supports, contacts (ràng buộc `docs_col_check`). Muốn thêm loại mới phải sửa ràng buộc này. |
 | `profiles` | Tài khoản đăng nhập: `role` (owner, manager, staff, viewer), `person_id` (gắn nhân sự), `can_finance`, `active`. |
 | `contract_fin` | Số tiền hợp đồng, chỉ owner và người có `can_finance` đọc được. |
-| `app_secrets` | Khóa, giá trị. Không có policy nên chỉ Edge Function (service role) đọc ghi. Tiền tố khóa: `apikey:` khóa API (chỉ lưu sha256), `apiuse:` lượt dùng, `share:` bản báo cáo đã phát hành, `shareview:` lượt xem, `sharedraft:` bản nháp báo cáo, `exp:` phiếu thu chi. |
+| `app_secrets` | Khóa, giá trị. Không có policy nên chỉ Edge Function (service role) đọc ghi. Tiền tố khóa: `apikey:` khóa API (chỉ lưu sha256), `apiuse:` lượt dùng, `share:` bản báo cáo đã phát hành, `shareview:` lượt xem, `sharedraft:` bản nháp báo cáo, `exp:` phiếu thu chi, `dg:` phiếu tự đánh giá, `dgn:` nhận xét của owner. |
 | `activity_log` | Nhật ký thao tác. Không ghi số tiền. |
 
 Nhu cầu khách hàng (trang `nhu-cau`) lưu trong `docs` loại `contacts` với `type = "lead"`, id bắt đầu bằng `ld`; trang Liên hệ tự bỏ qua các bản ghi này. API gọi loại này là `leads`.
@@ -103,6 +103,7 @@ Tất cả đặt `verify_jwt = false` vì mỗi hàm tự kiểm tra đăng nh�
 | `api` | API REST cho đối tác `/api/v1/...` (chỉ đọc, riêng `POST /api/v1/leads` nhận nhu cầu khách hàng với quyền `leads_write`), quản lý khóa `/api/admin`, máy chủ MCP `/api/mcp` (có `bvi_list_leads`, `bvi_create_lead`) | không |
 | `share` | Bản nháp, phát hành, thu hồi link báo cáo khách; trang công khai đọc bằng `GET ?t=` | không |
 | `expense` | Thu chi: tải ảnh, tự đọc chứng từ, lưu, duyệt | `ANTHROPIC_API_KEY` (đọc ảnh tự động), `OCR_MODEL` (tùy chọn) |
+| `danh-gia` | Phiếu tự đánh giá nhân sự (trang `danh-gia`): nhân sự đọc, ghi phiếu của mình; owner xem tất cả, chấm và ghi nhận xét. Lưu trong `app_secrets` tiền tố `dg:<đợt>:` và `dgn:<đợt>:` | không |
 | `drive` | Tải tệp lên Google Drive, đếm tệp hồ sơ qua Apps Script | `DRIVE_GAS_URL`, `DRIVE_GAS_TOKEN` |
 
 Secret đặt ở Supabase Dashboard › Edge Functions › Secrets. **Không bao giờ ghi secret vào repo hay vào chat.**

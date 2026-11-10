@@ -88,6 +88,24 @@ textarea{resize:vertical;line-height:1.45;overflow-wrap:anywhere}
 .btn.pri{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
 .btn.sm{padding:4px 8px;font-size:12px}
 .btn:disabled{opacity:.45;cursor:not-allowed}
+.dgwrap{max-width:760px;margin:0 auto}
+.dgsec{margin-top:12px;display:grid;gap:12px}.dgsec h2{margin:0;font-size:17px}
+.dgseg{display:flex;gap:4px;flex-shrink:0}.dgseg button{width:36px;height:36px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-weight:600;cursor:pointer}
+.dgseg button.on,.dgchips button.on{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.dgchips{display:flex;flex-wrap:wrap;gap:6px}.dgchips button{border:1px solid var(--line);border-radius:999px;background:var(--surface);padding:6px 12px;cursor:pointer;font-size:13px}
+.dgscale{margin:0 0 4px;padding-left:0;list-style:none;font-size:12px;color:var(--muted);display:grid;gap:2px}.dgscale b{display:inline-block;width:18px;color:var(--brand)}
+.dgarea{border:1px solid var(--line);border-radius:10px;padding:10px;display:grid;gap:8px}.dgarea.ok{border-color:var(--good)}
+.dgah{display:flex;justify-content:space-between;gap:6px;align-items:flex-start}
+.dgcr{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}.dgcr>span{flex:1;min-width:160px;font-size:14px}
+.dgnote{border:1px solid var(--line);border-radius:8px;padding:7px 9px;background:var(--surface);width:100%;box-sizing:border-box}
+.dgfoot{position:sticky;bottom:8px;margin-top:12px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;box-shadow:0 -2px 10px rgba(0,0,0,.08)}
+@media(max-width:760px){.dgfoot{bottom:calc(64px + env(safe-area-inset-bottom))}}
+.dgmx{width:100%;border-collapse:collapse;table-layout:fixed;font-size:13px}.dgmx th,.dgmx td{border:1px solid var(--line);padding:5px 2px;text-align:center;overflow:hidden;text-overflow:ellipsis}
+.dgmx thead th{font-size:12px}.dgmx tbody th{text-align:left;font-weight:500;font-size:11px;width:72px;padding-left:4px;white-space:normal;overflow-wrap:anywhere;line-height:1.2}.dgmx td i{font-style:normal;font-size:10px;margin-left:1px}
+.dgmx td.rc{outline:2px solid var(--brand);outline-offset:-2px;font-weight:700}.dgmx td.rp{outline:1px dashed var(--brand);outline-offset:-2px}
+.dgbar{display:grid;grid-template-columns:minmax(0,1fr) 90px 30px;gap:6px;align-items:center;font-size:13px;margin-top:4px}.dgtr{height:8px;background:var(--chip);border-radius:4px;overflow:hidden}.dgtr b{display:block;height:100%;background:var(--brand)}
+.dgph{display:flex;width:100%;gap:8px;align-items:center;justify-content:space-between;background:none;border:0;padding:0;text-align:left;cursor:pointer;flex-wrap:wrap}.dgph .sub{flex:1;min-width:150px}
+.dgkv{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;margin-top:10px;font-size:14px}.dgkv span{color:var(--muted)}.dgkv b{font-weight:500;overflow-wrap:anywhere}
 .empty{padding:24px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:10px}
 .alert{padding:10px 12px;border-radius:8px;background:var(--chip);font-size:13px}
 .alert.bad{color:var(--bad)}
@@ -417,9 +435,9 @@ document.addEventListener("toggle",e=>taFitIn(e.target),true);
 window.addEventListener("resize",()=>document.querySelectorAll("textarea").forEach(taFit));
 new MutationObserver(ms=>{ ms.forEach(m=>m.addedNodes.forEach(taFitIn)); }).observe(document.documentElement,{childList:true,subtree:true});
 /* ---------- shell ---------- */
-const NAV=[["g-tq","Tổng quan","Tổng",["tong-quan","doi-soat","thu-chi"]],["g-viec","Công việc","Việc",["cong-viec","ke-hoach","lich","ho-tro"]],["g-bc","Báo cáo","Báo cáo",["bao-cao","thong-ke"]],["g-vung","Vùng, khách hàng","Vùng",["vung","ho-so","hop-dong","cong-ty","nhu-cau"]],["g-doi","Đội ngũ","Đội ngũ",["nhan-su","lien-he"]],["g-tg","Trợ giúp","Trợ giúp",["huong-dan","faq"]],["g-qt","Quản trị","Quản trị",["tai-khoan","nhat-ky","api"]]];
-const VLAB={"nhu-cau":"Nhu cầu khách","doi-soat":"Đối soát việc","thu-chi":"Thu chi","tai-khoan":"Tài khoản","nhat-ky":"Nhật ký","api":"API đối tác"}; const GICON={"g-qt":'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'};
-function navOk(v){ if(v==="ke-hoach") return canPlan(); if(v==="thu-chi") return typeof canExpView==="function"&&canExpView(); if(v==="doi-soat") return typeof canRecon==="function"&&canRecon(); if(v==="nhu-cau") return typeof vLeads==="function"; if(v==="tai-khoan"||v==="nhat-ky"||v==="api") return typeof isOwner==="function"&&isOwner(); return VIEWS.some(x=>x[0]===v); }
+const NAV=[["g-tq","Tổng quan","Tổng",["tong-quan","doi-soat","thu-chi"]],["g-viec","Công việc","Việc",["cong-viec","ke-hoach","lich","ho-tro"]],["g-bc","Báo cáo","Báo cáo",["bao-cao","thong-ke"]],["g-vung","Vùng, khách hàng","Vùng",["vung","ho-so","hop-dong","cong-ty","nhu-cau"]],["g-doi","Đội ngũ","Đội ngũ",["nhan-su","lien-he","danh-gia"]],["g-tg","Trợ giúp","Trợ giúp",["huong-dan","faq"]],["g-qt","Quản trị","Quản trị",["tai-khoan","nhat-ky","api"]]];
+const VLAB={"danh-gia":"Tự đánh giá","nhu-cau":"Nhu cầu khách","doi-soat":"Đối soát việc","thu-chi":"Thu chi","tai-khoan":"Tài khoản","nhat-ky":"Nhật ký","api":"API đối tác"}; const GICON={"g-qt":'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'};
+function navOk(v){ if(v==="ke-hoach") return canPlan(); if(v==="thu-chi") return typeof canExpView==="function"&&canExpView(); if(v==="doi-soat") return typeof canRecon==="function"&&canRecon(); if(v==="nhu-cau") return typeof vLeads==="function"; if(v==="danh-gia") return typeof vDg==="function"&&!!PROFILE&&(isOwner()||(PROFILE.role!=="viewer"&&!!PROFILE.person_id&&DG_STAFF.includes(PROFILE.person_id))); if(v==="tai-khoan"||v==="nhat-ky"||v==="api") return typeof isOwner==="function"&&isOwner(); return VIEWS.some(x=>x[0]===v); }
 function navGroup(v){ v=v==="khach"?"cong-ty":v; return NAV.find(g=>g[3].includes(v))||NAV[0]; }
 function navLabel(v){ return VLAB[v]||(VIEWS.find(x=>x[0]===v)||[,v])[1]; }
 function renderNav(){ ui.navLast=ui.navLast||{}; const cur=ui.view==="khach"?"cong-ty":ui.view, G=navGroup(cur); ui.navLast[G[0]]=cur;

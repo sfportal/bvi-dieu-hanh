@@ -211,7 +211,7 @@ function openBulk(){
 
 /* ---------- nhật ký hoạt động (owner, quản lý) ---------- */
 const LOG_ACT={login:["Đăng nhập","good"],open:["Mở ứng dụng",""],logout:["Đăng xuất",""],password:["Mật khẩu",""],create:["Thêm","good"],update:["Sửa","warn"],delete:["Xóa","bad"],finance:["Thanh toán","warn"],account:["Tài khoản","bad"],import:["Nhập file","bad"]};
-const LOG_COL={zones:"Vùng",people:"Nhân sự",tasks:"Việc",contracts:"Hợp đồng",daily:"Báo cáo",units:"Đơn vị",events:"Lịch",leaves:"Nghỉ phép",faqs:"FAQ",supports:"Hỗ trợ",contacts:"Liên hệ",accounts:"Tài khoản",api_keys:"Khóa API",shares:"Bản gửi khách",expenses:"Thu chi"};
+const LOG_COL={zones:"Vùng",people:"Nhân sự",tasks:"Việc",contracts:"Hợp đồng",daily:"Báo cáo",units:"Đơn vị",events:"Lịch",leaves:"Nghỉ phép",faqs:"FAQ",supports:"Hỗ trợ",contacts:"Liên hệ",accounts:"Tài khoản",api_keys:"Khóa API",shares:"Bản gửi khách",expenses:"Thu chi",selfeval:"Tự đánh giá"};
 const LG={t:0,p:"7",from:"",to:"",who:"",act:"",q:"",rows:null,n:200,err:""};
 function lgRange(){ const d0=new Date(); d0.setHours(0,0,0,0); let a=new Date(d0), b=null;
   if(LG.p==="7") a.setDate(a.getDate()-6); else if(LG.p==="30") a.setDate(a.getDate()-29); else if(LG.p==="month") a.setDate(1);
@@ -951,4 +951,171 @@ function openLeadImport(){ ui.drawer=null;
   $("#ldPaste").addEventListener("input",()=>{ clearTimeout(prev._t); prev._t=setTimeout(prev,300); });
   $("#ldDefSrc").addEventListener("change",prev);
   $("#ldFile").addEventListener("change",async e=>{ const f=e.target.files[0]; if(!f) return; $("#ldPaste").value=await f.text(); prev(); });
+}
+
+/* ---------- Tự đánh giá nhân sự: phiếu cho nhân sự, trang kết quả và đánh giá sơ bộ cho owner ---------- */
+const DG_AREAS=[
+ ["a1","Điều phối, giám sát tiến độ","Điều phối",["Lập kế hoạch tuần, chia việc có hạn rõ","Theo dõi số liệu, phát hiện việc trễ sớm","Ra quyết định, gỡ vướng giữa các bộ phận"]],
+ ["a2","Triển khai dự án tại xã (hiện trường)","Hiện trường",["Làm việc với cán bộ xã, đại diện mã, bà con","Tổ chức buổi thực địa đủ việc trong 1 lần đi","Dùng thiết bị: flycam, app thu thập, định vị"]],
+ ["a3","Hồ sơ, hệ thống FarmBase, nộp hồ sơ","Hồ sơ",["Hiểu quy định hồ sơ mã nội địa và GACC","Thao tác FarmBase, Cổng DVC, web điều hành","Cẩn thận, đối chiếu không sai lệch"]],
+ ["a4","Kỹ thuật nông nghiệp","Kỹ thuật",["Kiến thức VietGAP, ISPM 6, sâu bệnh sầu riêng","Giảng dễ hiểu cho bà con","Hướng dẫn ghi nhật ký, bẫy, kho đúng chuẩn"]],
+ ["a5","Chạy chiến dịch 10.000 ha","10.000 ha",["Tổ chức sự kiện đông người","Thuyết trình trước hội trường, đối tác","Chốt đăng ký, chốt tài trợ"]],
+ ["a6","Tư vấn bán hàng giải pháp (MVT, TXNG, dịch vụ mở rộng)","Tư vấn",["Nắm sản phẩm, bảng giá MVT, TXNG, dịch vụ mở rộng","Hỏi đúng nhu cầu, xử lý khi khách từ chối","Lập báo giá, đề xuất, theo đến khi ký"]],
+ ["a7","Xây dựng đội cộng tác viên bán hàng","Đội CTV",["Có mạng lưới địa phương, HTX","Tuyển và đào tạo người khác","Theo dõi, tạo động lực cho CTV"]],
+ ["a8","Quản lý nội bộ (thu chi, hóa đơn, chấm công, hồ sơ gốc)","Nội bộ",["Ghi chép thu chi, hóa đơn chính xác","Lưu trữ, scan, tìm lại hồ sơ nhanh","Đúng hạn với việc định kỳ"]]];
+const DG_COMMON=[["c1","Chủ động báo vướng sớm"],["c2","Cập nhật việc và báo cáo nhanh mỗi ngày"],["c3","Phối hợp, bàn giao đúng hạn"],["c4","Học công cụ mới"]];
+const DG_SCALE=["","Chưa làm bao giờ","Làm được khi có người kèm","Tự làm trọn việc","Làm tốt, ổn định, kèm được người khác","Cải tiến quy trình, đào tạo lại cho đội"];
+const DG_WANT=[["yes","Rất muốn làm"],["maybe","Làm được"],["no","Không muốn"]], DG_WV={yes:5,maybe:3,no:1};
+const DG_LOAD=[["low","Còn ít việc"],["ok","Vừa sức"],["high","Hơi nhiều"],["over","Quá tải"]];
+const DG_TOP=[["mvt","Mã vùng trồng"],["txng","Truy xuất nguồn gốc"],["tuvan","Tư vấn khách hàng"],["cd10000","Chiến dịch 10.000 ha"]];
+// Đề xuất phân vai bước 1 (10/11/2026): c = chính, p = phụ, cand = ứng viên chốt sau thuyết trình.
+const DG_PLAN={a1:{c:"trinh",p:"tuan"},a2:{c:"huy",p:"minh"},a3:{c:"man",p:"tuan"},a4:{c:"minh"},a5:{cand:["trinh","tuan","minh"]},a6:{cand:["trinh","tuan","minh"],p:"ngoc"},a7:{cand:["tuan","huy"]},a8:{c:"ngoc",p:"man"}};
+const DG_STAFF=["trinh","tuan","man","ngoc","huy","minh"];
+let DGS={rec:null,loaded:false,busy:false,err:"",noPerson:false,prev:false}, DGA={data:null,busy:false,open:"",tab:"tong"};
+async function callDg(body){
+  try{ const {data}=await SB.auth.getSession(); const res=await fetch(SB_URL+"/functions/v1/danh-gia",{method:"POST",headers:{"Content-Type":"application/json",apikey:SB_KEY,Authorization:"Bearer "+(data.session?.access_token||"")},body:JSON.stringify(body)});
+    let j=null; try{ j=await res.json(); }catch(_){} return j||{error:"http_"+res.status}; }catch(e){ return {error:"Không kết nối được máy chủ"}; } }
+function dgBlank(){ const areas={}; DG_AREAS.forEach(a=>areas[a[0]]={s:[0,0,0],want:"",note:""}); return {now:"",sat:0,load:"",good:"",hard:"",help:"",areas,common:{},lead:[],support:[],learn:"",topics:[],other:""}; }
+function dgFill(r){ const b=dgBlank(); if(!r) return b; const o={...b,...r}; o.areas={...b.areas}; DG_AREAS.forEach(([k])=>{ const x=r.areas?.[k]; if(x) o.areas[k]={s:[0,1,2].map(i=>x.s?.[i]||0),want:x.want||"",note:x.note||""}; }); o.common={...(r.common||{})}; o.lead=[...(r.lead||[])]; o.support=[...(r.support||[])]; o.topics=[...(r.topics||[])]; return o; }
+async function loadDg(){ if(DGS.busy) return; DGS.busy=true; const r=await callDg({action:"get"}); DGS.busy=false; DGS.loaded=true; DGS.err=r.error||""; DGS.noPerson=!!r.noPerson; DGS.sent=r.rec?.status==="sent"; DGS.at=r.rec?.updatedAt||""; DGS.rec=dgFill(r.rec); if(ui.view==="danh-gia") softRender(); }
+async function loadDgAll(){ if(DGA.busy) return; DGA.busy=true; const r=await callDg({action:"list"}); DGA.busy=false; DGA.data=r.recs?r:{recs:{},notes:{},err:r.error||"Lỗi"}; if(ui.view==="danh-gia") softRender(); }
+const dgAvg=a=>{ const v=(a||[]).filter(x=>x>0); return v.length?v.reduce((s,x)=>s+x,0)/v.length:0; };
+const dgF=n=>n?(Math.round(n*10)/10).toLocaleString("vi-VN"):"–";
+function dgMissing(r){ let m=[]; if(!r.sat) m.push("mức hài lòng"); if(!r.load) m.push("khối lượng việc");
+  const na=DG_AREAS.filter(([k])=>r.areas[k].s.some(x=>!x)||!r.areas[k].want).length; if(na) m.push(na+" đầu việc chưa chấm đủ");
+  const nc=DG_COMMON.filter(([k])=>!r.common[k]).length; if(nc) m.push(nc+" tiêu chí chung"); if(!r.lead.length) m.push("đầu việc muốn phụ trách chính"); return m; }
+function dgSeg(attr,val,n,labels){ let h='<div class="dgseg" role="group">'; for(let i=1;i<=n;i++) h+='<button type="button" '+attr+' data-v="'+i+'"'+(val===i?' class="on"':'')+' title="'+esc(labels?labels[i]:"")+'" aria-pressed="'+(val===i)+'">'+i+'</button>'; return h+'</div>'; }
+function dgChips(attr,opts,val,multi){ return '<div class="dgchips">'+opts.map(([k,l])=>'<button type="button" '+attr+' data-v="'+k+'"'+((multi?(val||[]).includes(k):val===k)?' class="on"':'')+'>'+esc(l)+'</button>').join("")+'</div>'; }
+function dgTa(id,l,v,ph){ return '<div class="f"><label for="'+id+'">'+l+'</label><textarea id="'+id+'" data-dgt="'+id.slice(3)+'" rows="2" placeholder="'+esc(ph||"")+'">'+esc(v||"")+'</textarea></div>'; }
+function vDg(){
+  if(isOwner()&&!DGS.prev) return vDgAdmin();
+  const pv=isOwner()&&DGS.prev;
+  if(!pv){ if(!DGS.loaded){ setTimeout(loadDg,0); return '<div class="empty">Đang tải phiếu…</div>'; }
+    if(!DGS.noPerson&&PROFILE&&!DG_STAFF.includes(PROFILE.person_id)) return '<div class="panel">Đợt đánh giá này dành cho đội nhân sự chính thức.</div>';
+    if(DGS.noPerson) return '<div class="panel">Tài khoản chưa gắn với nhân sự nên chưa làm phiếu được. Nhờ owner gắn trong trang Tài khoản.</div>';
+    if(DGS.err) return '<div class="panel alert bad">Không tải được phiếu: '+esc(DGS.err)+'</div>'; }
+  else if(!DGS.rec) DGS.rec=dgBlank();
+  const r=DGS.rec, miss=dgMissing(r);
+  let h='<div class="dgwrap">'+(pv?'<div class="alert" style="margin-bottom:10px">Bản xem trước phiếu nhân sự thấy. Không lưu. <button class="btn sm" id="dgBack">Về trang kết quả</button></div>':'')
+   +'<h1 style="margin:0">Phiếu tự đánh giá</h1><div class="sub">Đợt tháng 11/2026. Phiếu giúp công ty giao việc đúng thế mạnh và biết bạn cần hỗ trợ gì. Không dùng để chấm thưởng phạt. Chỉ giám đốc xem được phiếu của bạn.</div>'
+   +(DGS.sent?'<div class="alert" style="margin-top:8px">Bạn đã gửi phiếu'+(DGS.at?' lúc '+esc(dmy(DGS.at.slice(0,10))):'')+'. Vẫn sửa và gửi lại được.</div>':'');
+  h+='<div class="panel dgsec"><h2>1. Công việc hiện tại</h2>'+dgTa("dg_now","Việc bạn đang làm nhiều nhất là gì?",r.now,"Ví dụ: đi xã, xuất hồ sơ, tập huấn…")
+   +'<div class="f"><label>Bạn hài lòng với công việc hiện tại ở mức nào? (1 = chưa hài lòng, 5 = rất hài lòng)</label>'+dgSeg('data-dgsat',r.sat,5)+'</div>'
+   +'<div class="f"><label>Khối lượng việc hiện nay</label>'+dgChips('data-dgload',DG_LOAD,r.load)+'</div>'
+   +dgTa("dg_good","Việc bạn làm tốt nhất, thấy tự tin nhất",r.good)+dgTa("dg_hard","Việc bạn thấy khó, đang vướng",r.hard)+dgTa("dg_help","Bạn cần công ty hỗ trợ gì (đào tạo, thiết bị, công cụ, người kèm)?",r.help)+'</div>';
+  h+='<div class="panel dgsec"><h2>2. Tự chấm năng lực theo 8 đầu việc</h2><div class="sub" style="margin-bottom:8px">Chấm đúng như bạn đang làm được, kể cả việc chưa từng làm. Không có câu trả lời sai.</div><ol class="dgscale">'+DG_SCALE.slice(1).map((t,i)=>'<li><b>'+(i+1)+'</b> '+t+'</li>').join("")+'</ol>'
+   +DG_AREAS.map(([k,t,,cr],i)=>{ const x=r.areas[k], done=!x.s.some(v=>!v)&&x.want;
+     return '<div class="dgarea'+(done?' ok':'')+'"><div class="dgah"><b>'+(i+1)+'. '+esc(t)+'</b>'+(done?'<span class="pill good">Xong</span>':'')+'</div>'
+      +cr.map((c,j)=>'<div class="dgcr"><span>'+esc(c)+'</span>'+dgSeg('data-dgs="'+k+':'+j+'"',x.s[j],5,DG_SCALE)+'</div>').join("")
+      +'<div class="dgcr"><span>Bạn có muốn làm việc này?</span>'+dgChips('data-dgw="'+k+'"',DG_WANT,x.want)+'</div>'
+      +'<input class="dgnote" data-dgn="'+k+'" placeholder="Ghi chú thêm (kinh nghiệm, ví dụ đã làm), không bắt buộc" value="'+esc(x.note)+'"></div>'; }).join("")+'</div>';
+  h+='<div class="panel dgsec"><h2>3. Cách làm việc</h2>'+DG_COMMON.map(([k,t])=>'<div class="dgcr"><span>'+esc(t)+'</span>'+dgSeg('data-dgc="'+k+'"',r.common[k]||0,5,DG_SCALE)+'</div>').join("")+'</div>';
+  const opt=DG_AREAS.map(a=>[a[0],a[2]]);
+  h+='<div class="panel dgsec"><h2>4. Định hướng</h2><div class="f"><label>Đầu việc bạn muốn phụ trách chính (chọn tối đa 2)</label>'+dgChips('data-dglead',opt,r.lead,true)+'</div>'
+   +'<div class="f"><label>Đầu việc bạn muốn hỗ trợ (tối đa 2)</label>'+dgChips('data-dgsup',opt,r.support,true)+'</div>'
+   +dgTa("dg_learn","Trong 3 tháng tới bạn muốn học thêm gì?",r.learn)
+   +'<div class="f"><label>Nếu trình bày trước đội, bạn chọn chủ đề nào? (chọn được nhiều)</label>'+dgChips('data-dgtop',DG_TOP,r.topics,true)+'</div>'
+   +dgTa("dg_other","Góp ý khác cho công ty, cho cách phân việc",r.other)+'</div>';
+  h+='<div class="dgfoot panel"><div class="sub" id="dgMiss">'+(miss.length?'Còn thiếu: '+esc(miss.join(", ")):'Đã điền đủ, có thể gửi.')+'</div><div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn" id="dgSave"'+(pv?" disabled":"")+'>Lưu nháp</button><button class="btn pri" id="dgSend"'+(pv?" disabled":"")+'>'+(DGS.sent?"Gửi lại":"Gửi phiếu")+'</button></div></div></div>';
+  return h;
+}
+let dgT=null;
+function dgDirty(){ if(isOwner()) return; clearTimeout(dgT); dgT=setTimeout(()=>dgSave(false,true),2500); const m=dgMissing(DGS.rec), el=$("#dgMiss"); if(el) el.textContent=m.length?"Còn thiếu: "+m.join(", "):"Đã điền đủ, có thể gửi."; }
+async function dgSave(submit,quiet){ clearTimeout(dgT); if(isOwner()) return;
+  if(submit){ const m=dgMissing(DGS.rec); if(m.length){ toast("Còn thiếu: "+m[0]); return; } }
+  const r=await callDg({action:"save",rec:DGS.rec,submit:!!submit});
+  if(r.error){ toast("Chưa lưu được: "+r.error); return; }
+  DGS.at=r.rec.updatedAt; if(submit){ DGS.sent=true; toast("Đã gửi phiếu. Cảm ơn bạn!"); render(); } else if(!quiet) toast("Đã lưu nháp"); }
+function bindDg(A){
+  if(isOwner()&&!DGS.prev){ bindDgAdmin(A); return; }
+  $("#dgBack")?.addEventListener("click",()=>{ DGS.prev=false; render(); });
+  const r=DGS.rec; if(!r) return;
+  const tog=(btn,sel)=>{ btn.parentElement.querySelectorAll("button").forEach(b=>{ const on=sel(b); b.classList.toggle("on",on); b.setAttribute("aria-pressed",on); }); };
+  A.querySelectorAll("[data-dgsat]").forEach(b=>b.addEventListener("click",()=>{ r.sat=+b.dataset.v; tog(b,x=>x===b); dgDirty(); }));
+  A.querySelectorAll("[data-dgload]").forEach(b=>b.addEventListener("click",()=>{ r.load=b.dataset.v; tog(b,x=>x===b); dgDirty(); }));
+  const areaOk=k=>{ const x=r.areas[k], card=A.querySelector('[data-dgn="'+k+'"]')?.closest(".dgarea"); if(card) card.classList.toggle("ok",!x.s.some(v=>!v)&&!!x.want); };
+  A.querySelectorAll("[data-dgs]").forEach(b=>b.addEventListener("click",()=>{ const [k,j]=b.dataset.dgs.split(":"); r.areas[k].s[+j]=+b.dataset.v; tog(b,x=>x===b); areaOk(k); dgDirty(); }));
+  A.querySelectorAll("[data-dgw]").forEach(b=>b.addEventListener("click",()=>{ r.areas[b.dataset.dgw].want=b.dataset.v; tog(b,x=>x===b); areaOk(b.dataset.dgw); dgDirty(); }));
+  A.querySelectorAll("[data-dgc]").forEach(b=>b.addEventListener("click",()=>{ r.common[b.dataset.dgc]=+b.dataset.v; tog(b,x=>x===b); dgDirty(); }));
+  const multi=(attr,field,max)=>A.querySelectorAll("["+attr+"]").forEach(b=>b.addEventListener("click",()=>{ const v=b.dataset.v, L=r[field]; const i=L.indexOf(v);
+    if(i>=0) L.splice(i,1); else { if(max&&L.length>=max){ toast("Chọn tối đa "+max); return; } L.push(v); }
+    if(field==="lead") r.support=r.support.filter(x=>!r.lead.includes(x)); if(field==="support") r.lead=r.lead.filter(x=>!r.support.includes(x));
+    A.querySelectorAll("[data-dglead]").forEach(x=>x.classList.toggle("on",r.lead.includes(x.dataset.v))); A.querySelectorAll("[data-dgsup]").forEach(x=>x.classList.toggle("on",r.support.includes(x.dataset.v))); A.querySelectorAll("[data-dgtop]").forEach(x=>x.classList.toggle("on",r.topics.includes(x.dataset.v))); dgDirty(); }));
+  multi("data-dglead","lead",2); multi("data-dgsup","support",2); multi("data-dgtop","topics",0);
+  A.querySelectorAll("[data-dgt]").forEach(t=>t.addEventListener("input",()=>{ r[t.dataset.dgt]=t.value.slice(0,1500); dgDirty(); }));
+  A.querySelectorAll("[data-dgn]").forEach(t=>t.addEventListener("input",()=>{ r.areas[t.dataset.dgn].note=t.value.slice(0,300); dgDirty(); }));
+  $("#dgSave")?.addEventListener("click",()=>dgSave(false));
+  $("#dgSend")?.addEventListener("click",()=>dgSave(true));
+}
+/* Đánh giá sơ bộ: điểm phù hợp = 60% năng lực (tự chấm, có điểm của anh thì lấy trung bình hai bên) + 40% mức muốn làm, +0,3 nếu chọn phụ trách chính. */
+function dgSelf(rec,k){ return dgAvg(rec?.areas?.[k]?.s); }
+function dgCap(rec,note,k){ const s=dgSelf(rec,k), o=note?.sco?.[k]||0; return s&&o?(s+o)/2:(o||s); }
+function dgFit(rec,note,k){ if(!rec) return 0; const c=dgCap(rec,note,k), w=DG_WV[rec.areas?.[k]?.want]||0; if(!c) return 0; return Math.min(5,0.6*c+0.4*(w||3)+((rec.lead||[]).includes(k)?0.3:0)); }
+function dgRole(pid,k){ const p=DG_PLAN[k]||{}; return p.c===pid?"C":p.p===pid?"P":(p.cand||[]).includes(pid)?"U":""; }
+function dgFlags(pid,rec,note){ const f=[]; if(!rec) return f;
+  if(rec.load==="over") f.push(["bad","Thấy quá tải"]); else if(rec.load==="high") f.push(["warn","Thấy hơi nhiều việc"]); else if(rec.load==="low") f.push(["","Còn ít việc, nhận thêm được"]);
+  if(rec.sat&&rec.sat<=2) f.push(["bad","Chưa hài lòng công việc hiện tại ("+rec.sat+"/5)"]);
+  DG_AREAS.forEach(([k,,sh])=>{ const role=dgRole(pid,k), cap=dgCap(rec,note,k), w=rec.areas?.[k]?.want;
+    if(role==="C"&&cap&&cap<3) f.push(["warn","Vai chính "+sh+" tự chấm "+dgF(cap)+": cần người kèm, đào tạo"]);
+    if((role==="C"||role==="P")&&w==="no") f.push(["bad","Không muốn làm "+sh+" (đang được đề xuất "+(role==="C"?"vai chính":"vai phụ")+")"]);
+    if((rec.lead||[]).includes(k)&&!role) f.push(["","Muốn phụ trách "+sh+", chưa có trong đề xuất"]);
+    if(!role&&cap>=4&&w==="yes"&&!(rec.lead||[]).includes(k)) f.push(["","Mạnh và muốn làm "+sh+", đang chưa được giao"]); });
+  const all=DG_AREAS.flatMap(([k])=>rec.areas?.[k]?.s||[]).filter(x=>x>0); if(all.length>=20&&dgAvg(all)>=4.5) f.push(["warn","Tự chấm gần như toàn 4–5: nên đối chiếu với kết quả thực tế"]);
+  return f; }
+function vDgAdmin(){
+  if(DGA.data===null){ setTimeout(loadDgAll,0); return '<div class="empty">Đang tải kết quả…</div>'; }
+  if(DGA.data.err) return '<div class="panel alert bad">Không tải được kết quả: '+esc(DGA.data.err)+'</div>';
+  const R=DGA.data.recs||{}, N=DGA.data.notes||{}, ppl=DG_STAFF.filter(p=>S.people[p]);
+  const sent=ppl.filter(p=>R[p]?.status==="sent").length, draft=ppl.filter(p=>R[p]&&R[p].status!=="sent").length;
+  let h='<div class="row between" style="gap:8px;align-items:flex-end;flex-wrap:wrap"><div><h1 style="margin:0">Tự đánh giá nhân sự</h1><div class="sub">Đợt 11/2026 · Chỉ owner xem được trang này. Nhân sự vào mục Đội ngũ › Tự đánh giá để làm phiếu.</div></div><div class="row" style="gap:6px"><button class="btn" id="dgPrev">Xem phiếu mẫu</button><button class="btn" id="dgReload">Tải lại</button></div></div>';
+  h+='<div class="grid kpis" style="margin-top:12px"><div class="tile '+(sent===ppl.length?"good":"")+'"><span class="v">'+sent+'/'+ppl.length+'</span><span class="l">Đã gửi phiếu</span></div><div class="tile '+(draft?"warn":"")+'"><span class="v">'+draft+'</span><span class="l">Đang làm dở</span></div><div class="tile"><span class="v">'+(ppl.length-sent-draft)+'</span><span class="l">Chưa mở phiếu</span></div></div>';
+  const tabs=[["tong","Ma trận"],["so-bo","Đánh giá sơ bộ"],["nguoi","Từng người"]];
+  h+='<div class="dgchips" style="margin:12px 0">'+tabs.map(([k,l])=>'<button type="button" data-dgtab="'+k+'"'+(DGA.tab===k?' class="on"':'')+'>'+l+'</button>').join("")+'</div>';
+  const short=p=>esc((S.people[p]?.name||p).replace(/^(Anh|Chị)\s+/,""));
+  if(DGA.tab==="tong"){
+    h+='<div class="panel"><div class="sub" style="margin-bottom:6px">Ô là điểm năng lực trung bình 3 tiêu chí (1–5), đã gộp điểm của anh nếu có. ★ rất muốn làm, ✕ không muốn. Viền đậm: vai chính đề xuất ở bước 1, viền nhạt: vai phụ.</div><table class="dgmx"><thead><tr><th></th>'+ppl.map(p=>'<th>'+short(p)+'</th>').join("")+'</tr></thead><tbody>'
+     +DG_AREAS.map(([k,,sh])=>'<tr><th>'+esc(sh)+'</th>'+ppl.map(p=>{ const rec=R[p], c=dgCap(rec,N[p],k), w=rec?.areas?.[k]?.want, role=dgRole(p,k);
+       return '<td class="'+(role==="C"?"rc ":role==="P"?"rp ":"")+'" style="background:'+(c?'color-mix(in srgb,var(--brand) '+Math.round((c-1)/4*55+5)+'%,transparent)':'transparent')+'">'+(c?dgF(c):'<span class="sub">–</span>')+(w==="yes"?'<i>★</i>':w==="no"?'<i>✕</i>':'')+'</td>'; }).join("")+'</tr>').join("")
+     +'<tr><th>Hài lòng</th>'+ppl.map(p=>'<td>'+(R[p]?.sat||'<span class="sub">–</span>')+'</td>').join("")+'</tr><tr><th>Khối lượng</th>'+ppl.map(p=>{ const l=R[p]?.load; return '<td style="font-size:11px'+(l==="over"?';color:var(--bad);font-weight:600':l==="high"?';color:var(--warn)':'')+'">'+(l?esc((DG_LOAD.find(x=>x[0]===l)||[,""])[1]):'–')+'</td>'; }).join("")+'</tr>'
+     +'<tr><th>Trạng thái</th>'+ppl.map(p=>'<td style="font-size:11px">'+(R[p]?.status==="sent"?'<span style="color:var(--good)">Đã gửi</span>':R[p]?'Nháp':'<span class="sub">Chưa</span>')+'</td>').join("")+'</tr></tbody></table></div>';
+  } else if(DGA.tab==="so-bo"){
+    const any=ppl.some(p=>R[p]);
+    h+='<div class="panel"><div class="sub">Điểm phù hợp = 60% năng lực (tự chấm, gộp điểm của anh nếu có) + 40% mức muốn làm, cộng 0,3 nếu người đó chọn phụ trách chính. Đây là gợi ý để anh xem cùng buổi thuyết trình, không thay quyết định của anh.</div></div>';
+    if(!any) h+='<div class="empty" style="margin-top:10px">Chưa có phiếu nào. Đánh giá sơ bộ hiện khi nhân sự bắt đầu làm phiếu.</div>';
+    else { h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin-top:10px">'+DG_AREAS.map(([k,t])=>{ const pl=DG_PLAN[k], rk=ppl.filter(p=>R[p]).map(p=>[p,dgFit(R[p],N[p],k)]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);
+        const top=rk[0], planC=pl.c, agree=top&&planC&&top[0]===planC;
+        let v=''; if(!rk.length) v='<span class="sub">Chưa đủ dữ liệu</span>';
+        else if(planC) v=agree?'<span class="pill good">Khớp đề xuất</span>':'<span class="pill warn">Khác đề xuất: '+short(planC)+' → cân nhắc '+short(top[0])+'</span>';
+        else v='<span class="pill">Gợi ý vai chính: '+short(top[0])+'</span>';
+        return '<div class="panel"><b>'+esc(t)+'</b><div style="margin:6px 0">'+v+'</div>'+rk.slice(0,4).map(([p,s],i)=>'<div class="dgbar"><span>'+short(p)+(dgRole(p,k)?' <small class="sub">('+({C:"chính",P:"phụ",U:"ứng viên"})[dgRole(p,k)]+')</small>':'')+'</span><span class="dgtr"><b style="width:'+Math.round(s/5*100)+'%'+(i?';opacity:.55':'')+'"></b></span><span>'+dgF(s)+'</span></div>').join("")+'</div>'; }).join("")+'</div>';
+      const fl=ppl.map(p=>[p,dgFlags(p,R[p],N[p])]).filter(x=>x[1].length);
+      if(fl.length) h+='<div class="panel" style="margin-top:10px"><h2 style="margin-top:0">Điểm cần anh lưu ý</h2>'+fl.map(([p,f])=>'<div style="margin:6px 0"><b>'+esc(S.people[p].name)+'</b><ul style="margin:4px 0 0;padding-left:18px">'+f.map(([c,t])=>'<li'+(c?' style="color:var(--'+c+')"':'')+'>'+esc(t)+'</li>').join("")+'</ul></div>').join("")+'</div>'; }
+  } else {
+    h+=ppl.map(p=>{ const rec=R[p], n=N[p]||{sco:{}}, op=DGA.open===p;
+      const top=rec?DG_AREAS.map(([k,,sh])=>[sh,dgCap(rec,n,k)]).filter(x=>x[1]).sort((a,b)=>b[1]-a[1]):[];
+      let c='<div class="panel" style="margin-bottom:10px"><button class="dgph" data-dgopen="'+p+'"><b>'+esc(S.people[p].name)+'</b><span class="sub">'+(rec?(rec.status==="sent"?"Đã gửi "+dm((rec.submittedAt||"").slice(0,10)):"Đang làm dở"):"Chưa mở phiếu")+(top.length?' · Mạnh: '+top.slice(0,2).map(x=>esc(x[0])).join(", "):'')+'</span><span>'+(op?"▲":"▼")+'</span></button>';
+      if(!op) return c+'</div>';
+      if(rec){ const L=x=>(x||[]).map(k=>esc((DG_AREAS.find(a=>a[0]===k)||[,,k])[2])).join(", ")||"–";
+        c+='<div class="dgkv"><span>Hài lòng</span><b>'+(rec.sat||"–")+'/5</b><span>Khối lượng</span><b>'+esc((DG_LOAD.find(x=>x[0]===rec.load)||[,"–"])[1])+'</b><span>Muốn phụ trách chính</span><b>'+L(rec.lead)+'</b><span>Muốn hỗ trợ</span><b>'+L(rec.support)+'</b><span>Chủ đề thuyết trình</span><b>'+((rec.topics||[]).map(t=>esc((DG_TOP.find(x=>x[0]===t)||[,t])[1])).join(", ")||"–")+'</b><span>Cách làm việc</span><b>'+DG_COMMON.map(([k,t])=>esc(t)+": "+(rec.common?.[k]||"–")).join(" · ")+'</b></div>'
+         +[["now","Đang làm nhiều nhất"],["good","Làm tốt nhất"],["hard","Khó, đang vướng"],["help","Cần hỗ trợ"],["learn","Muốn học thêm"],["other","Góp ý"]].filter(([k])=>rec[k]).map(([k,l])=>'<div style="margin-top:8px"><div class="sub">'+l+'</div><div style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(rec[k])+'</div></div>').join("");
+        const fl=dgFlags(p,rec,n); if(fl.length) c+='<ul style="margin:8px 0 0;padding-left:18px">'+fl.map(([cl,t])=>'<li'+(cl?' style="color:var(--'+cl+')"':'')+'>'+esc(t)+'</li>').join("")+'</ul>'; }
+      else c+='<div class="sub" style="margin-top:6px">Nhân sự chưa mở phiếu. Anh vẫn chấm trước được.</div>';
+      c+='<h3 style="margin:12px 0 4px">Chấm của anh và đối chiếu</h3><div class="sub">Tự chấm là trung bình 3 tiêu chí. Ô của anh để trống thì chỉ dùng điểm tự chấm.</div>'
+       +DG_AREAS.map(([k,t,sh])=>{ const s=rec?dgSelf(rec,k):0, w=rec?.areas?.[k]?.want, role=dgRole(p,k);
+         return '<div class="dgcr"><span><b>'+esc(sh)+'</b>'+(role?' <small class="sub">('+({C:"đề xuất chính",P:"đề xuất phụ",U:"ứng viên"})[role]+')</small>':'')+'<br><small class="sub">Tự chấm '+(rec?.areas?.[k]?.s||[]).map(x=>x||"–").join(" · ")+' → '+dgF(s)+(w?' · '+esc((DG_WANT.find(x=>x[0]===w)||[,""])[1]):'')+'</small>'+(rec?.areas?.[k]?.note?'<br><small style="overflow-wrap:anywhere">'+esc(rec.areas[k].note)+'</small>':'')+'</span>'+dgSeg('data-dgo="'+p+':'+k+'"',n.sco?.[k]||0,5,DG_SCALE)+'</div>'; }).join("")
+       +'<div class="f" style="margin-top:8px"><label for="dgon_'+p+'">Nhận xét của anh (chỉ anh thấy)</label><textarea id="dgon_'+p+'" data-dgot="'+p+'" rows="3">'+esc(n.text||"")+'</textarea></div><div style="margin-top:8px"><button class="btn pri" data-dgosave="'+p+'">Lưu chấm, nhận xét</button></div></div>';
+      return c; }).join("");
+  }
+  return h;
+}
+function bindDgAdmin(A){
+  A.querySelectorAll("[data-dgtab]").forEach(b=>b.addEventListener("click",()=>{ DGA.tab=b.dataset.dgtab; render(); }));
+  $("#dgReload")?.addEventListener("click",()=>{ DGA.data=null; render(); });
+  $("#dgPrev")?.addEventListener("click",()=>{ DGS.prev=true; DGS.rec=dgBlank(); render(); window.scrollTo(0,0); });
+  A.querySelectorAll("[data-dgopen]").forEach(b=>b.addEventListener("click",()=>{ DGA.open=DGA.open===b.dataset.dgopen?"":b.dataset.dgopen; render(); }));
+  if(!DGA.data||DGA.data.err) return;
+  const N=DGA.data.notes||(DGA.data.notes={}), get=p=>N[p]||(N[p]={sco:{},text:""});
+  A.querySelectorAll("[data-dgo]").forEach(b=>b.addEventListener("click",()=>{ const [p,k]=b.dataset.dgo.split(":"), n=get(p); n.sco=n.sco||{}; const v=+b.dataset.v; n.sco[k]=n.sco[k]===v?0:v; b.parentElement.querySelectorAll("button").forEach(x=>x.classList.toggle("on",+x.dataset.v===n.sco[k])); }));
+  A.querySelectorAll("[data-dgot]").forEach(t=>t.addEventListener("input",()=>{ get(t.dataset.dgot).text=t.value.slice(0,3000); }));
+  A.querySelectorAll("[data-dgosave]").forEach(b=>b.addEventListener("click",async()=>{ const p=b.dataset.dgosave; b.disabled=true; const r=await callDg({action:"note",personId:p,note:get(p)}); b.disabled=false; if(r.error){ toast("Chưa lưu được: "+r.error); return; } N[p]=r.note; toast("Đã lưu"); render(); }));
 }
