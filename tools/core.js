@@ -281,7 +281,7 @@ function vApi(){
   let h='<div class="row between"><div><h1>API cho đối tác</h1><div class="sub">Chỉ owner thấy trang này. Đối tác dùng khóa để <b>đọc</b> dữ liệu, không sửa được gì; riêng quyền "Gửi nhu cầu khách hàng" cho phép form, hệ thống khác thêm nhu cầu mới. API không bao giờ trả CCCD, sổ đỏ, số điện thoại, số tiền hợp đồng, link Drive.</div></div><div class="row"><button class="btn" id="apiRe">Tải lại</button><button class="btn pri" id="apiAdd">Tạo khóa mới</button></div></div>';
   if(APIERR) h+='<div class="alert bad" style="margin-top:8px">'+esc(APIERR)+'</div>';
   if(!APIK.length) h+='<div class="empty" style="margin-top:12px">Chưa có khóa nào. Bấm "Tạo khóa mới" để cấp cho một đối tác.</div>';
-  else h+='<div class="tw panel" style="margin-top:12px"><table><thead><tr><th>Đối tác</th><th>Khóa</th><th>Dữ liệu được đọc</th><th>Tạo</th><th>Hết hạn</th><th>Dùng gần nhất</th><th>Lượt gọi</th><th>Trạng thái</th><th></th></tr></thead><tbody>'
+  else h+='<div class="tw panel" style="margin-top:12px"><table><thead><tr><th>Đối tác</th><th>Khóa</th><th>Quyền</th><th>Tạo</th><th>Hết hạn</th><th>Dùng gần nhất</th><th>Lượt gọi</th><th>Trạng thái</th><th></th></tr></thead><tbody>'
     +APIK.map(k=>'<tr><td><b>'+esc(k.name)+'</b></td><td class="mono">'+esc(k.prefix)+'…</td><td style="max-width:260px">'+(k.scopes||[]).map(s=>'<span class="pill" style="margin:1px">'+esc(API_RES[s]||s)+'</span>').join("")+'</td><td>'+apiTime(k.created_at)+'<div class="sub">'+esc(k.created_by||"")+'</div></td><td>'+(k.expires_at?apiTime(k.expires_at):'<span class="sub">Không hạn</span>')+'</td><td>'+apiTime(k.last_used_at)+(k.last_ip?'<div class="sub mono">'+esc(k.last_ip)+'</div>':'')+'</td><td>'+(k.use_count||0)+'</td><td>'+apiState(k)+'</td><td><div class="row" style="gap:4px;flex-wrap:nowrap">'
       +(k.revoked_at?'':'<button class="btn sm" data-apied="'+k.id+'">Sửa quyền</button><button class="btn sm" data-apirv="'+k.id+'">Thu hồi</button>')+'<button class="btn sm" data-apidel="'+k.id+'">Xóa</button></div></td></tr>').join("")+'</tbody></table></div>';
   const ex=API_BASE+"/zones?limit=100";
@@ -302,16 +302,25 @@ function vApi(){
    +'<div class="sub" style="margin-top:8px">Mã lỗi: 401 thiếu khóa, khóa sai, đã thu hồi hoặc hết hạn; 403 khóa không được đọc loại dữ liệu đó; 404 không có; 429 gọi quá nhanh.</div></div>';
   return h;
 }
-function apiScopeBoxes(sel){ return '<div class="row" style="flex-wrap:wrap;gap:6px 14px;margin-top:4px">'+Object.entries(API_RES).map(([k,l])=>'<label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-apis="'+k+'"'+(sel.includes(k)?" checked":"")+'> '+esc(l)+'</label>').join("")+'</div>'; }
+const API_PRESET=[["leads","Chỉ thu nhu cầu khách",["leads_write"]],["rep","Xem tiến độ vùng",["zones","tasks","events"]],["none","Bỏ chọn hết",[]]];
+function apiScopeBoxes(sel){ const box=(k,l)=>'<label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-apis="'+k+'"'+(sel.includes(k)?" checked":"")+'> '+esc(l)+'</label>';
+  return '<div class="row" style="flex-wrap:wrap;gap:6px;margin:6px 0">'+API_PRESET.map(([k,l])=>'<button type="button" class="btn sm" data-apip="'+k+'">'+l+'</button>').join("")+'</div>'
+   +'<div class="sub" style="margin-top:6px">Ghi vào hệ thống</div><div class="row" style="flex-wrap:wrap;gap:6px 14px;margin-top:4px">'+box("leads_write","Gửi nhu cầu khách hàng (form, website, hệ thống khác thêm nhu cầu mới; không đọc được gì)")+'</div>'
+   +'<div class="sub" style="margin-top:8px">Đọc dữ liệu</div><div class="row" style="flex-wrap:wrap;gap:6px 14px;margin-top:4px">'+Object.entries(API_RES).filter(([k])=>k!=="leads_write").map(([k,l])=>box(k,l)).join("")+'</div>'
+   +'<div class="sub" id="apiSum" style="margin-top:6px"></div>'; }
+function apiBindScopes(){ const L=$("#layer"); const sum=()=>{ const p=apiPicked(), r=p.filter(x=>x!=="leads_write"); const e=$("#apiSum"); if(e) e.textContent=!p.length?"Chưa chọn quyền nào.":(p.includes("leads_write")?"Được gửi nhu cầu khách hàng. ":"")+(r.length?"Được đọc "+r.length+" loại dữ liệu.":"Không đọc được dữ liệu nào."); };
+  L.querySelectorAll("[data-apip]").forEach(b=>b.addEventListener("click",()=>{ const want=API_PRESET.find(x=>x[0]===b.dataset.apip)[2]; L.querySelectorAll("[data-apis]").forEach(x=>x.checked=want.includes(x.dataset.apis)); sum(); }));
+  L.querySelectorAll("[data-apis]").forEach(x=>x.addEventListener("change",sum)); sum(); }
 function apiPicked(){ return [...$("#layer").querySelectorAll("[data-apis]")].filter(x=>x.checked).map(x=>x.dataset.apis); }
 function openApiNew(){
   showDrawer('<div class="dh"><div><h2>Tạo khóa API</h2><div class="sub">Khóa chỉ hiện một lần sau khi tạo. Hãy gửi cho đối tác qua kênh riêng.</div></div><button class="btn sm" data-close>Đóng</button></div><div class="db">'
    +'<label>Tên đối tác hoặc mục đích<input id="apiN" maxlength="80" placeholder="Ví dụ: Yanning Hải Nam, đồng bộ báo cáo"></label>'
-   +'<div style="margin-top:10px"><b>Dữ liệu được đọc</b>'+apiScopeBoxes(["zones","tasks","events"])+'</div>'
+   +'<div style="margin-top:10px"><b>Quyền của khóa</b>'+apiScopeBoxes(["zones","tasks","events"])+'</div>'
    +'<label style="margin-top:10px">Thời hạn<select id="apiD"><option value="30">30 ngày</option><option value="90" selected>90 ngày</option><option value="365">1 năm</option><option value="0">Không hạn</option></select></label>'
    +'<div class="row" style="margin-top:14px"><button class="btn pri" id="apiGo">Tạo khóa</button><span class="sub" id="apiMsg"></span></div></div>');
+  apiBindScopes();
   $("#apiGo").addEventListener("click",async()=>{ const b=$("#apiGo"); const name=$("#apiN").value.trim(), scopes=apiPicked();
-    if(!name){ $("#apiMsg").textContent="Cần nhập tên"; return; } if(!scopes.length){ $("#apiMsg").textContent="Chọn ít nhất một loại dữ liệu"; return; }
+    if(!name){ $("#apiMsg").textContent="Cần nhập tên"; return; } if(!scopes.length){ $("#apiMsg").textContent="Chọn ít nhất một quyền"; return; }
     b.disabled=true; $("#apiMsg").textContent="Đang tạo…"; const r=await callApiAdmin({action:"create",name,scopes,days:Number($("#apiD").value)});
     if(r.error){ b.disabled=false; $("#apiMsg").textContent=r.error; return; }
     APIK=null; loadApiKeys(); showApiKey(r.key,r.meta); });
@@ -326,9 +335,10 @@ function showApiKey(key,m){
 }
 function openApiEdit(id){ const k=(APIK||[]).find(x=>x.id===id); if(!k) return;
   showDrawer('<div class="dh"><div><h2>Sửa quyền khóa</h2><div class="sub mono">'+esc(k.prefix)+'…</div></div><button class="btn sm" data-close>Đóng</button></div><div class="db">'
-   +'<label>Tên<input id="apiN" maxlength="80" value="'+esc(k.name)+'"></label><div style="margin-top:10px"><b>Dữ liệu được đọc</b>'+apiScopeBoxes(k.scopes||[])+'</div>'
+   +'<label>Tên<input id="apiN" maxlength="80" value="'+esc(k.name)+'"></label><div style="margin-top:10px"><b>Quyền của khóa</b>'+apiScopeBoxes(k.scopes||[])+'</div>'
    +'<div class="row" style="margin-top:14px"><button class="btn pri" id="apiSave">Lưu</button><span class="sub" id="apiMsg"></span></div></div>');
-  $("#apiSave").addEventListener("click",async()=>{ const scopes=apiPicked(); if(!scopes.length){ $("#apiMsg").textContent="Chọn ít nhất một loại dữ liệu"; return; }
+  apiBindScopes();
+  $("#apiSave").addEventListener("click",async()=>{ const scopes=apiPicked(); if(!scopes.length){ $("#apiMsg").textContent="Chọn ít nhất một quyền"; return; }
     $("#apiMsg").textContent="Đang lưu…"; const r=await callApiAdmin({action:"update",id,name:$("#apiN").value.trim(),scopes}); if(r.error){ $("#apiMsg").textContent=r.error; return; }
     closeDrawer(); toast("Đã lưu"); loadApiKeys(); });
 }
