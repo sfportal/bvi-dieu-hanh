@@ -900,7 +900,7 @@ function bindExp(A){ bindExpFile(A);
   A.querySelectorAll("[data-exid]").forEach(b=>b.addEventListener("click",()=>openExp(b.dataset.exid))); }
 
 /* ---------- Đối soát tuần: một trang cho quản lý thấy việc xong/chưa và chỗ lệch giữa báo cáo nhanh, lịch, công việc, tiến độ vùng, hồ sơ cứng ---------- */
-let RC={w:null,who:"",grp:"",showAck:false,zOpen:false};
+let RC={w:null,who:"",grp:"",showAck:false,zOpen:false,mode:"",dr:"30",ds:"open",dw:""};
 const RC_GRP={task:"Công việc",ev:"Lịch",daily:"Báo cáo nhanh",zone:"Vùng, hồ sơ"};
 const RC_T={
   task_late:["task","Việc quá hạn","bad"],
@@ -969,8 +969,37 @@ function rcWeekStats(){ const w0=rcWeek(), w1=addDays(w0,6), t=todayStr(), past=
   for(let i=0;i<7;i++,d=addDays(d,1)){ if(d>past) break; if(new Date(d+"T00:00:00").getDay()===0) continue; reps.forEach(p=>{ if(onLeave(p,d)) return; need++; if(S.daily[d+"_"+p]) got++; }); }
   return {w0,w1,t,past,T,due,dueDone,doneW,late,ev,evDone,reps,need,got}; }
 function rcBar(a,b){ const p=b?Math.round(a/b*100):0; return '<div style="height:6px;background:var(--line);border-radius:3px;margin-top:6px;overflow:hidden"><div style="height:100%;width:'+p+'%;background:'+(p>=80?"var(--good)":p>=50?"var(--warn)":"var(--bad)")+'"></div></div>'; }
+function rcModeBar(){ return '<div class="focusbar" role="group" aria-label="Chế độ xem" style="margin-bottom:12px">'+[["","Đối soát tuần"],["due","Việc đến hôm nay"]].map(([k,l])=>'<button data-rcm="'+k+'" aria-pressed="'+(RC.mode===k)+'">'+l+'</button>').join("")+'</div>'; }
+function vDueToday(){
+  const t=todayStr(), from=RC.dr==="7"?wkStart(t):RC.dr==="30"?addDays(t,-30):"";
+  const all=Object.entries(S.tasks).filter(([id,x])=>x.kind!=="epic"&&!tOpenKids(id)&&x.due&&x.due<=t&&(!from||x.due>=from)&&(!RC.dw||x.R===RC.dw));
+  const dDone=x=>(x.doneAt||"").slice(0,10);
+  const open=all.filter(([,x])=>x.status!=="done"), late=open.filter(([,x])=>x.due<t), dueNow=open.filter(([,x])=>x.due===t);
+  const done=all.filter(([,x])=>x.status==="done"), onTime=done.filter(([,x])=>!dDone(x)||dDone(x)<=x.due), doneLate=done.filter(([,x])=>dDone(x)&&dDone(x)>x.due);
+  const L=(RC.ds==="open"?open:RC.ds==="late"?doneLate:all).slice().sort((a,b)=>(a[1].status==="done")-(b[1].status==="done")||a[1].due.localeCompare(b[1].due));
+  const ppl=[...new Set(Object.values(S.tasks).filter(x=>x.kind!=="epic"&&x.R).map(x=>x.R))].filter(p=>S.people[p]).sort((a,b)=>pname(a).localeCompare(pname(b),"vi"));
+  const pct=done.length+open.length?Math.round(onTime.length/(all.length)*100):0;
+  let h='<div><h1>Việc đến hôm nay</h1><div class="sub">Mọi việc có hạn từ '+(from?dm(from):"trước đến nay")+' đến hôm nay '+dm(t)+'. Việc chưa xong mà qua hạn là trễ.</div></div>';
+  h+='<div class="row" style="gap:6px;margin-top:10px"><div class="focusbar" role="group" aria-label="Khoảng hạn">'+[["7","Tuần này"],["30","30 ngày"],["all","Tất cả"]].map(([k,l])=>'<button data-rcdr="'+k+'" aria-pressed="'+(RC.dr===k)+'">'+l+'</button>').join("")+'</div>'
+   +'<select id="rcDw" aria-label="Người thực hiện"><option value="">Mọi người</option>'+ppl.map(p=>'<option value="'+p+'"'+(RC.dw===p?" selected":"")+'>'+esc(pname(p))+'</option>').join("")+'</select></div>';
+  const tile=(v,l,cls,k)=>'<button class="tile '+cls+'" data-rcds="'+k+'"'+(RC.ds===k?' style="outline:2px solid var(--brand)"':'')+'><span class="v">'+v+'</span><span class="l">'+l+'</span></button>';
+  h+='<div class="grid kpis" style="margin-top:12px">'+tile(open.length,'Chưa xong'+(late.length?' · '+late.length+' trễ':'')+(dueNow.length?' · '+dueNow.length+' hạn hôm nay':''),open.length?"bad":"good","open")
+   +tile(doneLate.length,'Xong nhưng trễ hạn',doneLate.length?"warn":"good","late")+tile(all.length,'Tổng việc đến hạn · '+pct+'% xong đúng hạn',"","all")+'</div>';
+  if(!L.length) return h+'<div class="empty" style="margin-top:12px">Không có việc nào trong bộ lọc này.</div>';
+  const st=x=>{ if(x.status!=="done") return x.due<t?'<span class="pill bad">Trễ '+diffDays(t,x.due)+' ngày</span>':'<span class="pill warn">Hạn hôm nay</span>';
+    const d=dDone(x); return d&&d>x.due?'<span class="pill warn">Xong trễ '+diffDays(d,x.due)+' ngày</span>':'<span class="pill good">Xong đúng hạn</span>'; };
+  const zn=x=>x.zone&&S.zones[x.zone]?zShort(S.zones[x.zone].name):"";
+  h+='<div class="sub" style="margin:12px 0 6px">'+L.length+' việc</div><div style="display:grid;gap:6px">'+L.map(([id,x])=>'<div style="border:1px solid var(--line);border-left:4px solid var(--'+(x.status!=="done"?(x.due<t?"bad":"warn"):(dDone(x)>x.due?"warn":"good"))+');border-radius:8px;padding:8px 12px;background:var(--surface);display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
+    +'<div style="flex:1;min-width:220px"><div style="font-weight:600;overflow-wrap:anywhere">'+esc(tTitle(x,S.zones[x.zone]))+'</div><div class="sub">Hạn '+dm(x.due)+(zn(x)?' · '+esc(zn(x)):'')+' · '+esc(pname(x.R)||"Chưa giao")+' · '+(TSTAT[x.status]||x.status)+(x.status==="done"&&dDone(x)?' ngày '+dm(dDone(x)):'')+'</div></div>'
+    +'<div class="row" style="gap:6px">'+st(x)+'<button class="btn sm" data-rcot="'+id+'">Mở</button>'+(x.status!=="done"?'<button class="btn sm" data-rcdone="'+id+'">Xong</button>':'')+'</div></div>').join("")+'</div>';
+  return h;
+}
 function vRecon(){
   if(!canManage()) return '<div class="panel">Trang này dành cho quản lý.</div>';
+  if(RC.mode==="due") return rcModeBar()+vDueToday();
+  return rcModeBar()+vRecon0();
+}
+function vRecon0(){
   const st=rcWeekStats(), all=rcIssues(), open=all.filter(i=>!i.ack);
   const pick=all.filter(i=>(RC.showAck||!i.ack)&&(!RC.grp||i.grp===RC.grp)&&(!RC.who||rcPersonOf(i)===RC.who));
   let h='<div class="row between" style="align-items:flex-end;gap:10px"><div><h1>Đối soát tuần</h1><div class="sub">Việc xong hay chưa, và chỗ báo cáo nhanh, lịch, công việc, tiến độ vùng, hồ sơ cứng chưa khớp. Kiểm với nhân sự rồi sửa ngay tại đây.</div></div>'
@@ -1029,6 +1058,12 @@ async function rcSetAck(i,on){
   const rec=S[i.col]?.[i.rid]; if(!rec) return false; const rc={...(rec.rc||{})}; const key=i.akey||i.type;
   if(on) rc[key]={at,by,sig:i.sig}; else delete rc[key]; return upd(i.col,i.rid,{rc}); }
 function bindRecon(A){
+  A.querySelectorAll("[data-rcm]").forEach(b=>b.addEventListener("click",()=>{ RC.mode=b.dataset.rcm; render(); }));
+  A.querySelectorAll("[data-rcdr]").forEach(b=>b.addEventListener("click",()=>{ RC.dr=b.dataset.rcdr; render(); }));
+  A.querySelectorAll("[data-rcds]").forEach(b=>b.addEventListener("click",()=>{ RC.ds=b.dataset.rcds; render(); }));
+  $("#rcDw")?.addEventListener("change",e=>{ RC.dw=e.target.value; render(); });
+  A.querySelectorAll("[data-rcot]").forEach(b=>b.addEventListener("click",()=>openTask(b.dataset.rcot)));
+  A.querySelectorAll("[data-rcdone]").forEach(b=>b.addEventListener("click",async()=>{ b.disabled=true; if(await upd("tasks",b.dataset.rcdone,{status:"done",doneAt:new Date().toISOString(),...stamp()})) toast("Đã đánh dấu xong"); }));
   const W=n=>{ RC.w=addDays(rcWeek(),n*7); render(); };
   $("#rcPrev")?.addEventListener("click",()=>W(-1)); $("#rcNext")?.addEventListener("click",()=>W(1)); $("#rcNow")?.addEventListener("click",()=>{ RC.w=null; render(); });
   $("#rcAckT")?.addEventListener("change",e=>{ RC.showAck=e.target.checked; render(); });
