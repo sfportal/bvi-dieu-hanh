@@ -992,7 +992,12 @@ function vDueToday(){
   const dDone=x=>(x.doneAt||"").slice(0,10);
   const open=all.filter(([,x])=>x.status!=="done"), late=open.filter(([,x])=>x.due<t), dueNow=open.filter(([,x])=>x.due===t);
   const done=all.filter(([,x])=>x.status==="done"), onTime=done.filter(([,x])=>!dDone(x)||dDone(x)<=x.due), doneLate=done.filter(([,x])=>dDone(x)&&dDone(x)>x.due);
-  const L=(RC.ds==="open"?open:RC.ds==="late"?doneLate:all).slice().sort((a,b)=>(a[1].status==="done")-(b[1].status==="done")||a[1].due.localeCompare(b[1].due));
+  // giữ nguyên thứ tự khi cập nhật trong trang, chỉ sắp lại khi đổi bộ lọc hoặc bấm Sắp xếp lại
+  const sig=[RC.dr,RC.ds,RC.dw,RC.dg,RC.all].join("|"); if(!RC.ord||RC.ord.sig!==sig) RC.ord={sig,ids:null,zs:null};
+  const pos=(arr,k)=>{ const i=arr?arr.indexOf(k):-1; return i<0?1e9:i; };
+  const L0=(RC.ds==="open"?open:RC.ds==="late"?doneLate:all).slice().sort((a,b)=>(a[1].status==="done")-(b[1].status==="done")||a[1].due.localeCompare(b[1].due));
+  const L=RC.ord.ids?L0.sort((a,b)=>pos(RC.ord.ids,a[0])-pos(RC.ord.ids,b[0])):L0;
+  RC.ord.ids=[...(RC.ord.ids||[]),...L.map(r=>r[0]).filter(k=>!(RC.ord.ids||[]).includes(k))];
   const ppl=[...new Set(Object.values(S.tasks).filter(x=>x.kind!=="epic"&&x.R).map(x=>x.R))].filter(p=>S.people[p]).sort((a,b)=>pname(a).localeCompare(pname(b),"vi"));
   const pct=done.length+open.length?Math.round(onTime.length/(all.length)*100):0;
   let h='<div><h1>Việc đến hôm nay</h1><div class="sub">Việc của '+(RC.all?'mọi vùng':'vùng ưu tiên 1, 2')+', có hạn từ '+(from?dm(from):"trước đến nay")+' đến hôm nay '+dm(t)+'. Việc chưa xong mà qua hạn là trễ.</div></div>';
@@ -1010,12 +1015,13 @@ function vDueToday(){
     +'<div class="row" style="gap:6px">'+st(x)+'<button class="btn sm" data-rcot="'+id+'">Mở</button>'+(x.status!=="done"?'<button class="btn sm" data-rcdone="'+id+'">Xong</button>':'')+'</div></div>';
   if(RC.dg==="zone"){ const G={}; L.forEach(r=>{ const k=r[1].zone||"_"; (G[k]=G[k]||[]).push(r); });
     const ks=Object.keys(G).sort((a,b)=>{ const la=G[a].filter(([,x])=>x.status!=="done"&&x.due<t).length, lb=G[b].filter(([,x])=>x.status!=="done"&&x.due<t).length; return lb-la||(S.zones[a]?.priority||"9").localeCompare(S.zones[b]?.priority||"9"); });
-    h+='<div class="sub" style="margin:12px 0 6px">'+L.length+' việc ở '+ks.length+' vùng</div>';
+    if(RC.ord.zs) ks.sort((a,b)=>pos(RC.ord.zs,a)-pos(RC.ord.zs,b)); RC.ord.zs=[...(RC.ord.zs||[]),...ks.filter(k=>!(RC.ord.zs||[]).includes(k))];
+    h+='<div class="row between" style="margin:12px 0 6px;gap:6px"><span class="sub">'+L.length+' việc ở '+ks.length+' vùng</span><button class="btn sm" data-rcresort>Sắp xếp lại</button></div>';
     ks.forEach(k=>{ const z=S.zones[k], Lz=G[k], lt=Lz.filter(([,x])=>x.status!=="done"&&x.due<t).length;
       h+='<div class="panel" style="margin-top:8px;padding:10px 12px"><div class="row between" style="gap:6px;margin-bottom:8px"><div style="min-width:0">'+(z?'<button class="btn sm" style="border:0;background:none;padding:0;font-weight:700;font-size:15px;text-align:left" data-rcz="'+k+'">'+esc(zShort(z.name))+'</button><div class="sub">'+esc(PRI[z.priority]||"")+(z.step!=null?' · Bước '+z.step+': '+esc(STEPS[z.step]?.name||""):'')+(z.eta?' · dự kiến mã '+esc(etaShort(z.eta)):'')+' · hồ sơ cứng '+hsStat(z).hard+'/'+hsStat(z).n+'</div>':'<b>Việc chung, không gắn vùng</b>')+'</div>'
         +'<div class="row" style="gap:6px">'+(lt?'<span class="pill bad">'+lt+' việc trễ</span>':'<span class="pill good">Không trễ</span>')+(z?'<button class="btn sm pri" data-rcnew="'+k+'">+ Việc</button>':'')+'</div></div><div style="display:grid;gap:6px">'+Lz.map(r=>card(r,true)).join("")+'</div>'+(z?'<details style="margin-top:8px" data-rchso="'+k+'"'+((RC.hsOpen||{})[k]?' open':'')+'><summary class="sub" style="cursor:pointer">Hồ sơ của vùng: bản cứng '+hsStat(z).hard+'/'+hsStat(z).n+(z.hsNote?' · có ghi chú':'')+'</summary>'+rcHsBlock(k)+'</details>':'')+'</div>'; });
     return h; }
-  h+='<div class="sub" style="margin:12px 0 6px">'+L.length+' việc</div><div style="display:grid;gap:6px">'+L.map(([id,x])=>'<div style="border:1px solid var(--line);border-left:4px solid var(--'+(x.status!=="done"?(x.due<t?"bad":"warn"):(dDone(x)>x.due?"warn":"good"))+');border-radius:8px;padding:8px 12px;background:var(--surface);display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
+  h+='<div class="row between" style="margin:12px 0 6px;gap:6px"><span class="sub">'+L.length+' việc</span><button class="btn sm" data-rcresort>Sắp xếp lại</button></div><div style="display:grid;gap:6px">'+L.map(([id,x])=>'<div style="border:1px solid var(--line);border-left:4px solid var(--'+(x.status!=="done"?(x.due<t?"bad":"warn"):(dDone(x)>x.due?"warn":"good"))+');border-radius:8px;padding:8px 12px;background:var(--surface);display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
     +'<div style="flex:1;min-width:220px"><div style="font-weight:600;overflow-wrap:anywhere">'+esc(tTitle(x,S.zones[x.zone]))+'</div><div class="sub">Hạn '+dm(x.due)+(zn(x)?' · '+esc(zn(x)):'')+' · '+esc(pname(x.R)||"Chưa giao")+' · '+(TSTAT[x.status]||x.status)+(x.status==="done"&&dDone(x)?' ngày '+dm(dDone(x)):'')+'</div></div>'
     +'<div class="row" style="gap:6px">'+st(x)+'<button class="btn sm" data-rcot="'+id+'">Mở</button>'+(x.status!=="done"?'<button class="btn sm" data-rcdone="'+id+'">Xong</button>':'')+'</div></div>').join("")+'</div>';
   return h;
@@ -1085,7 +1091,8 @@ async function rcSetAck(i,on){
   const rec=S[i.col]?.[i.rid]; if(!rec) return false; const rc={...(rec.rc||{})}; const key=i.akey||i.type;
   if(on) rc[key]={at,by,sig:i.sig}; else delete rc[key]; return upd(i.col,i.rid,{rc}); }
 function bindRecon(A){
-  A.querySelectorAll("[data-rcm]").forEach(b=>b.addEventListener("click",()=>{ RC.mode=b.dataset.rcm; render(); }));
+  A.querySelectorAll("[data-rcm]").forEach(b=>b.addEventListener("click",()=>{ RC.mode=b.dataset.rcm; RC.ord=null; render(); }));
+  A.querySelectorAll("[data-rcresort]").forEach(b=>b.addEventListener("click",()=>{ RC.ord=null; render(); }));
   A.querySelectorAll("[data-rcall]").forEach(b=>b.addEventListener("click",()=>{ RC.all=!!b.dataset.rcall; render(); }));
   A.querySelectorAll("[data-rcdg]").forEach(b=>b.addEventListener("click",()=>{ RC.dg=b.dataset.rcdg; render(); }));
   A.querySelectorAll("[data-rcdr]").forEach(b=>b.addEventListener("click",()=>{ RC.dr=b.dataset.rcdr; render(); }));
