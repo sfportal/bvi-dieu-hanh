@@ -199,6 +199,44 @@ nav.bot{display:none}
 .hsb{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:5px 6px;cursor:pointer;display:grid;gap:3px;justify-items:center;min-width:58px}.hsb:hover{border-color:var(--brand)}.hsh{font-size:10.5px;color:var(--muted);max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hsg td,.hsg th{padding:6px 5px;vertical-align:middle}.hsg th{font-size:12px;white-space:nowrap}.hsg td:first-child{min-width:150px;position:sticky;left:0;background:var(--surface);z-index:1}.hsg th:first-child{position:sticky;left:0;background:var(--surface);z-index:1}
 .hsrow{border:1px solid var(--line);border-radius:10px;padding:10px;display:grid;gap:6px;background:var(--surface)}.hsrow.foc{border-color:var(--brand);box-shadow:0 0 0 2px var(--chip)}.hsrow .ctl{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.hsTabs{display:flex;gap:6px;overflow-x:auto;margin-top:10px;padding-bottom:2px;scrollbar-width:none}.hsTabs::-webkit-scrollbar{display:none}
+.hsTabs button{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 13px;font-size:13px;font-weight:500;color:var(--muted)}
+.hsTabs button[aria-pressed=true]{background:var(--fg);color:var(--surface);border-color:var(--fg)}
+.hsHero{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px}
+@media(max-width:760px){.hsHero{grid-template-columns:repeat(2,minmax(0,1fr))}.hsHero button{padding:8px 10px;gap:3px}.hsHero .v{font-size:18px}}
+.hsHero button{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;text-align:left;display:grid;gap:4px;color:var(--fg);min-width:0}
+.hsHero button:hover{border-color:var(--brand)}.hsHero button[aria-pressed=true]{border-color:var(--brand);box-shadow:0 0 0 2px var(--chip)}
+.hsHero .v{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}.hsHero .l{font-size:12px;color:var(--muted)}
+.hbar{display:flex;height:6px;border-radius:99px;background:var(--sunk);overflow:hidden;width:100%}.hbar i{display:block;height:100%}
+.hsLg{margin:12px 0 8px;flex-wrap:wrap}
+.hsCards{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:10px}
+@media(max-width:480px){.hsCards{grid-template-columns:minmax(0,1fr)}}
+.hsCard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:8px;min-width:0}
+.hsCard.ok{border-color:color-mix(in srgb,var(--good) 45%,var(--line))}
+.hsCard .top{display:flex;gap:8px;align-items:flex-start;justify-content:space-between;border:0;background:none;padding:0;text-align:left;color:var(--fg);width:100%}
+.hsCard .top>span:first-child{display:grid;gap:2px}.hsCard .nm{font-size:15px;overflow-wrap:anywhere}
+.hsCard .pc{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--muted)}.hsCard .pc.good{color:var(--good)}.hsCard .pc.info{color:var(--info)}.hsCard .pc.warn{color:var(--warn)}
+.hsChips{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
+.hk{border:1px solid var(--line);border-radius:8px;padding:5px 3px 4px;font-size:11px;line-height:1.2;background:var(--sunk);color:var(--muted);display:grid;gap:3px;justify-items:center;min-width:0;cursor:pointer;text-align:center}
+.hk .t{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.hk:hover{border-color:var(--brand)}.hk.sel{outline:2px solid var(--brand);outline-offset:1px}
+.hk.good{background:color-mix(in srgb,var(--good) 16%,var(--surface));color:var(--good);border-color:color-mix(in srgb,var(--good) 40%,var(--line))}
+.hk.good.na{opacity:.6}
+.hk.info{background:color-mix(in srgb,var(--info) 14%,var(--surface));color:var(--info);border-color:color-mix(in srgb,var(--info) 40%,var(--line))}
+.hk.warn{background:color-mix(in srgb,var(--warn) 16%,var(--surface));color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,var(--line))}
+.hk .d{display:flex;gap:3px}.hk .d b{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.22}.hk .d b.on{opacity:1}.hk .d b.half{opacity:.6}
+.hsMiss{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px}@media(max-width:480px){.hsMiss{grid-template-columns:minmax(0,1fr)}}
+.hsZl{display:flex;flex-wrap:wrap;gap:4px}.hsZl .hk{grid-auto-flow:column;align-items:center;padding:5px 8px;font-size:12px;max-width:100%}
+.hsSum{display:grid;gap:6px}.hsMb{display:grid;grid-template-columns:76px 1fr 40px;gap:8px;align-items:center}.hsMb b{text-align:right;font-variant-numeric:tabular-nums;font-size:13px}
+.hsList{display:grid;gap:8px}
+.hsMini{width:100%;font:inherit;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;text-align:left;color:var(--fg);cursor:pointer;padding:9px 10px;background:color-mix(in srgb,var(--good) 7%,var(--surface))}
+.hsMini .ok{color:var(--good);font-weight:700}.hsMini b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hsSeg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));width:100%}.hsSeg button{padding:8px 4px}
+.cp.tg{padding:6px 11px;font-size:12.5px;text-decoration:none}
+.hsHo{flex:1;min-width:120px;border:1px solid var(--line);border-radius:999px;padding:5px 8px;font-size:12.5px;background:var(--surface);color:var(--fg)}
+.hsNote{border-left:3px solid var(--warn);padding-left:8px}
+.hsIn{flex:1;min-width:0;border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--surface);color:var(--fg)}
+details[data-hsdet] summary{cursor:pointer}
 .docbar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--sunk);margin:6px 0 2px}
 .docbar span{display:block;height:100%}
 .chk-list{display:grid;gap:4px;margin-top:6px}
@@ -450,33 +488,71 @@ function hsZones(){ const f=ui.hs; const q=norm(f.q||"");
     if(f.pri==="12"&&!(z.priority==="1"||z.priority==="2")) return false; if(f.pri&&f.pri!=="12"&&f.pri!=="all"&&z.priority!==f.pri) return false;
     if(f.owner&&z.owner!==f.owner) return false;
     if(q&&!norm(z.name+" "+(z.ward||"")+" "+(z.code||"")+" "+(z.unit||"")).includes(q)) return false;
-    if(f.miss&&!f.tab){ if(f.item){ if(hsDone(hsItem(z,f.item))) return false; } else if(hsStat(z).ok===HS.length) return false; }
-    if(f.hold&&!f.tab){ if(!HS.some(([k])=>hsItem(z,k).holder===f.hold)) return false; }
+    if(f.miss&&(!f.tab||f.tab==="tbl")){ if(f.item){ if(hsDone(hsItem(z,f.item))) return false; } else if(hsStat(z).ok===HS.length) return false; }
+    if(f.hold&&(!f.tab||f.tab==="tbl")){ if(!HS.some(([k])=>hsItem(z,k).holder===f.hold)) return false; }
     return true; }).sort((a,b)=>(a[1].priority||"9").localeCompare(b[1].priority||"9")||a[1].name.localeCompare(b[1].name,"vi")); }
-function vHs(){ ui.hs=ui.hs||{q:"",pri:"12",owner:"",item:"",miss:false,qm:"",qh:"",hold:""}; const f=ui.hs, zs=hsZones();
+// trạng thái một loại hồ sơ: good xong, info có bản cứng còn thiếu Drive/FarmBase, warn bản cứng thiếu, "" chưa có
+function hsCls(x){ if(hsDone(x)) return x.hard==="na"?"good na":"good"; if(x.hard==="ok") return "info"; if(x.hard==="part") return "warn"; return (x.drive||x.fb)?"warn":""; }
+function hsMissOf(x,dim){ const na=x.hard==="na"; return dim==="hard"?!(x.hard==="ok"||na):dim==="drive"?!(x.drive||na):dim==="fb"?!(x.fb||na):!hsDone(x); }
+function hsPct(s){ return Math.round((s.hard+s.drive+s.fb)/(3*s.n)*100); }
+function hsDots(x){ const na=x.hard==="na"; return '<span class="d" aria-hidden="true"><b class="'+((x.hard==="ok"||na)?"on":x.hard==="part"?"half":"")+'"></b><b class="'+((x.drive||na)?"on":"")+'"></b><b class="'+((x.fb||na)?"on":"")+'"></b></span>'; }
+function hsHero(zs){ const f=ui.hs; const N=zs.length*HS.length||1; let done=0,hard=0,dr=0,fb=0,zd=0;
+  zs.forEach(([,z])=>{ const s=hsStat(z); done+=s.ok; hard+=s.hard; dr+=s.drive; fb+=s.fb; if(s.ok===s.n) zd++; });
+  const t=(dim,l,v,c,sub)=>'<button type="button" data-hshero="'+dim+'" aria-pressed="'+(f.tab==="miss"&&(f.dim||"")===dim)+'" title="Xem vùng còn thiếu"><span class="l">'+l+'</span><span class="v">'+Math.round(v/N*100)+'%</span><span class="hbar"><i style="width:'+(v/N*100)+'%;background:'+c+'"></i></span><span class="l">'+sub(N-v)+'</span></button>';
+  return '<div class="hsHero">'+t("","Hoàn tất",done,"var(--good)",m=>zd+'/'+zs.length+' vùng đủ hết · '+m+' mục còn thiếu')
+   +t("hard","Bản cứng",hard,"var(--info)",m=>m+' mục chưa đủ')+t("drive","Lên Drive",dr,"var(--info)",m=>m+' mục chưa lên')+t("fb","Nhập FarmBase",fb,"var(--info)",m=>m+' mục chưa nhập')+'</div>'; }
+function hsCards(zs){ const f=ui.hs;
+  if(!zs.length) return '<div class="panel sub">Không có vùng khớp bộ lọc.</div>';
+  let L=zs.map(([id,z])=>[id,z,hsStat(z)]);
+  if(f.sort==="miss") L.sort((a,b)=>hsPct(a[2])-hsPct(b[2])); else if(f.sort==="done") L.sort((a,b)=>hsPct(b[2])-hsPct(a[2]));
+  const lg='<div class="legend hsLg"><span><i class="sw" style="background:var(--good)"></i>Xong</span><span><i class="sw" style="background:var(--info)"></i>Có bản cứng, chưa lên Drive hoặc FarmBase</span><span><i class="sw" style="background:var(--warn)"></i>Bản cứng thiếu</span><span><i class="sw" style="background:var(--sunk);outline:1px solid var(--line)"></i>Chưa có</span><span class="sub">Ba chấm: bản cứng · Drive · FarmBase</span></div>';
+  return lg+'<div class="hsCards">'+L.map(([id,z,s])=>{ const p=hsPct(s); let mh=0,md=0,mf=0; HS.forEach(([k])=>{ const x=hsItem(z,k); if(hsMissOf(x,"hard"))mh++; if(hsMissOf(x,"drive"))md++; if(hsMissOf(x,"fb"))mf++; });
+    const need=[mh?mh+' bản cứng':'',md?md+' lên Drive':'',mf?mf+' nhập FB':''].filter(Boolean);
+    return '<div class="hsCard'+(s.ok===s.n?' ok':'')+'"><button type="button" class="top" data-hsz="'+id+'"><span style="min-width:0"><b class="nm">'+esc(z.name)+'</b><span class="sub">'+esc([z.priority?'Ưu tiên '+z.priority:'',z.ward,pname(z.owner)].filter(Boolean).join(" · "))+'</span></span><span class="pc '+(s.ok===s.n?'good':p>=50?'info':p?'warn':'')+'">'+p+'%</span></button>'
+     +'<span class="hbar"><i style="width:'+(s.hard/s.n/3*100)+'%;background:var(--good)"></i><i style="width:'+(s.drive/s.n/3*100)+'%;background:var(--good);opacity:.75"></i><i style="width:'+(s.fb/s.n/3*100)+'%;background:var(--good);opacity:.5"></i></span>'
+     +'<div class="hsChips">'+HS.map(([k,l,sh])=>{ const x=hsItem(z,k); return '<button type="button" class="hk '+hsCls(x)+(f.item===k?' sel':'')+'" data-hsgo="'+id+'|'+k+'" title="'+esc(l+": bản cứng "+HSHARD[x.hard||""].toLowerCase()+(x.holder&&x.hard!=="na"?", "+hsHolder(x.holder)+" giữ":"")+(x.drive?", đã lên Drive":"")+(x.fb?", đã nhập FarmBase":""))+'"><span class="t">'+esc(sh)+'</span>'+hsDots(x)+'</button>'; }).join("")+'</div>'
+     +'<div class="row between sub" style="gap:6px"><span>'+(need.length?'Cần: '+esc(need.join(" · ")):'<span style="color:var(--good);font-weight:600">Đủ cả '+s.n+' loại hồ sơ</span>')+'</span><span>'+s.ok+'/'+s.n+' xong</span></div></div>'; }).join("")+'</div>'; }
+function hsMiss(zs){ const f=ui.hs, dim=f.dim||"";
+  const D={"":"chưa hoàn tất",hard:"chưa đủ bản cứng",drive:"chưa lên Drive",fb:"chưa nhập FarmBase"};
+  let h='<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin:4px 0 10px"><div class="focusbar" role="group" aria-label="Thiếu phần nào">'+[["","Chưa xong"],["hard","Bản cứng"],["drive","Drive"],["fb","FarmBase"]].map(([k,l])=>'<button data-hsdim="'+k+'" aria-pressed="'+(dim===k)+'">'+l+'</button>').join("")+'</div><span class="sub">Bấm tên vùng để mở đúng loại hồ sơ đó và cập nhật.</span></div>';
+  const T=HS.map(([k,l])=>[k,l,zs.filter(([,z])=>hsMissOf(hsItem(z,k),dim))]).sort((a,b)=>b[2].length-a[2].length);
+  const full=T.filter(x=>!x[2].length);
+  h+='<div class="hsMiss">'+T.filter(x=>x[2].length).map(([k,l,L])=>{ const ok=zs.length-L.length;
+    return '<div class="panel"><div class="row between" style="gap:6px"><b>'+esc(l)+'</b><span class="pill warn">'+L.length+' vùng '+D[dim]+'</span></div><span class="hbar" style="margin:6px 0 8px"><i style="width:'+(ok/(zs.length||1)*100)+'%;background:var(--good)"></i></span><div class="hsZl">'
+      +L.map(([id,z])=>{ const x=hsItem(z,k); return '<button type="button" class="hk '+hsCls(x)+'" data-hsgo="'+id+'|'+k+'" title="Bản cứng '+esc(HSHARD[x.hard||""].toLowerCase()+(x.holder?", "+hsHolder(x.holder)+" giữ":""))+'"><span class="t">'+esc(z.name)+'</span>'+hsDots(x)+'</button>'; }).join("")+'</div></div>'; }).join("")+'</div>';
+  if(full.length) h+='<div class="panel"><b style="color:var(--good)">Đã đủ ở mọi vùng đang lọc:</b> <span class="sub">'+esc(full.map(x=>x[1]).join(", "))+'</span></div>';
+  if(!zs.length) h+='<div class="panel sub">Không có vùng khớp bộ lọc.</div>';
+  return h; }
+function vHs(){ ui.hs=ui.hs||{q:"",pri:"12",owner:"",item:"",miss:false,qm:"",qh:"",hold:"",tab:"",dim:"",sort:""}; const f=ui.hs, zs=hsZones(); const lst=!f.tab||f.tab==="tbl";
   const opt=(arr,val)=>arr.map(([v,l])=>'<option value="'+esc(v)+'"'+(String(val)===String(v)?" selected":"")+'>'+esc(l)+'</option>').join("");
   const ppl=Object.entries(S.people).filter(([,p])=>p.active!==false).sort((a,b)=>a[1].name.localeCompare(b[1].name,"vi"));
   const holdOpts=[...HSHOLD,...ppl.map(([k,p])=>[k,p.name])];
-  let h='<div><h1>Hồ sơ vùng trồng</h1><div class="sub">Biết từng bộ hồ sơ chính của vùng đang ra sao: bản cứng đủ chưa, ai đang giữ, đã scan lưu Drive và nhập FarmBase chưa. Chỉ ghi trạng thái, không ghi số CCCD, số sổ đỏ ở đây.</div></div>';
+  let h='<div><h1>Hồ sơ vùng trồng</h1><div class="sub">Mỗi vùng có 10 loại hồ sơ chính. Mỗi loại cần đủ bản cứng, đã scan lên Drive và đã nhập FarmBase. Bấm một ô để cập nhật. Không ghi số CCCD, số sổ đỏ ở đây.</div></div>';
   if(canDrv()){ const dz=zs.filter(([,z])=>z.drv); const lastS=dz.map(([,z])=>z.drvScanAt||"").sort().pop();
     h+='<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px"><button class="btn sm pri" id="hsdrvsync" title="Đếm lại file trong các thư mục Drive và cập nhật trạng thái hồ sơ">Đồng bộ Drive</button><span class="sub" id="hsdrvst">'+(lastS?'Đồng bộ gần nhất '+esc(dmy(lastS.slice(0,10)))+' '+esc(new Date(lastS).toLocaleTimeString("vi-VN",{hour:"2-digit",minute:"2-digit"})):'Chưa đồng bộ')+' · '+(canManage()?'quét tất cả vùng':'quét '+dz.length+' vùng đang xem')+'</span></div>'; }
-  h+='<div class="focusbar" role="tablist" aria-label="Phần hồ sơ" style="margin-top:10px">'+[["","Bảng hồ sơ"],["bc","Bản cứng đưa dân ký"],["drv","Thư mục Drive"]].map(([k,l])=>'<button role="tab" data-hstab="'+k+'" aria-pressed="'+((f.tab||"")===k)+'">'+l+'</button>').join("")+'</div>';
-  // tổng hợp theo loại
+  h+='<div class="hsTabs" role="tablist" aria-label="Phần hồ sơ">'+[["","Theo vùng"],["miss","Còn thiếu gì"],["tbl","Bảng, ghi nhanh"],["bc","Đưa dân ký"],["drv","Thư mục Drive"]].map(([k,l])=>'<button role="tab" data-hstab="'+k+'" aria-pressed="'+((f.tab||"")===k)+'">'+l+'</button>').join("")+'</div>';
+  if(!f.tab||f.tab==="miss") h+=hsHero(zs);
+  // tổng hợp theo loại (chỉ ở bảng)
   const N=zs.length||1; const T=HS.map(([k,l])=>{ let ok=0,part=0,dr=0,fb=0,done=0; const hc={}; zs.forEach(([,z])=>{ const x=hsItem(z,k); if(x.hard==="ok"||x.hard==="na")ok++; else if(x.hard==="part")part++; if(x.drive||x.hard==="na")dr++; if(x.fb||x.hard==="na")fb++; if(hsDone(x))done++; if(x.holder&&x.hard&&x.hard!=="na") hc[x.holder]=(hc[x.holder]||0)+1; });
     return [k,l,ok,part,dr,fb,done,Object.entries(hc).sort((a,b)=>b[1]-a[1])]; });
   const pc=(n,c)=>'<span class="pill '+(n>=N&&zs.length?"good":n?"warn":"")+'">'+n+'/'+zs.length+'</span>';
   if(f.sum==null) f.sum=innerWidth>700;
-  if(!f.tab) h+='<details class="panel" style="margin-top:12px"'+(f.sum?' open':'')+' id="hssum"><summary style="cursor:pointer"><b>Tổng hợp theo loại hồ sơ ('+zs.length+' vùng đang lọc)</b> <span class="sub">· bấm tên loại để xem vùng còn thiếu loại đó</span></summary><div class="tw hsg" style="margin-top:6px"><table><thead><tr><th>Loại hồ sơ</th><th>Bản cứng đủ</th><th>Thiếu một phần</th><th>Đã lên Drive</th><th>Đã nhập FarmBase</th><th>Hoàn tất</th><th>Bản cứng đang ở</th></tr></thead><tbody>'
+  if(f.tab==="tbl") h+='<details class="panel" style="margin-top:12px"'+(f.sum?' open':'')+' id="hssum"><summary style="cursor:pointer"><b>Tổng hợp theo loại hồ sơ ('+zs.length+' vùng đang lọc)</b> <span class="sub">· bấm tên loại để xem vùng còn thiếu loại đó</span></summary><div class="tw hsg" style="margin-top:6px"><table><thead><tr><th>Loại hồ sơ</th><th>Bản cứng đủ</th><th>Thiếu một phần</th><th>Đã lên Drive</th><th>Đã nhập FarmBase</th><th>Hoàn tất</th><th>Bản cứng đang ở</th></tr></thead><tbody>'
     +T.map(([k,l,ok,part,dr,fb,done,hc])=>'<tr><td><a href="#" data-hsitem="'+k+'" title="'+esc(l)+'"'+(f.item===k?' style="font-weight:700"':'')+'>'+esc(innerWidth>700?l:HS.find(x=>x[0]===k)[2])+'</a></td><td>'+pc(ok)+'</td><td>'+(part?'<span class="pill warn">'+part+'</span>':'<span class="sub">0</span>')+'</td><td>'+pc(dr)+'</td><td>'+pc(fb)+'</td><td>'+pc(done)+'</td><td class="sub">'+(hc.slice(0,3).map(([p,n])=>esc(hsHolder(p))+' '+n).join(", ")||"Chưa ghi")+'</td></tr>').join("")+'</tbody></table></div></details>';
   // bộ lọc
+  const nF=[f.pri!=="12",!!f.owner,lst&&!!f.item,lst&&!!f.hold,lst&&!!f.miss].filter(Boolean).length, mob=innerWidth<=700;
   h+='<div class="filters"><input type="search" id="hsq" placeholder="Tìm vùng, xã, mã (gõ không dấu được)" value="'+esc(f.q)+'" aria-label="Tìm vùng">'
+   +(mob?'<button class="btn sm" id="hsfo" aria-expanded="'+!!f.fo+'">Lọc'+(nF?' ('+nF+')':'')+(f.fo?' ▴':' ▾')+'</button></div><div class="filters" style="margin-top:-4px'+(f.fo?'':';display:none')+'">':'')
    +'<select id="hspri" aria-label="Ưu tiên">'+opt([["12","Ưu tiên 1 và 2"],["all","Mọi ưu tiên"],...Object.entries(PRI)],f.pri)+'</select>'
-   +'<select id="hsown" aria-label="Người phụ trách vùng"><option value="">Mọi người phụ trách</option>'+opt(ppl.map(([k,p])=>[k,p.name]),f.owner)+'</select>'
-   +(f.tab?'':'<select id="hsitem" aria-label="Loại hồ sơ"><option value="">Tất cả loại hồ sơ</option>'+opt(HS.map(x=>[x[0],x[1]]),f.item)+'</select>'
+   +'<select id="hsown" aria-label="Người phụ trách vùng"><option value="">Mọi người phụ trách</option>'+(me&&S.people[me]?'<option value="'+esc(me)+'"'+(f.owner===me?" selected":"")+'>Vùng của tôi</option>':'')+opt(ppl.filter(([k])=>k!==me).map(([k,p])=>[k,p.name]),f.owner)+'</select>'
+   +(lst?'<select id="hsitem" aria-label="Loại hồ sơ"><option value="">Tất cả loại hồ sơ</option>'+opt(HS.map(x=>[x[0],x[1]]),f.item)+'</select>'
    +'<select id="hshold" aria-label="Bản cứng ai giữ"><option value="">Ai giữ bản cứng: tất cả</option>'+opt(holdOpts,f.hold)+'</select>'
-   +'<label class="row sub"><input type="checkbox" id="hsmiss"'+(f.miss?" checked":"")+'> Chỉ vùng còn thiếu</label>')+'<button class="btn sm" id="hsclr">Bỏ lọc</button></div>';
+   +(!f.tab?'<select id="hssort" aria-label="Sắp xếp">'+opt([["","Xếp theo ưu tiên"],["miss","Thiếu nhiều trước"],["done","Gần xong trước"]],f.sort||"")+'</select>':'')
+   +'<label class="row sub"><input type="checkbox" id="hsmiss"'+(f.miss?" checked":"")+'> Chỉ vùng còn thiếu</label>':'')+'<button class="btn sm" id="hsclr">Bỏ lọc</button></div>';
   if(f.tab==="drv") return h+vDrv(zs);
   if(f.tab==="bc") return h+vBc(zs);
+  if(f.tab==="miss") return h+hsMiss(zs);
+  if(!f.tab) return h+hsCards(zs);
   // ghi nhanh
   h+='<div class="panel"><div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><b>Ghi nhanh:</b><div class="focusbar" role="group" aria-label="Chế độ ghi nhanh">'+[["","Xem chi tiết"],["hard","Bản cứng"],["drive","Drive"],["fb","FarmBase"],["holder","Người giữ"]].map(([k,l])=>'<button data-hsqm="'+k+'" aria-pressed="'+(f.qm===k)+'">'+l+'</button>').join("")+'</div>'
    +(f.qm==="holder"?'<select id="hsqh" aria-label="Người giữ để ghi"><option value="">Chọn người giữ…</option>'+opt(holdOpts,f.qh)+'</select>':'')+'</div>'
@@ -491,12 +567,16 @@ function vHs(){ ui.hs=ui.hs||{q:"",pri:"12",owner:"",item:"",miss:false,qm:"",qh
 async function hsSet(id,k,patch){ const z=S.zones[id]; if(!z) return false; const cur=z.hs||{}; const nx={...cur,[k]:{...(cur[k]||{}),...patch,by:me||"",at:new Date().toISOString()}}; return upd("zones",id,{hs:nx,...stamp()}); }
 function bindHs(A){ const f=ui.hs; const rr=()=>render();
   $("#hsq")?.addEventListener("input",e=>{ f.q=e.target.value; clearTimeout(window.__hsT); window.__hsT=setTimeout(()=>{ rr(); const i=$("#hsq"); if(i){ i.focus(); i.setSelectionRange(i.value.length,i.value.length);} },250); });
-  [["hspri","pri"],["hsown","owner"],["hsitem","item"],["hshold","hold"],["hsqh","qh"]].forEach(([i,k])=>$("#"+i)?.addEventListener("change",e=>{ f[k]=e.target.value; rr(); }));
+  [["hspri","pri"],["hsown","owner"],["hsitem","item"],["hshold","hold"],["hsqh","qh"],["hssort","sort"]].forEach(([i,k])=>$("#"+i)?.addEventListener("change",e=>{ f[k]=e.target.value; rr(); }));
   $("#hssum")?.addEventListener("toggle",e=>{ f.sum=e.target.open; });
   $("#hsmiss")?.addEventListener("change",e=>{ f.miss=e.target.checked; rr(); });
   $("#hsclr")?.addEventListener("click",()=>{ Object.assign(f,{q:"",pri:"12",owner:"",item:"",miss:false,hold:""}); rr(); });
   A.querySelectorAll("[data-hsitem]").forEach(a=>a.addEventListener("click",e=>{ e.preventDefault(); const k=a.dataset.hsitem; if(f.item===k){ f.item=""; f.miss=false; } else { f.item=k; f.miss=true; } rr(); }));
   A.querySelectorAll("[data-hstab]").forEach(b=>b.addEventListener("click",()=>{ f.tab=b.dataset.hstab; rr(); }));
+  $("#hsfo")?.addEventListener("click",()=>{ f.fo=!f.fo; rr(); });
+  A.querySelectorAll("[data-hshero]").forEach(b=>b.addEventListener("click",()=>{ const d=b.dataset.hshero; if(f.tab==="miss"&&(f.dim||"")===d){ f.tab=""; } else { f.tab="miss"; f.dim=d; } rr(); }));
+  A.querySelectorAll("[data-hsdim]").forEach(b=>b.addEventListener("click",()=>{ f.dim=b.dataset.hsdim; rr(); }));
+  A.querySelectorAll("[data-hsgo]").forEach(b=>b.addEventListener("click",()=>{ const [id,k]=b.dataset.hsgo.split("|"); openHs(id,k); }));
   $("#hsdrvsync")?.addEventListener("click",async e=>{ const b=e.target; b.disabled=true; b.textContent="Đang đồng bộ…"; const st=$("#hsdrvst");
     const prog=(d,n,name)=>{ if(st) st.textContent=name?"Đang quét "+(d+1)+"/"+n+": "+name+"…":"Đã quét "+d+"/"+n+" vùng"; };
     await drvScan(canManage()?null:hsZones().filter(([,z])=>z.drv).map(([id])=>id),false,prog); render(); });
@@ -510,31 +590,53 @@ function bindHs(A){ const f=ui.hs; const rr=()=>render();
     else if(f.qm==="fb") await hsSet(id,k,{fb:!x.fb});
     else if(f.qm==="holder"){ if(!f.qh){ toast("Chọn người giữ trước"); return; } await hsSet(id,k,{holder:x.holder===f.qh?"":f.qh, hard:x.hard||"ok"}); }
   })); }
-function openHs(id,focus){ ui.drawer=()=>drawHs(id,focus); drawHs(id,focus); }
+const HSO={};
+function openHs(id,focus){ HSO["_foc"]=""; ui.drawer=()=>drawHs(id,focus); drawHs(id,focus); }
 function drawHs(id,focus){ const z=S.zones[id]; if(!z){ closeDrawer(); return; } const s=hsStat(z), dd=z.docs||{};
   const ppl=Object.entries(S.people).filter(([,p])=>p.active!==false).sort((a,b)=>a[1].name.localeCompare(b[1].name,"vi"));
   const holdOpts=[["","Chưa ghi ai giữ"],...HSHOLD,...ppl.map(([k,p])=>[k,p.name])];
-  let h='<div class="dh"><div style="min-width:0"><span class="pill '+(s.ok===s.n?"good":s.ok?"warn":"")+'">Hồ sơ chính '+s.ok+'/'+s.n+' hoàn tất</span><h2 style="margin-top:6px;overflow-wrap:anywhere">'+esc(z.name)+'</h2><div class="sub">'+esc([z.ward,z.unit,z.code].filter(Boolean).join(" · "))+' · bản cứng '+s.hard+'/'+s.n+' · Drive '+s.drive+'/'+s.n+' · FarmBase '+s.fb+'/'+s.n+'</div></div><button class="btn sm" data-close>Đóng</button></div><div class="db">';
-  h+=bcDrawer(id)+'<div id="hs_drv">'+drvTreeHtml(id)+'</div>';
+  const op=k=>HSO[id+"|"+k]; const p=hsPct(s);
+  let h='<div class="dh"><div style="min-width:0"><span class="pill '+(s.ok===s.n?"good":s.ok?"warn":"")+'">Hồ sơ chính '+s.ok+'/'+s.n+' hoàn tất · '+p+'%</span><h2 style="margin-top:6px;overflow-wrap:anywhere">'+esc(z.name)+'</h2><div class="sub">'+esc([z.ward,z.unit,z.code,pname(z.owner)].filter(Boolean).join(" · "))+'</div></div><button class="btn sm" data-close>Đóng</button></div><div class="db">';
+  // tóm tắt: 3 thanh và việc còn thiếu
+  const bar=(l,v,dim)=>'<div class="hsMb"><span class="sub">'+l+'</span><span class="hbar"><i style="width:'+(v/s.n*100)+'%;background:'+(v===s.n?'var(--good)':'var(--info)')+'"></i></span><b>'+v+'/'+s.n+'</b></div>';
+  const miss=HS.filter(([k])=>!hsDone(hsItem(z,k)));
+  h+='<div class="panel hsSum">'+bar("Bản cứng",s.hard)+bar("Lên Drive",s.drive)+bar("FarmBase",s.fb)
+    +(miss.length?'<div class="sub" style="margin-top:4px">Còn thiếu, bấm để tới:</div><div class="row" style="gap:4px;flex-wrap:wrap">'+miss.map(([k,,sh])=>{ const x=hsItem(z,k); return '<button type="button" class="hk '+hsCls(x)+'" data-hsjump="'+k+'" style="width:auto;padding:4px 8px"><span class="t">'+esc(sh)+'</span>'+hsDots(x)+'</button>'; }).join("")+'</div>':'<div style="color:var(--good);font-weight:600;margin-top:4px">Đã đủ cả '+s.n+' loại hồ sơ.</div>')+'</div>';
   if(!z.drv) h+='<div class="f"><label>Thư mục Google Drive của vùng</label><div class="row" style="flex-wrap:nowrap"><input id="hsdrive" value="'+esc(z.drive||"")+'" placeholder="https://drive.google.com/drive/folders/…" style="flex:1;min-width:0">'+(z.drive?'<a class="btn sm" href="'+esc(z.drive)+'" target="_blank" rel="noopener">Mở Drive</a>':'')+'</div>'+(z.driveScan||z.driveSodo?'<div class="row" style="gap:6px;margin-top:6px">'+(z.driveCode?'<span class="pill">'+esc(z.driveCode)+'</span>':'')+(z.driveScan?'<a class="cp" href="'+esc(z.driveScan)+'" target="_blank" rel="noopener">01 Hồ sơ scan</a>':'')+(z.driveSodo?'<a class="cp" href="'+esc(z.driveSodo)+'" target="_blank" rel="noopener">02 Hồ sơ sổ đỏ</a>':'')+'</div>':'')+'</div>';
-  h+='<div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn sm" data-hsall="hard|ok">Tất cả: bản cứng đủ</button>'+(z.drv?'':'<button class="btn sm" data-hsall="drive|1">Tất cả: đã lên Drive</button>')+'<button class="btn sm" data-hsall="fb|1">Tất cả: đã nhập FarmBase</button><select id="hsallh" aria-label="Đặt người giữ cho tất cả" style="max-width:220px"><option value="">Đặt người giữ cho tất cả…</option>'+holdOpts.slice(1).map(([v,l])=>'<option value="'+esc(v)+'">'+esc(l)+'</option>').join("")+'</select></div>';
-  if(z.drv) h+='<div class="sub">Vùng đã nối kho Drive: ô "Đã scan lưu Drive" chỉ xanh khi thư mục tương ứng có file. Bấm Tải file lên ở từng loại để ghi nhận.</div><div data-dup="'+id+'">'+drvProg(id)+'</div>';
-  h+=HS.map(([k,l,,rel])=>{ const x=hsItem(z,k); const done=hsDone(x);
-    return '<div class="hsrow'+(focus===k?' foc':'')+'" id="hs_'+k+'"><div class="row between" style="gap:6px"><b>'+esc(l)+'</b>'+(done?'<span class="pill good">Hoàn tất</span>':'')+'</div>'
+  if(z.drv) h+='<div class="sub">Vùng đã nối kho Drive: mục Drive tự xanh khi thư mục có file. Bấm Tải file lên ở từng loại.</div><div data-dup="'+id+'">'+drvProg(id)+'</div>';
+  // từng loại hồ sơ
+  h+='<div class="hsList">'+HS.map(([k,l,sh,rel])=>{ const x=hsItem(z,k), done=hsDone(x), na=x.hard==="na", e=hsEv(z,k);
+    if(done&&!op(k)&&focus!==k) return '<button type="button" class="hsrow hsMini" id="hs_'+k+'" data-hsx="'+k+'"><span class="ok">✓</span><b>'+esc(l)+'</b><span class="sub">'+esc(na?"Không cần":(x.holder?hsHolder(x.holder)+" giữ":"Hoàn tất"))+'</span><span class="sub" aria-hidden="true">›</span></button>';
+    const st=na?'<span class="pill">Không cần</span>':done?'<span class="pill good">Hoàn tất</span>':'';
+    let r='<div class="hsrow'+(focus===k?' foc':'')+(done?' done':'')+'" id="hs_'+k+'"><div class="row between" style="gap:6px;align-items:flex-start"><b style="min-width:0">'+esc(l)+'</b>'+st+'</div>'
+      +'<div class="ctl"><span class="dst hsSeg" role="group" aria-label="Bản cứng '+esc(l)+'">'+[["","none","Chưa có"],["part","fix","Thiếu"],["ok","ok","Đủ"],["na","none","Không cần"]].map(([v,c,t])=>'<button type="button" class="'+c+'" data-hsh="'+k+'|'+v+'" aria-pressed="'+((x.hard||"")===v)+'">'+t+'</button>').join("")+'</span></div>';
+    if(!na){
+      r+='<div class="ctl">'+(!e?'<button type="button" class="cp tg" data-hst="'+k+'|drive" aria-pressed="'+(!!x.drive)+'">'+(x.drive?"✓ ":"")+'Lên Drive</button>'
+          :(e.ok?'<a class="cp tg" aria-pressed="true" href="'+drvUrl(z.drv[e.fold])+'" target="_blank" rel="noopener" title="Mở thư mục trên Drive">✓ '+(e.n?e.n+' file':'Có link')+' Drive</a>':'<span class="pill'+(e.own||e.scan?' warn':'')+'">'+(e.own||e.scan?'Chưa có file Drive':'Chưa quét Drive')+'</span>')
+            +(canDrv()?(()=>{ const fl=DRV_LEAF.find(q=>q[0]===e.fold); return '<label class="cp" style="cursor:pointer" title="Tải vào '+esc(fl?fl[3].replace(/^\d+ /,"")+(fl[2]!==fl[0]?" › "+fl[1]:""):"")+'">Tải file lên<input type="file" multiple hidden data-hsup="'+k+'" accept="image/*,application/pdf,.doc,.docx,video/*"></label>'; })():''))
+        +'<button type="button" class="cp tg" data-hst="'+k+'|fb" aria-pressed="'+(!!x.fb)+'">'+(x.fb?"✓ ":"")+'Nhập FarmBase</button>'
+        +'<select data-hsho="'+k+'" aria-label="Ai giữ bản cứng" class="hsHo">'+holdOpts.map(([v,t])=>'<option value="'+esc(v)+'"'+((x.holder||"")===v?" selected":"")+'>'+esc(v?t+" giữ":"Ai giữ bản cứng?")+'</option>').join("")+'</select></div>';
+    }
+    if(x.note) r+='<div class="sub hsNote">'+esc(x.note)+'</div>';
+    r+='<details data-hsdet="'+k+'"'+(op(k+"_d")?' open':'')+'><summary class="sub">Ghi chú, link, bộ 19 thành phần</summary><div style="display:grid;gap:6px;margin-top:6px">'
       +(rel.length?'<div class="sub">Thuộc bộ 19 thành phần: '+rel.map(n=>{ const d=dd[n]||{}; return '<span class="pill '+(d.st==="ok"?"good":d.st==="fix"?"warn":"")+'" title="'+esc(DOCS.find(q=>q[0]===n)[1]+" · "+DST[d.st||"none"])+'">'+n+'</span>'; }).join(" ")+'</div>':'')
-      +'<div class="ctl"><span class="sub" style="min-width:64px">Bản cứng</span><span class="dst" role="group" aria-label="Bản cứng '+esc(l)+'">'+[["","none","Chưa có"],["part","fix","Thiếu"],["ok","ok","Đủ"],["na","none","Không cần"]].map(([v,c,t])=>'<button type="button" class="'+c+'" data-hsh="'+k+'|'+v+'" aria-pressed="'+((x.hard||"")===v)+'">'+t+'</button>').join("")+'</span></div>'
-      +'<div class="ctl"><span class="sub" style="min-width:64px">Ai giữ</span><select data-hsho="'+k+'" style="flex:1;min-width:0">'+holdOpts.map(([v,t])=>'<option value="'+esc(v)+'"'+((x.holder||"")===v?" selected":"")+'>'+esc(t)+'</option>').join("")+'</select></div>'
-      +'<div class="ctl">'+(()=>{ const e=hsEv(z,k); if(!e) return '<button type="button" class="cp" data-hst="'+k+'|drive" aria-pressed="'+(!!x.drive)+'">'+(x.drive?"✓ ":"")+'Đã scan lưu Drive</button>';
-        const fl=DRV_LEAF.find(q=>q[0]===e.fold); return (e.ok?'<a class="pill good" href="'+drvUrl(z.drv[e.fold])+'" target="_blank" rel="noopener" title="Mở thư mục trên Drive">✓ '+(e.n?e.n+' file':'Có link')+' trên Drive</a>':'<span class="pill'+(e.own||e.scan?' warn':'')+'">'+(e.own||e.scan?'Chưa có file trên Drive':'Chưa quét Drive')+'</span>')
-          +(canDrv()?'<label class="cp" style="cursor:pointer" title="Tải vào '+esc(fl?fl[3].replace(/^\d+ /,"")+(fl[2]!==fl[0]?" › "+fl[1]:""):"")+'">Tải file lên<input type="file" multiple hidden data-hsup="'+k+'" accept="image/*,application/pdf,.doc,.docx,video/*"></label>':''); })()+'<button type="button" class="cp" data-hst="'+k+'|fb" aria-pressed="'+(!!x.fb)+'">'+(x.fb?"✓ ":"")+'Đã nhập FarmBase</button>'+(x.link?'<a class="cp" href="'+esc(x.link)+'" target="_blank" rel="noopener">Mở file</a>':'')+'</div>'
-      +'<div class="ctl"><input data-hsl="'+k+'" value="'+esc(x.link||"")+'" placeholder="Link Drive của loại này (không bắt buộc)" style="flex:1;min-width:0;border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--surface)"></div>'
-      +'<div class="ctl"><input data-hsn="'+k+'" value="'+esc(x.note||"")+'" placeholder="Ghi chú: thiếu hộ nào, hẹn ngày bổ sung (không ghi số CCCD, số sổ)" style="flex:1;min-width:0;border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--surface)"></div>'
-      +(x.by?'<div class="sub">'+esc(pname(x.by))+' · '+dmy((x.at||"").slice(0,10))+'</div>':'')+'</div>'; }).join("");
+      +'<div class="ctl"><input data-hsl="'+k+'" value="'+esc(x.link||"")+'" placeholder="Link Drive của loại này (không bắt buộc)" class="hsIn">'+(x.link?'<a class="cp" href="'+esc(x.link)+'" target="_blank" rel="noopener">Mở</a>':'')+'</div>'
+      +'<div class="ctl"><input data-hsn="'+k+'" value="'+esc(x.note||"")+'" placeholder="Ghi chú: thiếu hộ nào, hẹn ngày bổ sung (không ghi số CCCD, số sổ)" class="hsIn"></div>'
+      +(x.by?'<div class="sub">Cập nhật: '+esc(pname(x.by))+' · '+dmy((x.at||"").slice(0,10))+'</div>':'')
+      +(done?'<button type="button" class="btn sm" data-hsx="'+k+'" style="justify-self:start">Thu gọn</button>':'')+'</div></details></div>';
+    return r; }).join("")+'</div>';
+  // ghi hàng loạt
+  h+='<details class="panel" data-hsdet="_all"'+(op("_all_d")?' open':'')+'><summary style="cursor:pointer"><b>Ghi cả 10 loại một lần</b></summary><div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px"><button class="btn sm" data-hsall="hard|ok">Bản cứng đủ hết</button>'+(z.drv?'':'<button class="btn sm" data-hsall="drive|1">Đã lên Drive hết</button>')+'<button class="btn sm" data-hsall="fb|1">Đã nhập FarmBase hết</button><select id="hsallh" aria-label="Đặt người giữ cho tất cả" style="max-width:100%"><option value="">Đặt người giữ cho tất cả…</option>'+holdOpts.slice(1).map(([v,l])=>'<option value="'+esc(v)+'">'+esc(l)+'</option>').join("")+'</select></div></details>';
+  h+='<details class="panel" data-hsdet="_bc"'+(op("_bc_d")||focus==="bc"?' open':'')+'><summary style="cursor:pointer"><b>Bản cứng đưa dân ký</b> <span class="sub">'+esc(bcNext(z))+'</span></summary><div style="margin-top:8px">'+bcDrawer(id)+'</div></details>';
+  h+='<details class="panel" data-hsdet="_drv"'+(op("_drv_d")||focus==="drv"?' open':'')+'><summary style="cursor:pointer"><b>Thư mục Drive của vùng</b></summary><div id="hs_drv" style="margin-top:8px">'+drvTreeHtml(id)+'</div></details>';
   h+='<div class="panel"><h2>Liên kết bộ 19 thành phần</h2><div class="sub">Khi các loại hồ sơ chính của một thành phần đã hoàn tất (bản cứng đủ, đã lên Drive), bấm nút dưới để đánh dấu thành phần đó Đã có và có Scan trong bộ hồ sơ mã vùng.</div><div class="row" style="margin-top:8px;gap:6px"><button class="btn sm" id="hssync">Cập nhật bộ 19 thành phần</button><button class="btn sm" id="hszone">Mở chi tiết vùng</button><span class="sub" id="hsmsg"></span></div></div>';
   h+='</div>'; showDrawer(h);
   const L=$("#layer");
-  if(focus){ const el=L.querySelector("#hs_"+focus); if(el) setTimeout(()=>el.scrollIntoView({block:focus==="drv"||focus==="bc"?"start":"center"}),30); }
+  if(focus&&HSO["_foc"]!==id+"|"+focus){ HSO["_foc"]=id+"|"+focus; const el=L.querySelector("#hs_"+focus); if(el) setTimeout(()=>el.scrollIntoView({block:focus==="drv"||focus==="bc"?"start":"center"}),30); }
   bindDrvTree(L,id); bindBcDrawer(L,id);
+  L.querySelectorAll("[data-hsdet]").forEach(d=>d.addEventListener("toggle",()=>{ HSO[id+"|"+d.dataset.hsdet+"_d"]=d.open; }));
+  L.querySelectorAll("[data-hsx]").forEach(b=>b.addEventListener("click",()=>{ const k=b.dataset.hsx; HSO[id+"|"+k]=!HSO[id+"|"+k]; if(focus===k){ focus=""; ui.drawer=()=>drawHs(id); } drawHs(id,focus); }));
+  L.querySelectorAll("[data-hsjump]").forEach(b=>b.addEventListener("click",()=>{ const el=L.querySelector("#hs_"+b.dataset.hsjump); if(el){ el.scrollIntoView({block:"center",behavior:"smooth"}); el.classList.add("foc"); setTimeout(()=>el.classList.remove("foc"),1500); } }));
   L.querySelector("#hsdrive")?.addEventListener("change",async e=>{ const v=e.target.value.trim(); if(v&&!/^https:\/\/(drive|docs)\.google\.com\//.test(v)){ toast("Link cần là drive.google.com"); return; } await upd("zones",id,{drive:v,...stamp()}); toast("Đã lưu"); });
   L.querySelectorAll("[data-hsh]").forEach(b=>b.addEventListener("click",()=>{ const [k,v]=b.dataset.hsh.split("|"); hsSet(id,k,{hard:v}); }));
   L.querySelectorAll("[data-hsho]").forEach(s=>s.addEventListener("change",()=>{ const k=s.dataset.hsho, x=hsItem(S.zones[id],k); hsSet(id,k,{holder:s.value,...(s.value&&!x.hard?{hard:"ok"}:{})}); }));
