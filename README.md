@@ -85,6 +85,8 @@ Thêm một trang mới: thêm mã trang vào `NAV`, `VLAB` và `navOk` trong `s
 | `app_secrets` | Khóa, giá trị. Không có policy nên chỉ Edge Function (service role) đọc ghi. Tiền tố khóa: `apikey:` khóa API (chỉ lưu sha256), `apiuse:` lượt dùng, `share:` bản báo cáo đã phát hành, `shareview:` lượt xem, `sharedraft:` bản nháp báo cáo, `exp:` phiếu thu chi. |
 | `activity_log` | Nhật ký thao tác. Không ghi số tiền. |
 
+Nhu cầu khách hàng (trang `nhu-cau`) lưu trong `docs` loại `contacts` với `type = "lead"`, id bắt đầu bằng `ld`; trang Liên hệ tự bỏ qua các bản ghi này. API gọi loại này là `leads`.
+
 Quyền ghi `docs`: owner, manager ghi mọi loại; staff ghi mọi loại trừ people, units, contracts; viewer chỉ đọc.
 
 Quyền tính năng bật theo từng nhân sự (trong `docs` loại people): `canPlan` (kế hoạch tuần), `canLeave` (duyệt nghỉ phép), `canExpense` (ghi thu chi), `canRecon` (trang Đối soát việc; quản lý luôn có). Owner bật trong trang Tài khoản.
@@ -98,7 +100,7 @@ Tất cả đặt `verify_jwt = false` vì mỗi hàm tự kiểm tra đăng nh�
 | Hàm | Việc | Secret cần |
 |---|---|---|
 | `admin-users` | Tạo, sửa, khóa tài khoản (chỉ owner) | không |
-| `api` | API REST chỉ đọc cho đối tác `/api/v1/...`, quản lý khóa `/api/admin`, máy chủ MCP `/api/mcp` | không |
+| `api` | API REST cho đối tác `/api/v1/...` (chỉ đọc, riêng `POST /api/v1/leads` nhận nhu cầu khách hàng với quyền `leads_write`), quản lý khóa `/api/admin`, máy chủ MCP `/api/mcp` (có `bvi_list_leads`, `bvi_create_lead`) | không |
 | `share` | Bản nháp, phát hành, thu hồi link báo cáo khách; trang công khai đọc bằng `GET ?t=` | không |
 | `expense` | Thu chi: tải ảnh, tự đọc chứng từ, lưu, duyệt | `ANTHROPIC_API_KEY` (đọc ảnh tự động), `OCR_MODEL` (tùy chọn) |
 | `drive` | Tải tệp lên Google Drive, đếm tệp hồ sơ qua Apps Script | `DRIVE_GAS_URL`, `DRIVE_GAS_TOKEN` |

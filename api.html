@@ -42,8 +42,8 @@ footer{margin-top:40px;color:var(--sub);font-size:13px}
 <div class="wrap">
 <header><span class="logo"><i></i><i></i><i></i><i></i><i></i><i></i></span><b>BVI Điều hành</b></header>
 <h1>API cho đối tác</h1>
-<div class="sub">Lấy dữ liệu vùng trồng, công việc, lịch công tác và các dữ liệu liên quan từ hệ thống BVI Điều hành. API chỉ đọc, phiên bản v1.</div>
-<nav class="toc"><a href="#bat-dau">Bắt đầu</a><a href="#xac-thuc">Xác thực</a><a href="#duong-dan">Đường dẫn</a><a href="#tham-so">Tham số, phân trang</a><a href="#ket-qua">Kết quả</a><a href="#truong">Ý nghĩa các trường</a><a href="#vi-du">Ví dụ</a><a href="#loi">Mã lỗi</a><a href="#mcp">Kết nối AI (MCP)</a></nav>
+<div class="sub">Lấy dữ liệu vùng trồng, công việc, lịch công tác và các dữ liệu liên quan từ hệ thống BVI Điều hành. API chủ yếu chỉ đọc; riêng nhu cầu khách hàng có thể gửi vào từ form hoặc hệ thống khác. Phiên bản v1.</div>
+<nav class="toc"><a href="#bat-dau">Bắt đầu</a><a href="#xac-thuc">Xác thực</a><a href="#duong-dan">Đường dẫn</a><a href="#tham-so">Tham số, phân trang</a><a href="#ket-qua">Kết quả</a><a href="#truong">Ý nghĩa các trường</a><a href="#vi-du">Ví dụ</a><a href="#gui-nhu-cau">Gửi nhu cầu khách hàng</a><a href="#loi">Mã lỗi</a><a href="#mcp">Kết nối AI (MCP)</a></nav>
 
 <h2 id="bat-dau">Bắt đầu</h2>
 <ol>
@@ -56,7 +56,7 @@ footer{margin-top:40px;color:var(--sub);font-size:13px}
 <div class="note">Giữ khóa như mật khẩu: chỉ dùng ở máy chủ của bạn, không đặt trong ứng dụng web hay app điện thoại công khai. Lộ khóa thì báo BVI để thu hồi và cấp khóa mới.</div>
 
 <h2 id="xac-thuc">Xác thực</h2>
-<p>Gửi khóa trong header <code>X-API-Key</code>. Cũng chấp nhận <code>Authorization: Bearer &lt;khóa&gt;</code>. Chỉ dùng phương thức <code>GET</code>.</p>
+<p>Gửi khóa trong header <code>X-API-Key</code>. Cũng chấp nhận <code>Authorization: Bearer &lt;khóa&gt;</code>. Đọc dùng <code>GET</code>. Riêng gửi nhu cầu khách hàng dùng <code>POST /v1/leads</code> (xem mục <a href="#gui-nhu-cau">Gửi nhu cầu khách hàng</a>).</p>
 <pre><code>X-API-Key: bvi_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</code></pre>
 <p>Giới hạn: <b>120 lượt mỗi phút</b> cho mỗi khóa. Vượt giới hạn trả mã 429, chờ 60 giây rồi gọi lại.</p>
 
@@ -73,6 +73,8 @@ footer{margin-top:40px;color:var(--sub);font-size:13px}
 <tr><td><code>GET /v1/faqs</code></td><td>Hỏi đáp</td></tr>
 <tr><td><code>GET /v1/supports</code></td><td>Yêu cầu hỗ trợ</td></tr>
 <tr><td><code>GET /v1/contracts</code></td><td>Hợp đồng (hạng mục, điều kiện thanh toán theo %, không có số tiền)</td></tr>
+<tr><td><code>GET /v1/leads</code></td><td>Nhu cầu khách hàng: nhu cầu thực tế, nguồn, người giới thiệu, trạng thái chăm sóc (không có số điện thoại, email)</td></tr>
+<tr><td><code>POST /v1/leads</code></td><td>Gửi nhu cầu khách hàng mới (cần quyền <code>leads_write</code>)</td></tr>
 <tr><td><code>GET /v1/&lt;loại&gt;/&lt;id&gt;</code></td><td>Một bản ghi theo mã</td></tr>
 </tbody></table></div>
 <p class="sub">Vì lý do bảo mật, API không bao giờ trả số CCCD, sổ đỏ, số điện thoại, email, số tiền hợp đồng, link Google Drive và ảnh hiện trường.</p>
@@ -170,6 +172,17 @@ footer{margin-top:40px;color:var(--sub);font-size:13px}
 <tr><td><code>status</code></td><td><code>pending</code> chờ duyệt, <code>approved</code> đã duyệt, <code>rejected</code> từ chối</td></tr>
 <tr><td><code>handover</code></td><td>Bàn giao công việc khi nghỉ</td></tr>
 </tbody></table></div>
+<h3>Nhu cầu khách hàng <span class="pill">leads</span></h3>
+<div class="tw"><table><thead><tr><th>Trường</th><th>Ý nghĩa</th></tr></thead><tbody>
+<tr><td><code>name</code>, <code>org</code></td><td>Người liên hệ, đơn vị (HTX, công ty)</td></tr>
+<tr><td><code>province</code>, <code>area</code></td><td>Tỉnh, địa chỉ</td></tr>
+<tr><td><code>needs</code>, <code>detail</code></td><td>Dịch vụ quan tâm (mảng), mô tả nhu cầu thực tế</td></tr>
+<tr><td><code>crop</code>, <code>ha</code></td><td>Cây trồng, diện tích (ha)</td></tr>
+<tr><td><code>source</code>, <code>sourceNote</code>, <code>referrer</code></td><td>Nguồn thông tin, chi tiết nguồn, người giới thiệu</td></tr>
+<tr><td><code>status</code></td><td><code>new</code> mới, <code>contact</code> đã liên hệ, <code>quote</code> đã báo giá, <code>won</code> đã ký, <code>lost</code> không theo</td></tr>
+<tr><td><code>owner</code>, <code>next</code></td><td>Nhân sự phụ trách, ngày hẹn liên hệ lại</td></tr>
+<tr><td><code>via</code>, <code>extId</code>, <code>createdAt</code></td><td>Kênh nhận (web, import, api:&lt;tên khóa&gt;), mã bên hệ thống gửi, thời điểm nhận</td></tr>
+</tbody></table></div>
 <p class="sub">Các mã nhân sự (<code>owner</code>, <code>R</code>, <code>lead</code>, <code>person</code>…) tra tên trong <code>/v1/people</code>. Mã đơn vị tra trong <code>/v1/units</code>.</p>
 
 <h2 id="vi-du">Ví dụ</h2>
@@ -212,21 +225,75 @@ def get_all(resource, since=None):
 
 tasks = get_all("tasks", since="2026-11-01T00:00:00Z")</code></pre>
 
+<h2 id="gui-nhu-cau">Gửi nhu cầu khách hàng</h2>
+<p>Dùng khi website, form đăng ký, Zapier, Make, Google Apps Script hay CRM khác muốn đẩy khách quan tâm vào hệ thống. Nhu cầu vào ở trạng thái <b>Mới</b>, hiện ngay trong trang Nhu cầu khách hàng để nhân sự liên hệ. Khóa cần quyền <code>leads_write</code>; nên xin một khóa chỉ có quyền này.</p>
+<pre><code>POST /v1/leads
+X-API-Key: bvi_xxxxxxxx
+Content-Type: application/json
+
+{
+  "name": "Nguyễn Văn A",
+  "org": "HTX Mẫu",
+  "phone": "09xx xxx xxx",
+  "email": "a@example.com",
+  "province": "Đắk Lắk",
+  "crop": "Sầu riêng",
+  "ha": "30",
+  "needs": ["Mã số vùng trồng", "Tem QR"],
+  "detail": "Cần làm mã vùng cho 25 hộ, muốn khảo sát trong tháng 12",
+  "source": "Website",
+  "referrer": "Anh B, HTX C",
+  "external_id": "form-2026-0001"
+}</code></pre>
+<div class="tw"><table><thead><tr><th>Trường</th><th>Bắt buộc</th><th>Ghi chú</th></tr></thead><tbody>
+<tr><td><code>name</code> hoặc <code>org</code></td><td>Có, một trong hai</td><td>Họ tên người liên hệ, đơn vị</td></tr>
+<tr><td><code>phone</code>, <code>zalo</code> hoặc <code>email</code></td><td>Có, ít nhất một</td><td>Để nhân sự liên hệ lại</td></tr>
+<tr><td><code>province</code>, <code>area</code>, <code>crop</code>, <code>ha</code></td><td>Không</td><td>Tỉnh, địa chỉ, cây trồng, diện tích</td></tr>
+<tr><td><code>needs</code></td><td>Không</td><td>Mảng chuỗi hoặc chuỗi cách nhau bởi dấu phẩy</td></tr>
+<tr><td><code>detail</code></td><td>Nên có</td><td>Nhu cầu thực tế, tối đa 4000 ký tự</td></tr>
+<tr><td><code>source</code>, <code>source_note</code>, <code>referrer</code></td><td>Nên có</td><td>Nguồn (Website, Facebook, Zalo, Hội thảo, Người giới thiệu, Đối tác…), chi tiết nguồn, người giới thiệu</td></tr>
+<tr><td><code>external_id</code></td><td>Không</td><td>Mã bên hệ thống gửi. Gửi lại cùng mã sẽ không tạo trùng, trả <code>duplicate: true</code></td></tr>
+</tbody></table></div>
+<p>Kết quả: <code>201 {"ok": true, "id": "ld…", "status": "new"}</code>. Gửi nhiều một lần: <code>{"leads": [ … ]}</code> tối đa 100, kết quả có <code>created</code> và <code>results</code> theo từng dòng.</p>
+<div class="note">Không đặt khóa trong mã JavaScript của trang web công khai. Hãy để máy chủ của website, Zapier, Make hoặc Google Apps Script gọi API. Chỉ gửi thông tin khi khách đã đồng ý để lại liên hệ.</div>
+<h3>Google Form qua Apps Script</h3>
+<p>Trong bảng tính nhận câu trả lời: Tiện ích mở rộng, Apps Script, dán đoạn sau, sửa tên cột cho khớp, rồi tạo trình kích hoạt "Khi gửi biểu mẫu".</p>
+<pre><code>function onFormSubmit(e) {
+  const v = e.namedValues; // tên cột của form
+  const body = {
+    name: (v["Họ và tên"] || [""])[0],
+    phone: (v["Số điện thoại"] || [""])[0],
+    org: (v["Đơn vị"] || [""])[0],
+    province: (v["Tỉnh"] || [""])[0],
+    needs: (v["Dịch vụ quan tâm"] || [""])[0],
+    detail: (v["Nhu cầu"] || [""])[0],
+    source: "Google Form",
+    referrer: (v["Người giới thiệu"] || [""])[0],
+    external_id: "gform-" + e.range.getRow()
+  };
+  UrlFetchApp.fetch("https://pkckduidwfcncipwzdxa.supabase.co/functions/v1/api/v1/leads", {
+    method: "post", contentType: "application/json", payload: JSON.stringify(body),
+    headers: { "X-API-Key": PropertiesService.getScriptProperties().getProperty("BVI_KEY") }
+  });
+}</code></pre>
+<p class="sub">Lưu khóa trong Cài đặt dự án, Thuộc tính tập lệnh với tên <code>BVI_KEY</code>, không dán thẳng vào mã.</p>
+
 <h2 id="loi">Mã lỗi</h2>
 <div class="tw"><table><thead><tr><th>HTTP</th><th>error</th><th>Ý nghĩa</th></tr></thead><tbody>
 <tr><td>401</td><td><code>missing_api_key</code></td><td>Chưa gửi khóa hoặc khóa sai định dạng</td></tr>
 <tr><td>401</td><td><code>invalid_api_key</code></td><td>Khóa không tồn tại</td></tr>
 <tr><td>401</td><td><code>revoked_api_key</code></td><td>Khóa đã bị thu hồi</td></tr>
 <tr><td>401</td><td><code>expired_api_key</code></td><td>Khóa đã hết hạn</td></tr>
-<tr><td>403</td><td><code>forbidden_resource</code></td><td>Khóa không được cấp quyền đọc loại dữ liệu này</td></tr>
+<tr><td>403</td><td><code>forbidden_resource</code></td><td>Khóa không được cấp quyền đọc loại dữ liệu này, hoặc chưa có quyền <code>leads_write</code> khi gửi nhu cầu</td></tr>
 <tr><td>404</td><td><code>unknown_resource</code>, <code>not_found</code></td><td>Sai đường dẫn hoặc không có bản ghi</td></tr>
-<tr><td>405</td><td><code>method_not_allowed</code></td><td>API chỉ đọc, chỉ dùng GET</td></tr>
+<tr><td>400</td><td><code>missing_name</code>, <code>missing_contact</code>, <code>bad_json</code></td><td>Gửi nhu cầu thiếu tên, thiếu cách liên hệ hoặc sai JSON</td></tr>
+<tr><td>405</td><td><code>method_not_allowed</code></td><td>Sai phương thức: đọc dùng GET, chỉ <code>/v1/leads</code> nhận POST</td></tr>
 <tr><td>429</td><td><code>rate_limited</code></td><td>Gọi quá 120 lượt mỗi phút</td></tr>
 <tr><td>500</td><td><code>server_error</code></td><td>Lỗi máy chủ, thử lại sau</td></tr>
 </tbody></table></div>
 
 <h2 id="mcp">Kết nối AI (MCP)</h2>
-<p>Ngoài REST, hệ thống có máy chủ MCP để trợ lý AI (Claude, các ứng dụng hỗ trợ MCP) tự tra dữ liệu bằng câu hỏi tự nhiên, ví dụ "vùng nào đang vướng ở bước xã kiểm tra", "việc quá hạn của tuần này". Dùng chung khóa API ở trên, chỉ đọc, cùng quyền và cùng giới hạn 120 lượt mỗi phút.</p>
+<p>Ngoài REST, hệ thống có máy chủ MCP để trợ lý AI (Claude, các ứng dụng hỗ trợ MCP) tự tra dữ liệu bằng câu hỏi tự nhiên, ví dụ "vùng nào đang vướng ở bước xã kiểm tra", "việc quá hạn của tuần này". Dùng chung khóa API ở trên, cùng quyền và cùng giới hạn 120 lượt mỗi phút.</p>
 <div class="base"><code id="mcpUrl">https://pkckduidwfcncipwzdxa.supabase.co/functions/v1/api/mcp</code><button class="btn" data-copy="mcpUrl">Sao chép</button></div>
 <p>Giao thức Streamable HTTP (POST JSON-RPC). Gửi khóa theo một trong ba cách: header <code>X-API-Key</code> (khuyến nghị), <code>Authorization: Bearer &lt;khóa&gt;</code>, hoặc nối vào đường dẫn <code>?key=&lt;khóa&gt;</code> khi ứng dụng không cho đặt header.</p>
 <h3>Claude Code</h3>
@@ -257,9 +324,11 @@ tasks = get_all("tasks", since="2026-11-01T00:00:00Z")</code></pre>
 <tr><td><code>bvi_list_leaves</code></td><td>Lịch nghỉ phép</td></tr>
 <tr><td><code>bvi_list_people</code>, <code>bvi_list_units</code></td><td>Nhân sự, khách hàng (không có số điện thoại)</td></tr>
 <tr><td><code>bvi_daily_reports</code></td><td>Báo cáo ngày theo khoảng ngày, người</td></tr>
+<tr><td><code>bvi_list_leads</code></td><td>Nhu cầu khách hàng theo trạng thái, nguồn, từ khóa (không có số điện thoại, email)</td></tr>
+<tr><td><code>bvi_create_lead</code></td><td>Ghi nhu cầu khách hàng mới (chỉ khi khóa có quyền <code>leads_write</code>)</td></tr>
 <tr><td><code>bvi_get_records</code></td><td>Bản ghi thô của một loại dữ liệu, có phân trang</td></tr>
 </tbody></table></div>
-<p class="sub">AI chỉ thấy các công cụ thuộc loại dữ liệu mà khóa được cấp. Không có công cụ ghi hay sửa.</p>
+<p class="sub">AI chỉ thấy các công cụ thuộc loại dữ liệu mà khóa được cấp. Công cụ ghi duy nhất là <code>bvi_create_lead</code>, chỉ thêm nhu cầu mới, không sửa hay xóa gì.</p>
 
 <footer>Công ty CP BVI. Cần cấp khóa, thêm quyền hoặc báo lỗi, liên hệ người phụ trách của BVI.</footer>
 </div>

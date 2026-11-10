@@ -619,7 +619,7 @@ function bindLog(A){
 }
 /* ---------- API cho đối tác (chỉ owner) ---------- */
 const API_BASE=SB_URL+"/functions/v1/api/v1";
-const API_RES={zones:"Vùng trồng",tasks:"Công việc",events:"Lịch công tác",leaves:"Lịch nghỉ",daily:"Báo cáo ngày",units:"Công ty, khách hàng",people:"Nhân sự",faqs:"Hỏi đáp",supports:"Yêu cầu hỗ trợ",contracts:"Hợp đồng (không có số tiền)"};
+const API_RES={zones:"Vùng trồng",tasks:"Công việc",events:"Lịch công tác",leaves:"Lịch nghỉ",daily:"Báo cáo ngày",units:"Công ty, khách hàng",people:"Nhân sự",faqs:"Hỏi đáp",supports:"Yêu cầu hỗ trợ",contracts:"Hợp đồng (không có số tiền)",leads:"Nhu cầu khách hàng (che SĐT, email)",leads_write:"Gửi nhu cầu khách hàng (chỉ ghi)"};
 let APIK=null, APIERR="";
 async function callApiAdmin(body){
   try{ const {data}=await SB.auth.getSession(); const res=await fetch(SB_URL+"/functions/v1/api/admin",{method:"POST",headers:{"Content-Type":"application/json",apikey:SB_KEY,Authorization:"Bearer "+(data.session?.access_token||"")},body:JSON.stringify(body)});
@@ -630,7 +630,7 @@ function apiState(k){ if(k.revoked_at) return '<span class="pill bad">Đã thu h
 function vApi(){
   if(!isOwner()) return '<div class="alert bad">Chỉ owner quản lý API.</div>';
   if(APIK===null){ loadApiKeys(); return '<div class="empty">Đang tải danh sách khóa API…</div>'; }
-  let h='<div class="row between"><div><h1>API cho đối tác</h1><div class="sub">Chỉ owner thấy trang này. Đối tác dùng khóa để <b>đọc</b> dữ liệu, không sửa được gì. API không bao giờ trả CCCD, sổ đỏ, số điện thoại, số tiền hợp đồng, link Drive.</div></div><div class="row"><button class="btn" id="apiRe">Tải lại</button><button class="btn pri" id="apiAdd">Tạo khóa mới</button></div></div>';
+  let h='<div class="row between"><div><h1>API cho đối tác</h1><div class="sub">Chỉ owner thấy trang này. Đối tác dùng khóa để <b>đọc</b> dữ liệu, không sửa được gì; riêng quyền "Gửi nhu cầu khách hàng" cho phép form, hệ thống khác thêm nhu cầu mới. API không bao giờ trả CCCD, sổ đỏ, số điện thoại, số tiền hợp đồng, link Drive.</div></div><div class="row"><button class="btn" id="apiRe">Tải lại</button><button class="btn pri" id="apiAdd">Tạo khóa mới</button></div></div>';
   if(APIERR) h+='<div class="alert bad" style="margin-top:8px">'+esc(APIERR)+'</div>';
   if(!APIK.length) h+='<div class="empty" style="margin-top:12px">Chưa có khóa nào. Bấm "Tạo khóa mới" để cấp cho một đối tác.</div>';
   else h+='<div class="tw panel" style="margin-top:12px"><table><thead><tr><th>Đối tác</th><th>Khóa</th><th>Dữ liệu được đọc</th><th>Tạo</th><th>Hết hạn</th><th>Dùng gần nhất</th><th>Lượt gọi</th><th>Trạng thái</th><th></th></tr></thead><tbody>'
@@ -645,7 +645,8 @@ function vApi(){
    +'<div class="sub">Gửi khóa trong header <code>X-API-Key</code> (hoặc <code>Authorization: Bearer &lt;khóa&gt;</code>). Chỉ dùng GET.</div>'
    +'<div class="tw" style="margin-top:8px"><table><thead><tr><th>Đường dẫn</th><th>Dữ liệu</th></tr></thead><tbody>'
    +'<tr><td class="mono">GET /v1</td><td>Thông tin khóa và các loại dữ liệu được đọc</td></tr>'
-   +Object.entries(API_RES).map(([k,l])=>'<tr><td class="mono">GET /v1/'+k+'</td><td>'+esc(l)+'</td></tr>').join("")
+   +Object.entries(API_RES).filter(([k])=>k!=="leads_write").map(([k,l])=>'<tr><td class="mono">GET /v1/'+k+'</td><td>'+esc(l)+'</td></tr>').join("")
+   +'<tr><td class="mono">POST /v1/leads</td><td>Gửi nhu cầu khách hàng từ form, hệ thống khác (quyền "Gửi nhu cầu khách hàng")</td></tr>'
    +'<tr><td class="mono">GET /v1/&lt;loại&gt;/&lt;id&gt;</td><td>Một bản ghi</td></tr></tbody></table></div>'
    +'<div class="sub" style="margin-top:8px">Tham số: <code>limit</code> (1 đến 1000, mặc định 500), <code>offset</code>, <code>updated_since</code> (ISO 8601, chỉ lấy bản ghi sửa từ thời điểm đó). Kết quả có <code>total</code> và <code>next_offset</code> để lấy trang tiếp. Tối đa 120 lượt mỗi phút cho mỗi khóa.</div>'
    +'<textarea id="apiEx" readonly rows="6" class="mono" style="width:100%;margin-top:8px">curl -H "X-API-Key: bvi_..." "'+esc(ex)+'"\n\n// JavaScript\nconst r = await fetch("'+esc(ex)+'", { headers: { "X-API-Key": "bvi_..." } });\nconst { data, total, next_offset } = await r.json();</textarea>'
