@@ -546,3 +546,150 @@ function bindExp(A){ bindExpFile(A);
   $("#exFs")?.addEventListener("change",e=>{ EXF.st=e.target.value; render(); });
   $("#exFw")?.addEventListener("change",e=>{ EXF.who=e.target.value; render(); });
   A.querySelectorAll("[data-exid]").forEach(b=>b.addEventListener("click",()=>openExp(b.dataset.exid))); }
+
+/* ---------- Đối soát tuần: một trang cho quản lý thấy việc xong/chưa và chỗ lệch giữa báo cáo nhanh, lịch, công việc, tiến độ vùng, hồ sơ cứng ---------- */
+let RC={w:null,who:"",grp:"",showAck:false,zOpen:false};
+const RC_GRP={task:"Công việc",ev:"Lịch",daily:"Báo cáo nhanh",zone:"Vùng, hồ sơ"};
+const RC_T={
+  task_late:["task","Việc quá hạn","bad"],
+  ev_past:["ev","Lịch đã qua, chưa chốt","warn"],
+  ev_task:["ev","Lịch xong, việc chưa xong","bad"],
+  ev_miss:["ev","Lịch xong, thiếu minh chứng","warn"],
+  daily_miss:["daily","Thiếu báo cáo nhanh","warn"],
+  daily_zone:["daily","Báo cáo nhắc vùng, việc chưa cập nhật","warn"],
+  zone_hard:["zone","Bước vùng đi trước hồ sơ cứng","bad"],
+  zone_doc:["zone","Đã nộp, hồ sơ chưa lên Drive, FarmBase","warn"],
+  zone_idle:["zone","Vùng không còn việc mở","warn"],
+  zone_stale:["zone","Vùng lâu không cập nhật","warn"]};
+function rcAck(rec,type,sig){ const a=rec?.rc?.[type]; return a&&a.sig===sig?a:null; }
+function rcWeek(){ return RC.w||wkStart(todayStr()); }
+function rcIssues(){
+  const w0=rcWeek(), w1=addDays(w0,6), t=todayStr(), past=w1<t?w1:addDays(t,-1), out=[];
+  const T=Object.entries(S.tasks).filter(([id,x])=>x.kind!=="epic"&&!tOpenKids(id));
+  const zn=id=>S.zones[id]?zShort(S.zones[id].name):"";
+  const add=(type,o)=>out.push({type,grp:RC_T[type][0],sev:RC_T[type][2],...o});
+  // 1. việc quá hạn (đến hết tuần đang xem)
+  T.forEach(([id,x])=>{ if(x.status==="done"||!x.due||x.due>=t||x.due>w1) return; const sig=x.due+"|"+x.status;
+    add("task_late",{id:"tl:"+id,col:"tasks",rid:id,who:x.R||"",date:x.due,sig,ack:rcAck(x,"task_late",sig),text:tTitle(x,S.zones[x.zone])+(x.zone?" · "+zn(x.zone):""),sub:"Hạn "+dm(x.due)+" · "+(TSTAT[x.status]||x.status)+" · trễ "+diffDays(t,x.due)+" ngày",open:["task",id],fix:"done"}); });
+  // 2-4. lịch
+  Object.entries(S.events||{}).forEach(([id,e])=>{ const d=e.date; if(!d||d<w0||d>w1) return; const end=e.end||d; const who=e.lead||(e.people||[])[0]||"";
+    if(["draft","plan"].includes(e.status||"plan")&&end<=past){ const sig=e.status+"|"+end;
+      add("ev_past",{id:"ep:"+id,col:"events",rid:id,who,date:d,sig,ack:rcAck(e,"ev_past",sig),text:e.title||"(chưa có tên)",sub:dm(d)+(e.status==="draft"?" · còn là lịch nháp":" · chưa đánh dấu xong, chưa ghi kết quả"),open:["ev",id]}); }
+    if(e.status==="done"){ const op=(e.taskIds||[]).filter(k=>S.tasks[k]&&S.tasks[k].status!=="done");
+      if(op.length){ const sig=op.slice().sort().join(",");
+        add("ev_task",{id:"et:"+id,col:"events",rid:id,who,date:d,sig,ack:rcAck(e,"ev_task",sig),text:e.title||"",sub:dm(d)+" đã xong, còn "+op.length+" việc chưa tick: "+op.slice(0,3).map(k=>tTitle(S.tasks[k],S.zones[S.tasks[k].zone])).join("; ")+(op.length>3?"…":""),open:["ev",id],fix:"evtasks",tids:op}); }
+      const m=evMissing(e); if(m.length){ const sig=m.join(",");
+        add("ev_miss",{id:"em:"+id,col:"events",rid:id,who,date:d,sig,ack:rcAck(e,"ev_miss",sig),text:e.title||"",sub:dm(d)+" · thiếu "+m.join(", "),open:["ev",id]}); } } });
+  // 5. thiếu báo cáo nhanh
+  Object.keys(S.people).filter(isReporter).forEach(pid=>{ const p=S.people[pid]; const miss=[]; let d=w0;
+    for(let i=0;i<7;i++,d=addDays(d,1)){ if(d>past) break; if(new Date(d+"T00:00:00").getDay()===0) continue; if(S.daily[d+"_"+pid]||onLeave(pid,d)) continue; if((p.rcDaily||{})[d]&&!RC.showAck) continue; miss.push(d); }
+    if(miss.length){ const sig=miss.join(","); const ackd=miss.every(x=>(p.rcDaily||{})[x]);
+      add("daily_miss",{id:"dm:"+pid+":"+w0,col:"people",rid:pid,who:pid,date:miss[0],sig,ack:ackd?{at:(p.rcDaily||{})[miss[0]].at,by:(p.rcDaily||{})[miss[0]].by}:null,dates:miss,text:"Chưa gửi báo cáo nhanh "+miss.length+" ngày",sub:miss.map(dm).join(", "),open:["rep",pid]}); } });
+  // 6. báo cáo nhắc tên vùng nhưng không có việc nào của vùng được cập nhật quanh ngày đó
+  const ZN=Object.entries(S.zones).filter(([,z])=>z.active!==false&&z.step!=null).map(([id,z])=>[id,norm(zShort(z.name))]).filter(([,n])=>n.length>=4);
+  Object.entries(S.daily).forEach(([did,r])=>{ if(!r.date||r.date<w0||r.date>w1) return; const txt=" "+norm((r.done||"")+" "+(r.loc||""))+" ";
+    ZN.forEach(([zid,n])=>{ const re=new RegExp("(^|[^a-z0-9])"+n.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"($|[^a-z0-9])"); if(!re.test(txt)) return;
+      const lo=addDays(r.date,-1), hi=addDays(r.date,2)+"T23"; const z=S.zones[zid];
+      const touched=T.some(([,x])=>x.zone===zid&&((x.updatedAt||"").slice(0,10)>=lo&&(x.updatedAt||"")<=hi||(x.doneAt||"").slice(0,10)>=lo&&(x.doneAt||"")<=hi))||((z.updatedAt||"").slice(0,10)>=lo&&(z.updatedAt||"")<=hi);
+      if(touched) return; const sig=zid;
+      add("daily_zone",{id:"dz:"+did+":"+zid,col:"daily",rid:did,who:r.person,date:r.date,sig,ack:rcAck(r,"daily_zone",zid)||(r.rc?.["daily_zone:"+zid]||null),akey:"daily_zone:"+zid,text:"Báo cáo "+dm(r.date)+" nhắc "+zShort(z.name)+", chưa có việc nào của vùng được cập nhật",sub:"“"+String(r.done||"").replace(/\s+/g," ").slice(0,140)+"”",open:["zone",zid]}); }); });
+  // 7-10. vùng và hồ sơ
+  Object.entries(S.zones).forEach(([zid,z])=>{ if(z.active===false||z.step==null) return; const s=hsStat(z); const own=z.owner||"";
+    const zt=T.filter(([,x])=>x.zone===zid), op=zt.filter(([,x])=>x.status!=="done");
+    if(z.step>=5&&s.hard<s.n){ const sig=z.step+"|"+s.hard;
+      add("zone_hard",{id:"zh:"+zid,col:"zones",rid:zid,who:own,date:"",sig,ack:rcAck(z,"zone_hard",sig),text:zShort(z.name)+": bước "+z.step+" ("+STEPS[z.step].name+") nhưng hồ sơ cứng mới "+s.hard+"/"+s.n,sub:"Sau bước 4 (ký hồ sơ) cần đủ bản cứng. Kiểm tra lại bước hoặc ghi nhận hồ sơ.",open:["hs",zid]}); }
+    if(z.step>=6&&s.ok<s.n&&!(z.step>=5&&s.hard<s.n)){ const sig=z.step+"|"+s.ok;
+      add("zone_doc",{id:"zd:"+zid,col:"zones",rid:zid,who:own,date:"",sig,ack:rcAck(z,"zone_doc",sig),text:zShort(z.name)+": đã ở bước "+z.step+", hồ sơ hoàn tất "+s.ok+"/"+s.n,sub:"Drive "+s.drive+"/"+s.n+" · FarmBase "+s.fb+"/"+s.n,open:["hs",zid]}); }
+    if(z.step<8&&zt.length&&!op.length){ const sig=z.step+"|"+zt.length;
+      add("zone_idle",{id:"zi:"+zid,col:"zones",rid:zid,who:own,date:"",sig,ack:rcAck(z,"zone_idle",sig),text:zShort(z.name)+": bước "+z.step+", mọi việc đã xong",sub:"Tăng bước nếu đã đạt, hoặc giao việc cho bước tiếp theo.",open:["zone",zid]}); }
+    if(z.step<6&&op.length){ const last=[z.updatedAt||"",...zt.map(([,x])=>x.updatedAt||"")].sort().pop()||""; if(last&&last.slice(0,10)<addDays(t,-14)){ const sig=last.slice(0,10);
+      add("zone_stale",{id:"zs:"+zid,col:"zones",rid:zid,who:own,date:"",sig,ack:rcAck(z,"zone_stale",sig),text:zShort(z.name)+": "+diffDays(t,last.slice(0,10))+" ngày chưa có cập nhật",sub:"Còn "+op.length+" việc mở · bước "+z.step+" ("+STEPS[z.step].name+")",open:["zone",zid]}); } } });
+  return out;
+}
+function rcPersonOf(i){ if(i.who) return i.who; if(i.col==="zones"){ const op=Object.values(S.tasks).filter(x=>x.zone===i.rid&&x.status!=="done"&&x.R); return op[0]?.R||""; } return ""; }
+function rcWeekStats(){ const w0=rcWeek(), w1=addDays(w0,6), t=todayStr(), past=w1<t?w1:addDays(t,-1);
+  const T=Object.entries(S.tasks).filter(([id,x])=>x.kind!=="epic"&&!tOpenKids(id));
+  const due=T.filter(([,x])=>x.due&&x.due>=w0&&x.due<=w1), dueDone=due.filter(([,x])=>x.status==="done");
+  const doneW=T.filter(([,x])=>(x.doneAt||"").slice(0,10)>=w0&&(x.doneAt||"").slice(0,10)<=w1);
+  const late=T.filter(([,x])=>x.status!=="done"&&x.due&&x.due<t);
+  const ev=Object.entries(S.events||{}).filter(([,e])=>e.date&&e.date>=w0&&e.date<=w1&&e.status!=="cancel"), evDone=ev.filter(([,e])=>e.status==="done");
+  const reps=Object.keys(S.people).filter(isReporter); let need=0,got=0; let d=w0;
+  for(let i=0;i<7;i++,d=addDays(d,1)){ if(d>past) break; if(new Date(d+"T00:00:00").getDay()===0) continue; reps.forEach(p=>{ if(onLeave(p,d)) return; need++; if(S.daily[d+"_"+p]) got++; }); }
+  return {w0,w1,t,past,T,due,dueDone,doneW,late,ev,evDone,reps,need,got}; }
+function rcBar(a,b){ const p=b?Math.round(a/b*100):0; return '<div style="height:6px;background:var(--line);border-radius:3px;margin-top:6px;overflow:hidden"><div style="height:100%;width:'+p+'%;background:'+(p>=80?"var(--good)":p>=50?"var(--warn)":"var(--bad)")+'"></div></div>'; }
+function vRecon(){
+  if(!canManage()) return '<div class="panel">Trang này dành cho quản lý.</div>';
+  const st=rcWeekStats(), all=rcIssues(), open=all.filter(i=>!i.ack);
+  const pick=all.filter(i=>(RC.showAck||!i.ack)&&(!RC.grp||i.grp===RC.grp)&&(!RC.who||rcPersonOf(i)===RC.who));
+  let h='<div class="row between" style="align-items:flex-end;gap:10px"><div><h1>Đối soát tuần</h1><div class="sub">Việc xong hay chưa, và chỗ báo cáo nhanh, lịch, công việc, tiến độ vùng, hồ sơ cứng chưa khớp. Kiểm với nhân sự rồi sửa ngay tại đây.</div></div>'
+   +'<div class="row" style="gap:6px;flex-wrap:nowrap"><button class="btn sm" id="rcPrev" aria-label="Tuần trước">‹</button><b style="white-space:nowrap">'+dm(st.w0)+' – '+dm(st.w1)+'</b><button class="btn sm" id="rcNext" aria-label="Tuần sau">›</button>'+(st.w0!==wkStart(todayStr())?'<button class="btn sm" id="rcNow">Tuần này</button>':'')+'</div></div>';
+  const tile=(v,l,cls,extra,act)=>'<'+(act?'button data-rcg="'+act+'"':'div')+' class="tile '+(cls||"")+'"><span class="v">'+v+'</span><span class="l">'+l+'</span>'+(extra||"")+'</'+(act?'button':'div')+'>';
+  h+='<div class="grid kpis" style="margin-top:12px">'
+   +tile(st.dueDone.length+'/'+st.due.length,'Việc đến hạn trong tuần đã xong',st.due.length&&st.dueDone.length===st.due.length?"good":"",rcBar(st.dueDone.length,st.due.length))
+   +tile(st.late.length,'Việc đang quá hạn',st.late.length?"bad":"good","","task")
+   +tile(st.evDone.length+'/'+st.ev.length,'Lịch trong tuần đã chốt',"",rcBar(st.evDone.length,st.ev.length),"ev")
+   +tile(st.got+'/'+st.need,'Báo cáo nhanh đã gửi',st.need&&st.got<st.need?"warn":"good",rcBar(st.got,st.need),"daily")
+   +tile(open.length,'Điểm cần đối soát',open.length?"warn":"good","","")
+   +'</div>';
+  // nhân sự trong tuần
+  const ppl=[...new Set([...st.reps,...open.map(rcPersonOf).filter(Boolean)])].filter(p=>S.people[p]).sort((a,b)=>pname(a).localeCompare(pname(b),"vi"));
+  const PR=ppl.map(p=>{ const du=st.due.filter(([,x])=>x.R===p), dd=du.filter(([,x])=>x.status==="done").length, dw=st.doneW.filter(([,x])=>x.R===p).length, lt=st.late.filter(([,x])=>x.R===p).length;
+     const ev=st.ev.filter(([,e])=>e.lead===p||(e.people||[]).includes(p)), ed=ev.filter(([,e])=>e.status==="done").length;
+     let need=0,got=0,d=st.w0; if(isReporter(p)) for(let i=0;i<7;i++,d=addDays(d,1)){ if(d>st.past) break; if(new Date(d+"T00:00:00").getDay()===0||onLeave(p,d)) continue; need++; if(S.daily[d+"_"+p]) got++; }
+     return {p,du:du.length,dd,dw,lt,ev:ev.length,ed,need,got,n:open.filter(i=>rcPersonOf(i)===p).length}; });
+  h+='<style>@media (max-width:700px){.rcT{display:none}}@media (min-width:701px){.rcC{display:none}}</style>';
+  h+='<div class="panel rcC" style="margin-top:12px"><h2>Theo nhân sự</h2><div style="display:grid;gap:8px">'+PR.map(r=>'<div style="border:1px solid var(--line);border-radius:8px;padding:8px 10px'+(RC.who===r.p?';background:var(--chip)':'')+'"><div class="row between" style="gap:6px"><button class="btn sm" style="border:0;background:none;padding:0;font-weight:700" data-rcw="'+r.p+'">'+esc(pname(r.p))+'</button>'+(r.n?'<button class="btn sm" data-rcmsg="'+r.p+'">Sao chép tin nhắc</button>':'')+'</div>'
+    +'<div class="row" style="gap:4px;margin-top:6px"><span class="pill">Việc tuần '+r.dd+'/'+r.du+'</span><span class="pill'+(r.lt?" bad":"")+'">Quá hạn '+r.lt+'</span><span class="pill">Lịch '+r.ed+'/'+r.ev+'</span>'+(isReporter(r.p)?'<span class="pill'+(r.need&&r.got<r.need?" warn":"")+'">Báo cáo '+r.got+'/'+r.need+'</span>':'')+'<span class="pill '+(r.n?"warn":"good")+'">Lệch '+r.n+'</span></div></div>').join("")+'</div></div>';
+  h+='<div class="panel tw rcT" style="margin-top:12px"><h2>Theo nhân sự</h2><table><thead><tr><th>Nhân sự</th><th class="n">Việc tuần xong</th><th class="n">Xong trong tuần</th><th class="n">Quá hạn</th><th class="n">Lịch chốt</th><th class="n">Báo cáo nhanh</th><th class="n">Cần đối soát</th><th></th></tr></thead><tbody>'
+   +ppl.map(p=>{ const du=st.due.filter(([,x])=>x.R===p), dd=du.filter(([,x])=>x.status==="done"), dw=st.doneW.filter(([,x])=>x.R===p).length, lt=st.late.filter(([,x])=>x.R===p).length;
+     const ev=st.ev.filter(([,e])=>e.lead===p||(e.people||[]).includes(p)), ed=ev.filter(([,e])=>e.status==="done").length;
+     let need=0,got=0,d=st.w0; if(isReporter(p)) for(let i=0;i<7;i++,d=addDays(d,1)){ if(d>st.past) break; if(new Date(d+"T00:00:00").getDay()===0||onLeave(p,d)) continue; need++; if(S.daily[d+"_"+p]) got++; }
+     const n=open.filter(i=>rcPersonOf(i)===p).length;
+     return '<tr'+(RC.who===p?' style="background:var(--chip)"':'')+'><td><button class="btn sm" style="border:0;background:none;padding:0;font-weight:600;text-align:left" data-rcw="'+p+'">'+esc(pname(p))+'</button></td><td class="n">'+dd.length+'/'+du.length+'</td><td class="n">'+dw+'</td><td class="n" style="'+(lt?"color:var(--bad);font-weight:700":"")+'">'+lt+'</td><td class="n">'+ed+'/'+ev.length+'</td><td class="n" style="'+(need&&got<need?"color:var(--warn);font-weight:700":"")+'">'+(isReporter(p)?got+'/'+need:'—')+'</td><td class="n">'+(n?'<span class="pill warn">'+n+'</span>':'<span class="pill good">0</span>')+'</td><td>'+(n?'<button class="btn sm" data-rcmsg="'+p+'">Sao chép tin nhắc</button>':'')+'</td></tr>'; }).join("")+'</tbody></table></div>';
+  // danh sách điểm lệch
+  const cnt=g=>open.filter(i=>(!g||i.grp===g)&&(!RC.who||rcPersonOf(i)===RC.who)).length;
+  h+='<div class="panel" style="margin-top:12px"><div class="row between" style="gap:8px"><h2 style="margin:0">Cần đối soát'+(RC.who?' · '+esc(pname(RC.who))+' <button class="btn sm" id="rcWhoX">Bỏ lọc</button>':'')+'</h2><label class="chk" style="padding:0"><input type="checkbox" id="rcAckT"'+(RC.showAck?" checked":"")+'><span>Hiện mục đã kiểm</span></label></div>'
+   +'<div class="focusbar" role="group" aria-label="Loại" style="margin-top:8px;flex-wrap:wrap">'+[["","Tất cả"],...Object.entries(RC_GRP)].map(([k,l])=>'<button data-rcg="'+k+'" aria-pressed="'+(RC.grp===k)+'">'+l+' ('+cnt(k)+')</button>').join("")+'</div>';
+  if(!pick.length) h+='<div class="empty" style="margin-top:10px">Không có điểm nào cần đối soát'+(RC.grp||RC.who?' trong bộ lọc này':' trong tuần này')+'.</div>';
+  else { const by={}; pick.forEach(i=>{ const k=rcPersonOf(i)||"_"; (by[k]=by[k]||[]).push(i); });
+    Object.keys(by).sort((a,b)=>(a==="_")-(b==="_")||pname(a).localeCompare(pname(b),"vi")).forEach(k=>{ const L=by[k].sort((a,b)=>(a.sev==="bad"?0:1)-(b.sev==="bad"?0:1)||(a.date||"").localeCompare(b.date||""));
+      h+='<div class="row between" style="margin:14px 0 6px;gap:8px"><b>'+(k==="_"?"Chưa rõ người phụ trách":esc(pname(k)))+' · '+L.filter(i=>!i.ack).length+' điểm</b>'+(k!=="_"&&L.some(i=>!i.ack)?'<button class="btn sm" data-rcmsg="'+k+'">Sao chép tin nhắc</button>':'')+'</div><div style="display:grid;gap:8px">'
+       +L.map(i=>'<div class="rcI" style="border:1px solid var(--line);border-left:4px solid var(--'+(i.ack?"line":i.sev)+');border-radius:8px;padding:10px 12px;background:var(--surface);'+(i.ack?"opacity:.6":"")+'"><div class="row" style="gap:6px"><span class="pill '+i.sev+'">'+RC_T[i.type][1]+'</span>'+(i.ack?'<span class="pill good">Đã kiểm'+(i.ack.by?' · '+esc(pname(i.ack.by)||""):"")+'</span>':'')+'</div>'
+         +'<div style="margin-top:4px;font-weight:600;overflow-wrap:anywhere">'+esc(i.text)+'</div><div class="sub" style="overflow-wrap:anywhere">'+esc(i.sub||"")+'</div>'
+         +'<div class="row" style="gap:6px;margin-top:8px"><button class="btn sm" data-rco="'+esc(i.id)+'">'+({task:"Mở việc",ev:"Mở lịch",hs:"Mở hồ sơ",zone:"Mở vùng",rep:"Xem báo cáo"}[i.open[0]])+'</button>'
+         +(i.fix==="done"&&!i.ack?'<button class="btn sm" data-rcf="'+esc(i.id)+'">Đánh dấu xong</button>':'')+(i.fix==="evtasks"&&!i.ack?'<button class="btn sm" data-rcf="'+esc(i.id)+'">Tick xong '+i.tids.length+' việc</button>':'')
+         +(i.ack?'<button class="btn sm" data-rcu="'+esc(i.id)+'">Bỏ đã kiểm</button>':'<button class="btn sm" data-rca="'+esc(i.id)+'">Đã kiểm, đúng</button>')+'</div></div>').join("")+'</div>'; }); }
+  h+='</div>';
+  // tiến độ vùng và hồ sơ
+  const zs=Object.entries(S.zones).filter(([,z])=>z.active!==false&&z.step!=null);
+  const flags={}; open.filter(i=>i.grp==="zone"||i.open[0]==="zone").forEach(i=>{ const zid=i.col==="zones"?i.rid:i.open[1]; flags[zid]=(flags[zid]||0)+1; });
+  const rows=zs.map(([id,z])=>{ const s=hsStat(z), op=Object.entries(S.tasks).filter(([tid,x])=>x.zone===id&&x.kind!=="epic"&&x.status!=="done"&&!tOpenKids(tid)), lt=op.filter(([,x])=>tLate(x)).length; const last=[z.updatedAt||"",...Object.values(S.tasks).filter(x=>x.zone===id).map(x=>x.updatedAt||"")].sort().pop()||""; return {id,z,s,op:op.length,lt,last,f:flags[id]||0}; }).sort((a,b)=>b.f-a.f||b.lt-a.lt||(b.z.step||0)-(a.z.step||0));
+  h+='<details class="panel" style="margin-top:12px"'+(RC.zOpen?" open":"")+' id="rcZ"><summary style="cursor:pointer"><b>Tiến độ và hồ sơ từng vùng</b> <span class="sub">'+zs.length+' vùng đang làm · '+Object.keys(flags).length+' vùng có điểm lệch</span></summary><div class="tw" style="margin-top:8px"><table><thead><tr><th>Vùng</th><th>Bước</th><th class="n">Việc mở</th><th class="n">Quá hạn</th><th class="n">Bản cứng</th><th class="n">Drive</th><th class="n">FarmBase</th><th>Cập nhật</th><th class="n">Lệch</th></tr></thead><tbody>'
+   +rows.map(r=>'<tr data-rcz="'+r.id+'" style="cursor:pointer"><td><b>'+esc(zShort(r.z.name))+'</b><div class="sub">'+esc(r.z.ward||"")+'</div></td><td>'+r.z.step+'. '+esc(STEPS[r.z.step]?.name||"")+'</td><td class="n">'+r.op+'</td><td class="n" style="'+(r.lt?"color:var(--bad);font-weight:700":"")+'">'+r.lt+'</td><td class="n" style="'+(r.z.step>=5&&r.s.hard<r.s.n?"color:var(--bad);font-weight:700":"")+'">'+r.s.hard+'/'+r.s.n+'</td><td class="n">'+r.s.drive+'/'+r.s.n+'</td><td class="n">'+r.s.fb+'/'+r.s.n+'</td><td>'+(r.last?dm(r.last.slice(0,10)):"—")+'</td><td class="n">'+(r.f?'<span class="pill warn">'+r.f+'</span>':'')+'</td></tr>').join("")+'</tbody></table></div></details>';
+  h+='<div class="sub" style="margin-top:10px">"Đã kiểm, đúng" ghi lại là bạn đã kiểm với nhân sự và dữ liệu đúng. Nếu sau đó dữ liệu thay đổi (đổi hạn, đổi bước, thêm hồ sơ), điểm đó sẽ hiện lại để kiểm tiếp.</div>';
+  RC._last=all; return h;
+}
+function rcMsg(pid){ const L=(RC._last||rcIssues()).filter(i=>!i.ack&&rcPersonOf(i)===pid); if(!L.length) return "";
+  return pname(pid)+", nhờ kiểm và cập nhật giúp trên hệ thống BVI Điều hành (tuần "+dm(rcWeek())+"–"+dm(addDays(rcWeek(),6))+"):\n"+L.map((i,n)=>(n+1)+". "+RC_T[i.type][1]+": "+i.text+(i.type==="daily_miss"?" ("+i.sub+")":"")).join("\n")+"\nXong thì báo lại giúp. Cảm ơn."; }
+async function rcSetAck(i,on){
+  const by=me||"", at=new Date().toISOString();
+  if(i.type==="daily_miss"){ const p=S.people[i.rid]; const r={...(p.rcDaily||{})}; i.dates.forEach(d=>{ if(on) r[d]={at,by}; else delete r[d]; }); return upd("people",i.rid,{rcDaily:r}); }
+  const rec=S[i.col]?.[i.rid]; if(!rec) return false; const rc={...(rec.rc||{})}; const key=i.akey||i.type;
+  if(on) rc[key]={at,by,sig:i.sig}; else delete rc[key]; return upd(i.col,i.rid,{rc}); }
+function bindRecon(A){
+  const W=n=>{ RC.w=addDays(rcWeek(),n*7); render(); };
+  $("#rcPrev")?.addEventListener("click",()=>W(-1)); $("#rcNext")?.addEventListener("click",()=>W(1)); $("#rcNow")?.addEventListener("click",()=>{ RC.w=null; render(); });
+  $("#rcAckT")?.addEventListener("change",e=>{ RC.showAck=e.target.checked; render(); });
+  $("#rcWhoX")?.addEventListener("click",()=>{ RC.who=""; render(); });
+  $("#rcZ")?.addEventListener("toggle",e=>{ RC.zOpen=e.target.open; });
+  A.querySelectorAll("[data-rcg]").forEach(b=>b.addEventListener("click",()=>{ RC.grp=b.dataset.rcg; render(); if(b.classList.contains("tile")) A.querySelector(".focusbar")?.scrollIntoView({behavior:"smooth",block:"start"}); }));
+  A.querySelectorAll("[data-rcw]").forEach(b=>b.addEventListener("click",()=>{ RC.who=RC.who===b.dataset.rcw?"":b.dataset.rcw; render(); }));
+  A.querySelectorAll("[data-rcz]").forEach(r=>r.addEventListener("click",()=>openZone(r.dataset.rcz)));
+  const find=id=>(RC._last||[]).find(i=>i.id===id);
+  A.querySelectorAll("[data-rcmsg]").forEach(b=>b.addEventListener("click",()=>{ const t=rcMsg(b.dataset.rcmsg); if(!t) return; navigator.clipboard?.writeText(t).then(()=>toast("Đã chép tin nhắc, dán vào Zalo"),()=>toast("Không chép được")); }));
+  A.querySelectorAll("[data-rco]").forEach(b=>b.addEventListener("click",()=>{ const i=find(b.dataset.rco); if(!i) return; const [k,id]=i.open;
+    if(k==="task") openTask(id); else if(k==="ev") openEvent(id); else if(k==="zone") openZone(id); else if(k==="hs"){ ui.drawer=()=>drawHs(id); drawHs(id); } else if(k==="rep"){ location.hash="bao-cao"; } }));
+  A.querySelectorAll("[data-rcf]").forEach(b=>b.addEventListener("click",async()=>{ const i=find(b.dataset.rcf); if(!i) return; b.disabled=true; const at=new Date().toISOString();
+    const ids=i.fix==="done"?[i.rid]:i.tids; let ok=true; for(const id of ids){ ok=await upd("tasks",id,{status:"done",doneAt:at,...stamp()})&&ok; } if(ok) toast("Đã đánh dấu xong "+ids.length+" việc"); }));
+  A.querySelectorAll("[data-rca],[data-rcu]").forEach(b=>b.addEventListener("click",async()=>{ const i=find(b.dataset.rca||b.dataset.rcu); if(!i) return; b.disabled=true; if(await rcSetAck(i,!!b.dataset.rca)) toast(b.dataset.rca?"Đã ghi nhận đã kiểm":"Đã bỏ đánh dấu"); }));
+}
