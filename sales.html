@@ -272,7 +272,7 @@ async function drawTimeline(l){
 }
 function actHtml(a,l){
  const when=new Date(Date.parse(a.at)+7*36e5).toISOString(), w=when.slice(8,10)+"/"+when.slice(5,7)+" "+when.slice(11,16);
- if(a.kind==="assign") return '<div class="ti"><div class="when">'+w+'</div>esc(a.note||"Được giao lead")+'</div>';
+ if(a.kind==="assign") return '<div class="ti"><div class="when">'+w+'</div>'+esc(a.note||"Được giao lead")+'</div>';
  if(a.kind==="claim") return '<div class="ti"><div class="when">'+w+'</div>Nhận từ kho chung (quản lý duyệt)</div>';
  const t=[SC.lab(SC.CHANNELS,a.channel),SC.lab(SC.RESULTS,a.result)].filter(Boolean).join(" · ")+(a.minutes?" · "+a.minutes+" phút":"");
  const tags=[a.temp_after?'<span class="pill '+a.temp_after+'">'+SC.lab(SC.TEMPS,a.temp_after)+'</span>':'',a.fit_after?'<span class="pill">Tiềm năng '+SC.lab(SC.FITS,a.fit_after).toLowerCase()+'</span>':'',a.stage_after!=null?'<span class="pill">'+SC.lab(SC.STAGES,a.stage_after)+'</span>':'',(a.needs_after||[]).map(k=>'<span class="pill">'+SC.lab(SC.NEEDS,k)+'</span>').join("")].join("");
