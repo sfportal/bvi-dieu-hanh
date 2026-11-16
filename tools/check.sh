@@ -10,3 +10,5 @@ js=max(re.findall(r'<script>([\s\S]*?)</script>',s),key=len)
 open('/tmp/bvi_main_check.js','w').write(js)
 PY
 node --check /tmp/bvi_main_check.js && echo "OK: cú pháp JavaScript hợp lệ"
+# logic trang sales
+node sales-core.test.js

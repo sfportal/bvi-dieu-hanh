@@ -1,0 +1,88 @@
+// Logic dùng chung cho trang sales (sales.html) và dashboard Sales (index.html). Không phụ thuộc DOM.
+(function (root) {
+  const STAGES = [[0, "Cần tìm liên hệ"], [1, "Mới"], [2, "Đã liên hệ"], [3, "Đang tư vấn"], [4, "Đã báo giá"], [5, "Thương lượng"], [6, "Đã ký"], [7, "Không theo"]];
+  const TEMPS = [["cold", "Lạnh"], ["warm", "Ấm"], ["hot", "Nóng"]];
+  const FITS = [["low", "Thấp"], ["mid", "Vừa"], ["high", "Cao"]];
+  const CHANNELS = [["call", "Gọi"], ["zalo", "Zalo"], ["meet", "Gặp"], ["email", "Email"], ["other", "Khác"]];
+  const RESULTS = [["noans", "Không nghe"], ["later", "Hẹn lại"], ["talked", "Đã nói chuyện"], ["interested", "Quan tâm"], ["sent", "Đã gửi tài liệu"], ["refused", "Từ chối"]];
+  const NEEDS = [["msvt", "MSVT"], ["csdg", "CSĐG"], ["txng", "Truy xuất"], ["qr", "Tem QR"], ["kt", "Kỹ thuật"], ["khac", "Khác"]];
+  const LOST = ["Giá", "Chưa cần", "Đã có đơn vị khác", "Không liên lạc được", "Khác"];
+  const NEXT = [["call", "Gọi lại"], ["quote", "Gửi báo giá"], ["meet", "Hẹn gặp"], ["send", "Gửi tài liệu"], ["other", "Khác"]];
+  const HOT_DAYS = 2, WARM_DAYS = 7, FRESH_HOURS = 24, CALL_GOAL = 20;
+  const D = 864e5;
+
+  function normPhones(s) {
+    if (!s) return [];
+    const out = [];
+    String(s).split(/[,;/]|[A-Za-zÀ-ỹ]+/).forEach(t => {
+      let d = t.replace(/\D/g, "");
+      if (/^84\d{9,10}$/.test(d)) d = "0" + d.slice(2);
+      if (d.length >= 9 && d.length <= 11 && !out.includes(d)) out.push(d);
+    });
+    return out;
+  }
+  function vnToday(now) {
+    const t = new Date((now ? +now : Date.now()) + 7 * 36e5);
+    return t.toISOString().slice(0, 10);
+  }
+  function addDays(ymd, n) { const t = new Date(ymd + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); }
+  function nextPreset(k, today) { return addDays(today, { "1d": 1, "3d": 3, "1w": 7 }[k] || 0); }
+  const open = l => l.stage >= 1 && l.stage <= 5;
+  const since = (ts, now) => ts ? (+now - Date.parse(ts)) : Infinity;
+
+  // Nhóm việc cho màn Hôm nay. uid=null: xem mọi lead (quản lý, nhân viên xem toàn đội).
+  function buckets(leads, uid, now) {
+    now = now || new Date();
+    const td = vnToday(now), B = { overdue: [], today: [], hot: [], fresh: [], nonext: [] };
+    (leads || []).forEach(l => {
+      if (!open(l) || (uid && l.owner_id !== uid)) return;
+      if (l.next_at && l.next_at < td) return B.overdue.push(l);
+      if (l.next_at === td) return B.today.push(l);
+      const idle = since(l.last_touch_at, now);
+      if (l.last_touch_at && ((l.temp === "hot" && idle > HOT_DAYS * D) || (l.temp === "warm" && idle > WARM_DAYS * D))) return B.hot.push(l);
+      if (!l.last_touch_at && l.owner_id && since(l.assigned_at, now) > FRESH_HOURS * 36e5) return B.fresh.push(l);
+      if (!l.next_at) return B.nonext.push(l);
+    });
+    B.overdue.sort((a, b) => a.next_at.localeCompare(b.next_at));
+    return B;
+  }
+
+  // Dự đoán thay đổi của lead sau một lần tương tác (cùng quy tắc trigger sales_acts_ai)
+  function applyAct(lead, act) {
+    let st = act.stage_after != null ? act.stage_after : lead.stage;
+    if (act.result === "refused") st = 7;
+    else if (st <= 1 && act.result && act.result !== "noans") st = 2;
+    const p = { stage: st, temp: act.temp_after || lead.temp, fit: act.fit_after || lead.fit, touch_count: (lead.touch_count || 0) + 1, last_touch_at: act.at || new Date().toISOString() };
+    if (act.needs_after) p.needs = act.needs_after;
+    if (act.next_at || act.next_type) { p.next_at = act.next_at || null; p.next_type = act.next_type || null; p.next_note = act.next_note || null; }
+    return p;
+  }
+
+  function callMinutes(leftAt, backAt) {
+    const s = (backAt - leftAt) / 1000;
+    if (s < 10) return 0;
+    if (s > 120 * 60) return null;
+    return Math.ceil(s / 60);
+  }
+  function ago(ts, now) {
+    if (!ts) return "chưa chạm";
+    const s = (+(now || new Date()) - Date.parse(ts)) / 1000;
+    if (s < 60) return "vừa xong";
+    if (s < 3600) return Math.floor(s / 60) + " phút trước";
+    if (s < 86400) return Math.floor(s / 3600) + " giờ trước";
+    return Math.floor(s / 86400) + " ngày trước";
+  }
+  const telHref = p => { const n = normPhones(p)[0]; return n ? "tel:" + n : ""; };
+  const zaloHref = p => { const n = normPhones(p)[0]; return n ? "https://zalo.me/" + n : ""; };
+  function distM(a1, o1, a2, o2) {
+    const r = x => x * Math.PI / 180, R = 6371000;
+    const h = Math.sin(r(a2 - a1) / 2) ** 2 + Math.cos(r(a1)) * Math.cos(r(a2)) * Math.sin(r(o2 - o1) / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+  const norm = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase().replace(/\s+/g, " ").trim();
+  const lab = (arr, k) => (arr.find(x => x[0] === k) || [])[1] || "";
+
+  const SC = { STAGES, TEMPS, FITS, CHANNELS, RESULTS, NEEDS, LOST, NEXT, HOT_DAYS, WARM_DAYS, FRESH_HOURS, CALL_GOAL,
+    normPhones, vnToday, addDays, nextPreset, buckets, applyAct, callMinutes, ago, telHref, zaloHref, distM, norm, lab };
+  if (typeof module !== "undefined" && module.exports) module.exports = SC; else root.SC = SC;
+})(typeof window !== "undefined" ? window : this);
