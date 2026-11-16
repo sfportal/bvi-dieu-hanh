@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1f5b3c">
+<title>BVI Sales</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+<style>
+/* Trang sales: một cột, thanh tab dưới, khung ghi tương tác trượt từ dưới lên. */
+:root{--bg:#f3f5f1;--surface:#fff;--sunk:#e8ece5;--line:#d5dbd1;--fg:#17201a;--muted:#5b6a5f;--brand:#1f5b3c;--brand-ink:#fff;
+ --good:#2f7d4f;--warn:#b7791f;--bad:#b83a2e;--info:#2f5f8a;--chip:#eef2ea;--hot:#c2410c;--warm:#b7791f;--cold:#2f5f8a;
+ --f:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#111613;--surface:#18201b;--sunk:#0d120f;--line:#2b362f;--fg:#e7ede8;--muted:#9aaa9f;--brand:#5fb184;--brand-ink:#0d1a12;
+ --good:#5fb184;--warn:#e0a33f;--bad:#e2685b;--info:#7fb0dc;--chip:#202a23;--hot:#f08a5d;--warm:#e0a33f;--cold:#7fb0dc;color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0;overflow-x:hidden}
+body{background:var(--bg);color:var(--fg);font:14px/1.45 var(--f);padding-bottom:calc(68px + env(safe-area-inset-bottom))}
+a{color:inherit}
+button,input,select,textarea{font:inherit;color:inherit}
+.top{position:sticky;top:0;z-index:5;background:var(--brand);color:var(--brand-ink);display:flex;align-items:center;gap:10px;padding:10px 14px;padding-top:calc(10px + env(safe-area-inset-top))}
+.top b{font-size:16px}.top .sp{flex:1}
+.goal{background:rgba(255,255,255,.16);border-radius:999px;padding:3px 10px;font-weight:600;font-size:13px;white-space:nowrap}
+.goal i{display:inline-block;height:6px;width:46px;background:rgba(255,255,255,.3);border-radius:3px;vertical-align:middle;margin-left:6px;overflow:hidden;position:relative}
+.goal i s{position:absolute;inset:0 auto 0 0;background:#fff;border-radius:3px}
+.me{background:none;border:0;color:inherit;padding:4px;cursor:pointer;font-size:13px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+main{max-width:720px;margin:0 auto;padding:12px}
+.bot{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom)}
+.bot a{flex:1;text-align:center;padding:9px 4px 8px;text-decoration:none;color:var(--muted);font-size:12px;font-weight:600}
+.bot a span{display:block;font-size:19px;line-height:1.1}
+.bot a.on{color:var(--brand)}
+h2{font-size:15px;margin:16px 2px 8px;display:flex;align-items:center;gap:8px}
+h2 .n{background:var(--chip);border-radius:999px;padding:0 8px;font-size:12px;color:var(--muted)}
+h2.bad{color:var(--bad)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}
+.sub{color:var(--muted);font-size:12.5px}
+.lrow{display:block;text-decoration:none;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;min-width:0}
+.lrow .nm{font-weight:600;overflow-wrap:anywhere}
+.lrow .mt{display:flex;flex-wrap:wrap;gap:4px 8px;margin-top:3px;color:var(--muted);font-size:12.5px}
+.pill{display:inline-block;border-radius:999px;padding:1px 8px;font-size:12px;background:var(--chip);color:var(--fg);white-space:nowrap}
+.pill.hot{background:var(--hot);color:#fff}.pill.warm{background:var(--warm);color:#fff}.pill.cold{background:var(--cold);color:#fff}
+.pill.od{background:var(--bad);color:#fff}.pill.pa{background:var(--fg);color:var(--bg)}
+.empty{color:var(--muted);font-size:13px;padding:4px 2px 8px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stats .card{padding:10px;text-align:center}.stats b{display:block;font-size:20px}
+.tabs{display:flex;gap:6px;margin-bottom:8px;overflow-x:auto}
+.tabs button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;cursor:pointer;white-space:nowrap}
+.tabs button.on{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+.in{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 12px;min-width:0}
+textarea.in{min-height:64px;resize:vertical}
+.f{margin-bottom:10px}.f label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:3px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 14px;cursor:pointer;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn.pri{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+.btn:disabled,.btn[aria-disabled=true]{opacity:.45;cursor:not-allowed}
+.btn.full{width:100%}
+.acts{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0}
+.acts .btn{flex-direction:column;padding:8px 2px;font-size:12px;gap:2px}.acts .btn span{font-size:18px}
+.kv{display:grid;grid-template-columns:110px 1fr;gap:4px 10px;font-size:13px}.kv div:nth-child(odd){color:var(--muted)}.kv div{overflow-wrap:anywhere;min-width:0}
+.next{border-left:4px solid var(--brand);margin:10px 0}.next.od{border-left-color:var(--bad)}
+.tl{margin-top:6px}.ti{border-left:2px solid var(--line);padding:0 0 12px 12px;position:relative;overflow-wrap:anywhere}
+.ti:before{content:"";position:absolute;left:-6px;top:4px;width:10px;height:10px;border-radius:50%;background:var(--brand)}
+.ti .when{font-size:12px;color:var(--muted)}
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:9;display:none}
+#sheet{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--surface);border-radius:16px 16px 0 0;max-height:88vh;overflow-y:auto;overflow-x:hidden;
+ padding:12px 14px calc(14px + env(safe-area-inset-bottom));transform:translateY(105%);transition:transform .2s;max-width:720px;margin:0 auto}
+#sheet.open{transform:none}#sheet.open+.sheet-bg,.sheet-bg.on{display:block}
+.sh-h{display:flex;align-items:center;gap:8px;margin-bottom:6px}.sh-h b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.grp{margin:8px 0}.grp>div:first-child{font-size:12.5px;color:var(--muted);margin-bottom:4px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 12px;cursor:pointer;font-size:13.5px}
+.chip.on{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+.chip.hot.on{background:var(--hot);border-color:var(--hot);color:#fff}.chip.warm.on{background:var(--warm);border-color:var(--warm);color:#fff}.chip.cold.on{background:var(--cold);border-color:var(--cold);color:#fff}
+.row2{display:flex;gap:8px;align-items:center}.row2>*{min-width:0}
+.msg{margin:8px 0;padding:8px 10px;border-radius:10px;font-size:13px}.msg.bad{background:rgba(184,58,46,.12);color:var(--bad)}.msg.ok{background:rgba(47,125,79,.12);color:var(--good)}.msg.warn{background:rgba(183,121,31,.14);color:var(--warn)}
+#toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:999px;font-size:13px;z-index:20;display:none;max-width:90vw}
+#lgSave{position:sticky;bottom:0;box-shadow:0 -8px 12px var(--surface)}
+.auth{max-width:380px;margin:40px auto}
+.more{display:block;text-align:center;margin:8px 0}
+@media (min-width:900px){main{padding:18px}}
+</style>
+</head>
+<body>
+<header class="top" id="top" style="display:none"><b>BVI Sales</b><span class="sp"></span><span class="goal" id="goal"></span><button class="me" id="meBtn"></button></header>
+<main id="app"><div class="sub" style="padding:30px;text-align:center">Đang tải…</div></main>
+<nav class="bot" id="bot" style="display:none">
+ <a href="#hom-nay" data-r="hom-nay"><span>☀</span>Hôm nay</a>
+ <a href="#lead" data-r="lead"><span>☰</span>Lead</a>
+ <a href="#them" data-r="them"><span>＋</span>Thêm</a>
+</nav>
+<div id="sheet" role="dialog" aria-modal="true" aria-label="Ghi tương tác"></div><div class="sheet-bg" id="sheetBg"></div>
+<div id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="sales-core.js"></script>
+<script>
+const SB_URL="https://pkckduidwfcncipwzdxa.supabase.co", SB_KEY="sb_publishable_ZHvz0flMvyIsxmT-tKS_Hw_q_Vz_7RF";
+let SB, ME=null, LEADS=[], MYACTS=[], PEOPLE={}, TAB="mine", Q="", STF="", LIMIT=150, CALL=null, SH=null;
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const isStaff=()=>ME&&["owner","manager","staff"].includes(ME.role);
+const pname=id=>id?(PEOPLE[id]||"Người khác"):"";
+const dmy=ymd=>ymd?ymd.slice(8,10)+"/"+ymd.slice(5,7):"";
+const tday=()=>SC.vnToday(new Date(Date.now()));
+const lead=id=>LEADS.find(l=>l.id===id);
+function toast(t){ const e=$("#toast"); e.textContent=t; e.style.display="block"; clearTimeout(toast.t); toast.t=setTimeout(()=>e.style.display="none",2200); }
+function shell(on){ $("#top").style.display=on?"":"none"; $("#bot").style.display=on?"":"none"; }
+function phonesOf(l){ return SC.normPhones([l.contact_phone,l.contact_zalo,l.org_phone].filter(Boolean).join(", ")); }
+
+// ---------- đăng nhập ----------
+function showLogin(msg){
+ shell(false);
+ $("#app").innerHTML='<div class="auth card"><h1 style="margin:0 0 4px;font-size:20px">BVI Sales</h1><div class="sub" style="margin-bottom:12px">Đăng nhập bằng tài khoản được cấp</div>'
+  +(msg?'<div class="msg bad">'+esc(msg)+'</div>':'')
+  +'<form id="lf"><div class="f"><label for="lem">Email</label><input class="in" id="lem" type="email" autocomplete="username" required></div>'
+  +'<div class="f"><label for="lpw">Mật khẩu</label><input class="in" id="lpw" type="password" autocomplete="current-password" required></div>'
+  +'<button class="btn pri full">Đăng nhập</button><div class="sub" id="lmsg" style="margin-top:8px"></div></form>'
+  +'<div class="sub" style="margin-top:10px">Quên mật khẩu: nhờ quản lý đặt lại.</div></div>';
+ $("#lf").addEventListener("submit",async e=>{ e.preventDefault(); $("#lmsg").textContent="Đang đăng nhập…";
+  const {error}=await SB.auth.signInWithPassword({email:$("#lem").value.trim(),password:$("#lpw").value});
+  if(error){ $("#lmsg").textContent=/invalid/i.test(error.message)?"Sai email hoặc mật khẩu.":/banned/i.test(error.message)?"Tài khoản đã bị khóa.":error.message; return; }
+  start(); });
+}
+function block(msg){ shell(false); $("#app").innerHTML='<div class="auth card"><h1 style="margin:0 0 6px;font-size:18px">BVI Sales</h1><div class="msg warn">'+esc(msg)+'</div><button class="btn full" id="bOut">Đăng xuất</button></div>'; $("#bOut").onclick=logout; }
+async function logout(){ await SB.auth.signOut(); ME=null; LEADS=[]; showLogin(); }
+function showChangePw(){
+ shell(false);
+ $("#app").innerHTML='<div class="auth card"><h1 style="margin:0 0 6px;font-size:18px">Đổi mật khẩu lần đầu</h1><form id="pf"><div class="f"><label for="p1">Mật khẩu mới (từ 8 ký tự)</label><input class="in" id="p1" type="password" minlength="8" autocomplete="new-password" required></div><div class="f"><label for="p2">Nhập lại</label><input class="in" id="p2" type="password" minlength="8" autocomplete="new-password" required></div><button class="btn pri full">Lưu mật khẩu</button><div class="sub" id="pmsg" style="margin-top:8px"></div></form></div>';
+ $("#pf").addEventListener("submit",async e=>{ e.preventDefault(); if($("#p1").value!==$("#p2").value){ $("#pmsg").textContent="Hai mật khẩu chưa khớp."; return; }
+  const {error}=await SB.auth.updateUser({password:$("#p1").value}); if(error){ $("#pmsg").textContent=error.message; return; }
+  await SB.from("profiles").update({must_change_pw:false}).eq("id",ME.id); ME.must_change_pw=false; toast("Đã đổi mật khẩu"); start(); });
+}
+async function start(){
+ const {data:{session}}=await SB.auth.getSession(); if(!session){ showLogin(); return; }
+ const {data:prof,error}=await SB.from("profiles").select("id,name,email,role,active,must_change_pw").eq("id",session.user.id).single();
+ if(error||!prof){ block("Không đọc được tài khoản. Thử tải lại trang."); return; }
+ ME=prof;
+ if(!prof.active){ block("Tài khoản đã bị khóa."); return; }
+ if(prof.role==="viewer"){ block("Tài khoản người xem không dùng trang sales. Mở trang quản trị để xem số liệu."); return; }
+ if(prof.must_change_pw){ showChangePw(); return; }
+ TAB=isStaff()?"mine":"all";
+ shell(true); $("#meBtn").textContent=prof.name||prof.email||"Tôi";
+ $("#app").innerHTML='<div class="sub" style="padding:30px;text-align:center">Đang tải lead…</div>';
+ const ok=await loadAll(); if(!ok){ $("#app").innerHTML='<div class="msg bad">Chưa tải được dữ liệu. Kiểm tra mạng rồi tải lại trang.</div>'; return; }
+ route();
+}
+async function loadAll(){
+ const all=[]; for(let from=0;;from+=1000){ const {data,error}=await SB.from("sales_leads").select("*").order("name").range(from,from+999); if(error) return false; all.push(...data); if(data.length<1000) break; }
+ LEADS=all;
+ const st=new Date(tday()+"T00:00:00+07:00").toISOString();
+ const a=await SB.from("sales_acts").select("id,lead_id,channel,result,kind,at").eq("by",ME.id).gte("at",st); MYACTS=(a.data||[]).filter(x=>x.kind==="act");
+ const p=await SB.rpc("sales_people"); PEOPLE={}; (p.data||[]).forEach(x=>PEOPLE[x.id]=x.name);
+ return true;
+}
+function drawGoal(){ const n=MYACTS.filter(a=>a.channel==="call").length; const w=Math.min(100,Math.round(n*100/SC.CALL_GOAL));
+ $("#goal").innerHTML='Gọi '+n+'/'+SC.CALL_GOAL+'<i><s style="width:'+w+'%"></s></i>'; }
+
+// ---------- điều hướng ----------
+function route(){
+ if(!ME) return; closeSheet(); drawGoal();
+ const h=(location.hash||"#hom-nay").slice(1), [r,id]=h.split("/");
+ $$(".bot a").forEach(a=>a.classList.toggle("on",a.dataset.r===(r==="lead"&&id?"lead":r)));
+ if(r==="lead"&&id) return vDetail(decodeURIComponent(id));
+ if(r==="lead") return vList();
+ if(r==="them") return vAdd();
+ vToday();
+}
+window.addEventListener("hashchange",route);
+function rowHtml(l,showOwner){
+ const td=tday(), od=l.next_at&&l.next_at<td;
+ const bits=['<span class="pill">'+esc(SC.lab(SC.STAGES,l.stage))+'</span>'];
+ if(l.temp) bits.push('<span class="pill '+l.temp+'">'+esc(SC.lab(SC.TEMPS,l.temp))+'</span>');
+ if(l.priority) bits.push('<span class="pill pa">'+esc(l.priority)+'</span>');
+ if(l.next_at) bits.push('<span'+(od?' style="color:var(--bad);font-weight:600"':'')+'>'+esc(SC.lab(SC.NEXT,l.next_type)||"Hẹn")+' '+dmy(l.next_at)+'</span>');
+ bits.push('<span>'+esc(SC.ago(l.last_touch_at,new Date(Date.now())))+'</span>');
+ if(showOwner&&l.owner_id!==ME.id) bits.push('<span>'+(l.owner_id?esc(pname(l.owner_id)):"Kho chung")+'</span>');
+ return '<a class="lrow" href="#lead/'+encodeURIComponent(l.id)+'"><div class="nm">'+esc(l.name)+'</div><div class="mt">'+bits.join("")+'</div>'+(l.province||l.segment?'<div class="mt">'+esc([l.province,l.segment].filter(Boolean).join(" · "))+'</div>':'')+'</a>';
+}
+
+// ---------- Hôm nay ----------
+function vToday(){
+ const B=SC.buckets(LEADS,ME.id,new Date(Date.now()));
+ const mine=LEADS.filter(l=>l.owner_id===ME.id), open=mine.filter(l=>l.stage>=1&&l.stage<=5).length;
+ const G=[["overdue","Quá hạn","bad"],["today","Đến hạn hôm nay",""],["hot","Nóng chưa chạm",""],["fresh","Lead mới giao",""],["nonext","Chưa có bước tiếp",""]];
+ let h='<div class="stats"><div class="card"><b>'+MYACTS.length+'</b><span class="sub">Tương tác hôm nay</span></div><div class="card"><b>'+(B.overdue.length+B.today.length)+'</b><span class="sub">Việc cần làm</span></div><div class="card"><b>'+open+'</b><span class="sub">Lead đang theo</span></div></div>';
+ G.forEach(([k,t,c])=>{ const arr=B[k]; if(k==="nonext"&&!arr.length) return;
+  const shown=k==="nonext"?arr.slice(0,20):arr;
+  h+='<section data-bk="'+k+'"><h2 class="'+c+'">'+t+' <span class="n">'+arr.length+'</span></h2>'+(arr.length?shown.map(l=>rowHtml(l)).join("")+(shown.length<arr.length?'<a class="sub more" href="#lead">Xem tất cả trong Lead</a>':''):'<div class="empty">Không có</div>')+'</section>'; });
+ if(!mine.length) h+='<div class="card" style="margin-top:12px">Bạn chưa có lead nào. '+(isStaff()?'Vào <a href="#lead">Lead › Kho chung</a> để nhận, hoặc ':'')+'<a href="#them">thêm lead mới</a>.</div>';
+ $("#app").innerHTML=h;
+}
+
+// ---------- Danh sách ----------
+function vList(){
+ const T=isStaff()?[["mine","Của tôi"],["all","Tất cả"],["pool","Kho chung"]]:[];
+ $("#app").innerHTML=(T.length?'<div class="tabs">'+T.map(([k,t])=>'<button data-tab="'+k+'" class="'+(TAB===k?"on":"")+'">'+t+'</button>').join("")+'</div>':'')
+  +'<div class="row2" style="margin-bottom:8px"><input class="in" id="q" type="search" placeholder="Tìm tên, số điện thoại, tỉnh" value="'+esc(Q)+'" style="flex:1"><select class="in" id="stf" style="width:auto;max-width:42%"><option value="">Mọi giai đoạn</option>'+SC.STAGES.map(([k,t])=>'<option value="'+k+'"'+(STF===String(k)?" selected":"")+'>'+t+'</option>').join("")+'</select></div><div id="list"></div>';
+ $$("[data-tab]").forEach(b=>b.onclick=()=>{ TAB=b.dataset.tab; LIMIT=150; vList(); });
+ $("#q").oninput=e=>{ Q=e.target.value; LIMIT=150; drawList(); };
+ $("#stf").onchange=e=>{ STF=e.target.value; drawList(); };
+ drawList();
+}
+function drawList(){
+ const q=SC.norm(Q), qd=Q.replace(/\D/g,"");
+ let arr=LEADS.filter(l=>TAB==="mine"?l.owner_id===ME.id:TAB==="pool"?!l.owner_id:true);
+ if(STF!=="") arr=arr.filter(l=>String(l.stage)===STF);
+ if(q) arr=arr.filter(l=>SC.norm([l.name,l.province,l.area,l.contact_name,l.segment,l.crops].join(" ")).includes(q)||(qd.length>=4&&(l.phones||[]).some(p=>p.includes(qd))));
+ const td=tday(); arr.sort((a,b)=>((a.next_at||"9")<td?0:1)-((b.next_at||"9")<td?0:1)||String(a.next_at||"9").localeCompare(String(b.next_at||"9"))||String(a.name).localeCompare(String(b.name),"vi"));
+ $("#list").innerHTML='<div class="sub" style="margin:0 2px 6px">'+arr.length+' lead</div>'+(arr.length?arr.slice(0,LIMIT).map(l=>rowHtml(l,TAB!=="mine")).join(""):'<div class="empty">Không có lead phù hợp</div>')
+  +(arr.length>LIMIT?'<button class="btn full" id="bMore">Xem thêm</button>':'');
+ if($("#bMore")) $("#bMore").onclick=()=>{ LIMIT+=150; drawList(); };
+}
+
+// ---------- Chi tiết ----------
+async function vDetail(id){
+ let l=lead(id);
+ if(!l){ const {data}=await SB.from("sales_leads").select("*").eq("id",id).maybeSingle(); if(data){ LEADS.push(data); l=data; } }
+ if(!l){ $("#app").innerHTML='<div class="msg bad">Không tìm thấy lead này hoặc bạn không có quyền xem.</div><a class="btn" href="#lead">Về danh sách</a>'; return; }
+ const ph=phonesOf(l), p0=ph[0], email=(l.contact_email||(/@/.test(l.org_email_web||"")?(l.org_email_web.match(/[^\s,;]+@[^\s,;]+/)||[])[0]:"")||"");
+ const dir=l.lat!=null?"https://www.google.com/maps/dir/?api=1&destination="+l.lat+","+l.lng:(l.address?"https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(l.address+(l.province?", "+l.province:"")):"");
+ const td=tday(), od=l.next_at&&l.next_at<td, mine=l.owner_id===ME.id;
+ const btn=(idA,ic,t,href,ext)=>href?'<a class="btn" id="'+idA+'" href="'+esc(href)+'"'+(ext?' target="_blank" rel="noopener"':'')+'><span>'+ic+'</span>'+t+'</a>':'<a class="btn" id="'+idA+'" aria-disabled="true" role="link"><span>'+ic+'</span>'+t+'</a>';
+ const kv=[["Người liên hệ",[l.contact_name,l.contact_title].filter(Boolean).join(", ")],["Số điện thoại",ph.join(", ")],["Email/Web",[l.contact_email,l.org_email_web].filter(Boolean).join(" · ")],["Loại hình",[l.segment,l.org_type].filter(Boolean).join(" · ")],["Cây trồng",l.crops],["Quy mô",l.scale],["Địa chỉ",[l.address,l.area,l.province].filter(Boolean).join(", ")],["MST",l.tax_id],["Dấu hiệu nhu cầu",l.need_signal],["Nên chào",l.offer],["Cách tiếp cận",l.approach],["Nhu cầu đã ghi",(l.needs||[]).map(k=>SC.lab(SC.NEEDS,k)).join(", ")+(l.need_note?" · "+l.need_note:"")],["Khách hiện có",l.is_customer],["Phụ trách",l.owner_id?pname(l.owner_id):"Kho chung"],["Nguồn",l.source]].filter(x=>x[1]);
+ $("#app").innerHTML='<a href="#lead" class="sub" style="text-decoration:none">‹ Danh sách</a>'
+  +'<h1 style="font-size:19px;margin:6px 0 4px;overflow-wrap:anywhere">'+esc(l.name)+'</h1>'
+  +'<div class="chips" style="gap:4px"><span class="pill">'+esc(SC.lab(SC.STAGES,l.stage))+'</span>'+(l.temp?'<span class="pill '+l.temp+'">'+esc(SC.lab(SC.TEMPS,l.temp))+'</span>':'')+(l.fit?'<span class="pill">Tiềm năng '+esc(SC.lab(SC.FITS,l.fit).toLowerCase())+'</span>':'')+(l.priority?'<span class="pill pa">Ưu tiên '+esc(l.priority)+'</span>':'')+'<span class="pill">'+l.touch_count+' lần chạm · '+esc(SC.ago(l.last_touch_at,new Date(Date.now())))+'</span></div>'
+  +'<div class="acts">'+btn("bCall","✆","Gọi",p0?SC.telHref(p0):"")+btn("bZalo","💬","Zalo",p0?SC.zaloHref(p0):"",1)+btn("bMail","✉","Email",email?"mailto:"+email:"")+btn("bDir","➤","Chỉ đường",dir,1)+'</div>'
+  +(!l.owner_id&&isStaff()?'<button class="btn full" id="bTake" style="margin-bottom:8px">Nhận lead này</button>':'')
+  +'<button class="btn pri full" id="bLog">Ghi tương tác</button>'
+  +'<div class="card next'+(od?" od":"")+'">'+(l.next_at||l.next_type?'<b>Bước tiếp: '+esc(SC.lab(SC.NEXT,l.next_type)||"Liên hệ lại")+(l.next_at?' · '+dmy(l.next_at)+(od?' (quá hạn)':l.next_at===td?' (hôm nay)':''):'')+'</b>'+(l.next_note?'<div class="sub">'+esc(l.next_note)+'</div>':''):'<span class="sub">Chưa có bước tiếp. Ghi tương tác để hẹn lần sau.</span>')+'</div>'
+  +(l.stage===0?'<div class="msg warn">Lead này chưa có cách liên hệ. Tìm được số hoặc email thì bấm Sửa liên hệ.</div>':'')
+  +'<div class="card"><div class="kv">'+kv.map(([k,v])=>'<div>'+k+'</div><div>'+esc(v)+'</div>').join("")+'</div>'
+  +(l.source_url?'<div style="margin-top:6px"><a class="sub" href="'+esc(l.source_url)+'" target="_blank" rel="noopener">Nguồn thông tin ›</a></div>':'')
+  +(mine||isStaff()?'<button class="btn" id="bEdit" style="margin-top:8px">Sửa liên hệ</button><div id="edit"></div>':'')+'</div>'
+  +'<h2>Dòng thời gian</h2><div class="tl" id="tl"><div class="sub">Đang tải…</div></div>';
+ if(p0){ $("#bCall").addEventListener("click",()=>{ CALL={lead:l.id,ch:"call",left:null}; }); $("#bZalo").addEventListener("click",()=>{ CALL={lead:l.id,ch:"zalo",left:null}; }); }
+ $$('[aria-disabled=true]').forEach(a=>a.addEventListener("click",e=>{ e.preventDefault(); toast(a.id==="bCall"||a.id==="bZalo"?"Lead chưa có số điện thoại":a.id==="bMail"?"Lead chưa có email":"Lead chưa có địa chỉ"); }));
+ $("#bLog").onclick=()=>openSheet(l.id);
+ if($("#bTake")) $("#bTake").onclick=async()=>{ const {error}=await SB.from("sales_leads").update({owner_id:ME.id}).eq("id",l.id).is("owner_id",null); if(error){ toast("Chưa nhận được, thử lại"); return; } await refreshLead(l.id); toast("Đã nhận lead"); route(); };
+ if($("#bEdit")) $("#bEdit").onclick=()=>editForm(l);
+ drawTimeline(l);
+}
+function editForm(l){
+ const F=[["contact_name","Người liên hệ"],["contact_title","Chức vụ"],["contact_phone","Số điện thoại"],["contact_zalo","Zalo (nếu khác)"],["contact_email","Email"],["address","Địa chỉ"]];
+ $("#edit").innerHTML='<div style="margin-top:10px">'+F.map(([k,t])=>'<div class="f"><label for="e_'+k+'">'+t+'</label><input class="in" id="e_'+k+'" value="'+esc(l[k]||"")+'"></div>').join("")+'<button class="btn pri" id="eSave">Lưu</button> <span class="sub" id="eMsg"></span></div>';
+ $("#bEdit").style.display="none";
+ $("#eSave").onclick=async()=>{ const p={}; F.forEach(([k])=>{ const v=$("#e_"+k).value.trim(); p[k]=v||null; });
+  if(l.stage===0&&(SC.normPhones([p.contact_phone,p.contact_zalo].join(",")).length||p.contact_email)) p.stage=1;
+  $("#eSave").disabled=true; const {error}=await SB.from("sales_leads").update(p).eq("id",l.id); $("#eSave").disabled=false;
+  if(error){ $("#eMsg").textContent="Chưa lưu được: "+error.message; return; } await refreshLead(l.id); toast("Đã lưu"); route(); };
+}
+async function drawTimeline(l){
+ const {data,error}=await SB.from("sales_acts").select("*").eq("lead_id",l.id).order("at",{ascending:false});
+ if(!$("#tl")) return;
+ if(error){ $("#tl").innerHTML='<div class="sub">Chưa tải được lịch sử.</div>'; return; }
+ $("#tl").innerHTML=(data||[]).length?data.map(a=>actHtml(a,l)).join(""):'<div class="empty">Chưa có tương tác nào.</div>';
+}
+function actHtml(a,l){
+ const when=new Date(Date.parse(a.at)+7*36e5).toISOString(), w=when.slice(8,10)+"/"+when.slice(5,7)+" "+when.slice(11,16);
+ if(a.kind==="assign") return '<div class="ti"><div class="when">'+w+'</div>Giao cho '+esc(pname(a.note)||"người phụ trách")+'</div>';
+ if(a.kind==="claim") return '<div class="ti"><div class="when">'+w+'</div>Nhận từ kho chung (quản lý duyệt)</div>';
+ const t=[SC.lab(SC.CHANNELS,a.channel),SC.lab(SC.RESULTS,a.result)].filter(Boolean).join(" · ")+(a.minutes?" · "+a.minutes+" phút":"");
+ const tags=[a.temp_after?'<span class="pill '+a.temp_after+'">'+SC.lab(SC.TEMPS,a.temp_after)+'</span>':'',a.fit_after?'<span class="pill">Tiềm năng '+SC.lab(SC.FITS,a.fit_after).toLowerCase()+'</span>':'',a.stage_after!=null?'<span class="pill">'+SC.lab(SC.STAGES,a.stage_after)+'</span>':'',(a.needs_after||[]).map(k=>'<span class="pill">'+SC.lab(SC.NEEDS,k)+'</span>').join("")].join("");
+ let geo=""; if(a.lat!=null){ geo='<div class="sub">📍 <a href="https://www.google.com/maps?q='+a.lat+','+a.lng+'" target="_blank" rel="noopener">Xem vị trí</a>'+(l&&l.lat!=null&&(l.lat!==a.lat||l.lng!==a.lng)?' · cách vị trí khách khoảng '+Math.round(SC.distM(l.lat,l.lng,a.lat,a.lng)/10)*10+' m':'')+'</div>'; }
+ else if(a.channel==="meet") geo='<div class="sub">Không có vị trí</div>';
+ const ph=(a.photos||[]).length?'<div class="ph" data-photos="'+esc((a.photos||[]).join("|"))+'"></div>':'';
+ return '<div class="ti"><div class="when">'+w+' · '+esc(pname(a.by)||"")+'</div><b>'+esc(t)+'</b>'+(tags?'<div class="chips" style="gap:4px;margin-top:3px">'+tags+'</div>':'')+(a.note?'<div>'+esc(a.note)+'</div>':'')
+  +(a.next_at||a.next_type?'<div class="sub">Hẹn: '+esc(SC.lab(SC.NEXT,a.next_type)||"liên hệ")+(a.next_at?' '+dmy(a.next_at):'')+(a.next_note?' · '+esc(a.next_note):'')+'</div>':'')+geo+ph+'</div>';
+}
+async function refreshLead(id){ const {data}=await SB.from("sales_leads").select("*").eq("id",id).single(); if(data){ const i=LEADS.findIndex(x=>x.id===id); if(i>=0) LEADS[i]=data; else LEADS.push(data); } return data; }
+
+// ---------- Ghi tương tác ----------
+async function saveAct(leadId,act){
+ const row=Object.assign({lead_id:leadId,kind:"act"},act);
+ const {error}=await SB.from("sales_acts").insert(row);
+ if(error) return false;
+ MYACTS.push({lead_id:leadId,channel:row.channel,result:row.result,kind:"act",at:new Date().toISOString()});
+ await refreshLead(leadId); return true;
+}
+window.saveAct=saveAct;
+function chips(group,arr,sel,cls){ return '<div class="chips">'+arr.map(([k,t])=>'<button type="button" class="chip'+(cls?" "+k:"")+(sel===k||(Array.isArray(sel)&&sel.includes(k))?" on":"")+'" data-'+group+'="'+k+'">'+esc(t)+'</button>').join("")+'</div>'; }
+function openSheet(leadId,preset){
+ const l=lead(leadId); if(!l) return; preset=preset||{};
+ SH={lead:leadId,ch:preset.ch||null,rs:preset.rs||null,tp:l.temp||null,ft:l.fit||null,nd:[...(l.needs||[])],st:null,nt:null,nx:null,lost:null};
+ const sheet=$("#sheet");
+ sheet.innerHTML='<div class="sh-h"><b>'+esc(l.name)+'</b><button class="btn" id="lgX" aria-label="Đóng" style="padding:6px 10px">✕</button></div>'
+  +'<div class="grp"><div>Kênh *</div>'+chips("ch",SC.CHANNELS,SH.ch)+'</div>'
+  +'<div class="grp"><div>Kết quả *</div>'+chips("rs",SC.RESULTS,SH.rs)+'</div>'
+  +'<div class="grp" id="gLost" style="display:none"><div>Lý do không theo</div>'+chips("lost",SC.LOST.map(x=>[x,x]),null)+'</div>'
+  +'<div class="grp"><div>Khách đang</div>'+chips("tp",SC.TEMPS,SH.tp,1)+'</div>'
+  +'<div class="grp"><div>Tiềm năng</div>'+chips("ft",SC.FITS,SH.ft)+'</div>'
+  +'<div class="grp"><div>Nhu cầu</div>'+chips("nd",SC.NEEDS,SH.nd)+'</div>'
+  +'<div class="grp"><div>Chuyển giai đoạn (nếu có)</div>'+chips("st",SC.STAGES.filter(s=>s[0]>=3&&s[0]<=6),null)+'</div>'
+  +'<div class="grp"><div>Ghi chú</div><textarea class="in" id="lgNote" placeholder="Khách nói gì, cần gì"></textarea></div>'
+  +'<div class="grp"><div>Bước tiếp</div>'+chips("nt",SC.NEXT,null)+'<div class="row2" style="margin-top:6px">'+chips("nx",[["1d","Mai"],["3d","3 ngày"],["1w","1 tuần"]],null)+'<input class="in" type="date" id="lgDate" style="width:auto;flex:1" aria-label="Ngày hẹn"></div></div>'
+  +'<div class="grp row2"><div style="margin:0">Thời gian (phút)</div><input class="in" id="lgMin" type="number" min="0" max="600" inputmode="numeric" style="width:90px" value="'+(preset.min!=null?preset.min:"")+'"></div>'
+  +'<div id="lgMsg"></div><button class="btn pri full" id="lgSave">Lưu</button>';
+ sheet.classList.add("open"); $("#sheetBg").classList.add("on");
+ const upd=()=>{ $("#lgSave").disabled=!(SH.ch&&SH.rs); $("#gLost").style.display=SH.rs==="refused"?"":"none"; };
+ sheet.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{
+  const g=Object.keys(b.dataset)[0], v=b.dataset[g];
+  if(g==="nd"){ SH.nd=SH.nd.includes(v)?SH.nd.filter(x=>x!==v):[...SH.nd,v]; b.classList.toggle("on"); return; }
+  const req=g==="ch"||g==="rs", cur=SH[g];
+  SH[g]=(cur===v&&!req)?null:v;
+  sheet.querySelectorAll('[data-'+g+']').forEach(x=>x.classList.toggle("on",x.dataset[g]===SH[g]));
+  if(g==="nx"){ $("#lgDate").value=SH.nx?SC.nextPreset(SH.nx,tday()):""; }
+  upd(); });
+ $("#lgDate").onchange=()=>{ SH.nx=null; sheet.querySelectorAll("[data-nx]").forEach(x=>x.classList.remove("on")); };
+ $("#lgX").onclick=closeSheet; $("#sheetBg").onclick=closeSheet;
+ $("#lgSave").onclick=async()=>{
+  const note=$("#lgNote").value.trim(), m=$("#lgMin").value;
+  const act={channel:SH.ch,result:SH.rs,note:(SH.lost?"Lý do: "+SH.lost+(note?". ":""):"")+note||null,minutes:m===""?null:Math.max(0,parseInt(m,10)||0),
+   temp_after:SH.tp,fit_after:SH.ft,needs_after:SH.nd,stage_after:SH.st==null?null:+SH.st,next_type:SH.nt,next_at:$("#lgDate").value||null};
+  if(!act.note) act.note=null;
+  $("#lgSave").disabled=true; $("#lgSave").textContent="Đang lưu…";
+  const ok=await saveAct(SH.lead,act);
+  $("#lgSave").textContent="Lưu"; $("#lgSave").disabled=false;
+  if(!ok){ $("#lgMsg").innerHTML='<div class="msg bad">Chưa lưu được. Kiểm tra mạng rồi bấm Lưu lại, ghi chú vẫn còn.</div>'; return; }
+  closeSheet(); toast("Đã lưu tương tác"); route(); };
+ upd();
+}
+function closeSheet(){ $("#sheet").classList.remove("open"); $("#sheetBg").classList.remove("on"); SH=null; }
+document.addEventListener("visibilitychange",()=>{
+ if(!CALL) return;
+ if(document.visibilityState==="hidden"){ if(!CALL.left) CALL.left=Date.now(); return; }
+ if(!CALL.left) return;
+ const c=CALL; CALL=null; const m=SC.callMinutes(c.left,Date.now());
+ openSheet(c.lead,{ch:c.ch,min:m==null?"":m,rs:m===0?"noans":null});
+});
+
+// ---------- Thêm lead ----------
+function vAdd(){
+ $("#app").innerHTML='<h2 style="margin-top:4px">Thêm lead</h2><div class="card"><form id="nf">'
+  +'<div class="f"><label for="nName">Tên tổ chức hoặc người *</label><input class="in" id="nName" required></div>'
+  +'<div class="f"><label for="nContact">Người liên hệ</label><input class="in" id="nContact"></div>'
+  +'<div class="f"><label for="nPhone">Số điện thoại / Zalo</label><input class="in" id="nPhone" type="tel" inputmode="tel"></div>'
+  +'<div class="f"><label for="nEmail">Email</label><input class="in" id="nEmail" type="email"></div>'
+  +'<div class="sub" style="margin:-4px 0 10px">Cần tên và ít nhất số điện thoại hoặc email.</div>'
+  +'<div class="f"><label for="nProv">Tỉnh</label><input class="in" id="nProv"></div>'
+  +'<div class="f"><label for="nAddr">Địa chỉ</label><input class="in" id="nAddr"></div>'
+  +'<div class="f"><label for="nTax">Mã số thuế (nếu có)</label><input class="in" id="nTax" inputmode="numeric"></div>'
+  +'<div class="f"><label for="nNeed">Nhu cầu, ghi chú</label><textarea class="in" id="nNeed"></textarea></div>'
+  +(!isStaff()?'<div class="f"><label for="nRef">Người giới thiệu (nếu có)</label><input class="in" id="nRef"></div>':'')
+  +'<div id="nMsg"></div><button class="btn pri full" id="nSave" type="submit" disabled>Lưu lead</button></form></div>';
+ const v=id=>($(id)?$(id).value.trim():"");
+ const chk=()=>{ $("#nSave").disabled=!(v("#nName")&&(SC.normPhones(v("#nPhone")).length||/@/.test(v("#nEmail")))); };
+ ["#nName","#nPhone","#nEmail"].forEach(s=>$(s).addEventListener("input",()=>{ chk(); $("#nMsg").innerHTML=""; }));
+ $("#nf").addEventListener("submit",async e=>{ e.preventDefault(); if($("#nSave").disabled) return;
+  $("#nSave").disabled=true; $("#nMsg").innerHTML='<div class="sub">Đang kiểm tra trùng…</div>';
+  const d=await SB.rpc("sales_dup",{p_phone:v("#nPhone"),p_tax:v("#nTax"),p_name:v("#nName")});
+  if(d.error){ $("#nMsg").innerHTML='<div class="msg bad">Chưa kiểm tra được trùng. Thử lại.</div>'; chk(); return; }
+  const r=String(d.data||"none");
+  if(r!=="none"){
+   if(r.startsWith("pool:")){ const pid=r.slice(5);
+    $("#nMsg").innerHTML='<div class="msg warn">Lead đã có trong hệ thống, đang ở kho chung chưa ai phụ trách.</div><button type="button" class="btn full" id="nClaim" style="margin-bottom:8px">'+(isStaff()?"Nhận lead này":"Gửi yêu cầu nhận")+'</button>';
+    $("#nClaim").onclick=async()=>{ $("#nClaim").disabled=true;
+     if(isStaff()){ const {error}=await SB.from("sales_leads").update({owner_id:ME.id}).eq("id",pid).is("owner_id",null); if(error){ $("#nClaim").disabled=false; toast("Chưa nhận được"); return; } await refreshLead(pid); location.hash="#lead/"+pid; return; }
+     const {error}=await SB.rpc("sales_claim",{p_lead:pid});
+     $("#nMsg").innerHTML=error?'<div class="msg bad">Chưa gửi được yêu cầu: '+esc(error.message)+'</div>':'<div class="msg ok">Đã gửi yêu cầu. Quản lý duyệt xong, lead sẽ hiện trong danh sách của bạn.</div>'; };
+   } else if(r==="mine"){ $("#nMsg").innerHTML='<div class="msg warn">Lead đã có trong hệ thống, đang nằm trong danh sách của bạn.</div>'; }
+   else { $("#nMsg").innerHTML='<div class="msg warn">Lead đã có trong hệ thống và đã có người phụ trách. Báo quản lý nếu bạn đang làm việc với khách này.</div>'; }
+   chk(); return; }
+  const ph=v("#nPhone");
+  const row={name:v("#nName"),contact_name:v("#nContact")||null,contact_phone:ph||null,contact_email:v("#nEmail")||null,province:v("#nProv")||null,address:v("#nAddr")||null,
+   tax_id:v("#nTax")||null,need_note:v("#nNeed")||null,referrer:v("#nRef")||null,stage:1,owner_id:ME.id,source:isStaff()?"Sales tự thêm":"Cộng tác viên thêm"};
+  const {data,error}=await SB.from("sales_leads").insert(row).select().single();
+  if(error||!data){ $("#nMsg").innerHTML='<div class="msg bad">Chưa lưu được'+(error?": "+esc(error.message):"")+'</div>'; chk(); return; }
+  LEADS.push(data); toast("Đã thêm lead"); location.hash="#lead/"+data.id; });
+}
+
+$("#meBtn").onclick=()=>{ if(confirmOut()) logout(); };
+function confirmOut(){ const s=$("#meBtn"); if(s.dataset.ask){ delete s.dataset.ask; return true; } s.dataset.ask=1; const t=s.textContent; s.textContent="Bấm lần nữa để đăng xuất"; setTimeout(()=>{ if(s.dataset.ask){ delete s.dataset.ask; s.textContent=t; } },3000); return false; }
+(function boot(){
+ if(!window.supabase){ $("#app").innerHTML='<div class="msg bad">Không tải được thư viện. Kiểm tra mạng rồi tải lại trang.</div>'; return; }
+ SB=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
+ start();
+})();
+</script>
+</body>
+</html>
