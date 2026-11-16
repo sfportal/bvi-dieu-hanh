@@ -14,7 +14,7 @@ R('<div class="me"><span class="lbl sub">Tôi là</span><select id="meSel" aria-
 R('$("#meSel").addEventListener("change",e=>{me=e.target.value||null;saveUi();render();});','$("#meBtn").addEventListener("click",()=>{ if(PROFILE) openMe(); });')
 R('try{const s=JSON.parse(localStorage.getItem("bvi-ui")||"{}"); if(s.me)me=s.me;','try{const s=JSON.parse(localStorage.getItem("bvi-ui")||"{}");')
 # libraries
-R('<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>','<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>')
+R('<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>','<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>\n<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>\n<script src="sales-core.js"></script>')
 # replace claude-based boot + data helpers with core
 a=s.index('/* ---------- db ---------- */'); b=s.index('const stamp=()=>')
 s=s[:a]+core+'\n'+s[b:]
@@ -28,13 +28,13 @@ R('''<input type="checkbox" data-pay="'+i+'"'+(p.paid?" checked":"")+'>''','''<i
 R('''(pm.paid?'<span class="pill good">Đã thu</span>':ok?''','''(pm.paid&&canFin()?'<span class="pill good">Đã thu</span>':ok?''')
 # routes: accounts page
 R('ui.view=VIEWS.some(v=>v[0]===h)||h==="khach"?h:"tong-quan";','ui.view=VIEWS.some(v=>v[0]===h)||h==="khach"||h==="tai-khoan"||h==="nhat-ky"||h==="api"||h==="thu-chi"||h==="doi-soat"||h==="nhu-cau"?h:"tong-quan";')
-R('  else if(v==="thong-ke") el.innerHTML=vStats();','  else if(v==="thong-ke") el.innerHTML=vStats();\n  else if(v==="tai-khoan") el.innerHTML=vAccounts();\n  else if(v==="nhat-ky") el.innerHTML=vLog();\n  else if(v==="api") el.innerHTML=vApi();\n  else if(v==="thu-chi") el.innerHTML=vExp();\n  else if(v==="doi-soat") el.innerHTML=vRecon();\n  else if(v==="nhu-cau") el.innerHTML=vLeads();')
+R('  else if(v==="thong-ke") el.innerHTML=vStats();','  else if(v==="thong-ke") el.innerHTML=vStats();\n  else if(v==="tai-khoan") el.innerHTML=vAccounts();\n  else if(v==="nhat-ky") el.innerHTML=vLog();\n  else if(v==="api") el.innerHTML=vApi();\n  else if(v==="thu-chi") el.innerHTML=vExp();\n  else if(v==="doi-soat") el.innerHTML=vRecon();\n  else if(v==="nhu-cau") el.innerHTML=vSales();')
 R('  if(ui.view==="thong-ke") bindStats(A);','''  if(ui.view==="thong-ke") bindStats(A);
   if(ui.view==="nhat-ky") bindLog(A);
   if(ui.view==="api") bindApi(A);
   if(ui.view==="thu-chi") bindExp(A);
   if(ui.view==="doi-soat") bindRecon(A);
-  if(ui.view==="nhu-cau") bindLeads(A);
+  if(ui.view==="nhu-cau") bindSales(A);
   if(ui.view==="tai-khoan"){ $("#accAdd")?.addEventListener("click",()=>openAcc(null)); $("#accBulk")?.addEventListener("click",openBulk); A.querySelectorAll("[data-acc]").forEach(r=>r.addEventListener("click",()=>openAcc(r.dataset.acc))); $("#impJson")?.addEventListener("change",e=>{ const f=e.target.files[0]; e.target.value=""; if(f) importJson(f); }); }''')
 # texts that referenced claude.ai
 s=s.replace('Hãy mở trang khi đã đăng nhập claude.ai; nếu vẫn vậy, tải lại trang.','Tải lại trang.')

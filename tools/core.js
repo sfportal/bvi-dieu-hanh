@@ -3,7 +3,7 @@ window.__APP=true;
 const SB_URL="https://pkckduidwfcncipwzdxa.supabase.co", SB_KEY="sb_publishable_ZHvz0flMvyIsxmT-tKS_Hw_q_Vz_7RF";
 const COLS=["zones","people","tasks","contracts","daily","units","events","leaves","faqs","supports","contacts"];
 let SB=null, PROFILE=null, FIN={}, RAW={};
-const ROLE_L={owner:"Owner",manager:"Quản lý",staff:"Nhân viên",viewer:"Chỉ xem"};
+const ROLE_L={owner:"Owner",manager:"Quản lý",staff:"Nhân viên",viewer:"Chỉ xem",ctv:"Cộng tác viên"};
 function canFin(){ return !!PROFILE&&(PROFILE.role==="owner"||PROFILE.can_finance); }
 function isOwner(){ return PROFILE?.role==="owner"; }
 function canLeaveOk(){ return isOwner()||!!(typeof me!=="undefined"&&me&&S.people[me]?.canLeave===true); }
@@ -93,6 +93,7 @@ async function startSession(){
   const {data:prof,error}=await SB.from("profiles").select("*").eq("id",session.user.id).maybeSingle();
   if(error||!prof){ await SB.auth.signOut(); showLogin("Tài khoản chưa được cấp quyền. Liên hệ owner."); return; }
   if(!prof.active){ await SB.auth.signOut(); showLogin("Tài khoản đã bị khóa."); return; }
+  if(prof.role==="ctv"){ location.replace("sales.html"); return; } // cộng tác viên chỉ dùng trang sales
   PROFILE=prof; if(prof.must_change_pw){ showChangePw(true); return; }
   logEv("open"); if(!window._seenT){ window._seenT=setInterval(()=>{ if(document.visibilityState==="visible") logEv("open"); },15*60e3); document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") logEv("open"); }); } userCan=["owner","manager"].includes(prof.role); me=prof.person_id||null; viewerName=prof.name||prof.email;
   if(prof.role!=="viewer") assetsNs=makeAssets();
@@ -262,7 +263,7 @@ function bindLog(A){
   let qt=null; $("#lgQ")?.addEventListener("input",e=>{ LG.q=e.target.value; clearTimeout(qt); qt=setTimeout(()=>{ re(); const i=$("#lgQ"); if(i){ i.focus(); i.setSelectionRange(i.value.length,i.value.length); } },350); });
   $("#lgMore")?.addEventListener("click",()=>{ LG.n+=300; render(); });
   A.querySelectorAll("[data-lgw]").forEach(r=>r.addEventListener("click",()=>{ LG.who=LG.who===r.dataset.lgw?"":r.dataset.lgw; re(); }));
-  const OP={zones:openZone,tasks:id=>openTask(id),contracts:openContract,events:openEvent,units:openUnit,people:openPerson,faqs:openFaq,leaves:openLeave,supports:id=>openSupport(id),contacts:id=>(S.contacts[id]?.type==="lead"?openLead(id):openContact(id))};
+  const OP={zones:openZone,tasks:id=>openTask(id),contracts:openContract,events:openEvent,units:openUnit,people:openPerson,faqs:openFaq,leaves:openLeave,supports:id=>openSupport(id),contacts:id=>(S.contacts[id]?.type==="lead"?(location.hash="nhu-cau"):openContact(id))};
   A.querySelectorAll("[data-lgo]").forEach(a=>a.addEventListener("click",e=>{ e.preventDefault(); const [c,id]=a.dataset.lgo.split("|"); const f=OP[c]; if(f) f(id); else toast("Mục này không mở chi tiết được"); }));
 }
 /* ---------- API cho đối tác (chỉ owner) ---------- */
@@ -804,151 +805,100 @@ function bindRecon(A){
   A.querySelectorAll("[data-rca],[data-rcu]").forEach(b=>b.addEventListener("click",async()=>{ const i=find(b.dataset.rca||b.dataset.rcu); if(!i) return; b.disabled=true; if(await rcSetAck(i,!!b.dataset.rca)) toast(b.dataset.rca?"Đã ghi nhận đã kiểm":"Đã bỏ đánh dấu"); }));
 }
 
-/* ---------- Nhu cầu khách hàng: lưu trong docs loại contacts với type "lead" (id bắt đầu bằng ld) ---------- */
-const LD_ST=[["new","Mới","warn"],["contact","Đã liên hệ",""],["quote","Đã báo giá",""],["won","Đã ký","good"],["lost","Không theo","bad"]];
-const LD_STL=Object.fromEntries(LD_ST.map(x=>[x[0],x[1]]));
-const LD_NEED=["Mã số vùng trồng","Cơ sở đóng gói","FarmBase, truy xuất nguồn gốc","Tem QR","Tư vấn kỹ thuật","Khác"];
-const LD_SRC=["Người giới thiệu","Facebook","Zalo","Website","Hội thảo, sự kiện","Gọi điện đến","Đối tác","Hệ thống khác (form, API)","Khác"];
-let LDF={q:"",st:"open",src:"",own:"",late:false};
-const isLead=c=>c&&c.type==="lead";
-const ldAll=()=>Object.entries(S.contacts).filter(([,c])=>isLead(c));
-const ldPhone=s=>String(s||"").replace(/\D/g,"").replace(/^84/,"0").slice(-9);
-function ldDups(id,c){ const p=ldPhone(c.phone), e=(c.email||"").trim().toLowerCase(); if(!p&&!e) return []; return ldAll().filter(([k,x])=>k!==id&&((p&&p.length>=9&&ldPhone(x.phone)===p)||(e&&(x.email||"").trim().toLowerCase()===e))); }
-const ldCanEdit=()=>!!PROFILE&&PROFILE.role!=="viewer";
-function ldPeople(){ return Object.entries(S.people).filter(([,p])=>p.active!==false).sort((a,b)=>(a[1].name||"").localeCompare(b[1].name||"","vi")); }
-function vLeads(){
-  const t=todayStr(), all=ldAll();
-  const late=([,c])=>c.next&&c.next<t&&!["won","lost"].includes(c.status||"new");
-  const L=all.filter(r=>{ const c=r[1], s=c.status||"new";
-    if(LDF.st==="open"&&["won","lost"].includes(s)) return false; if(LDF.st&&LDF.st!=="open"&&s!==LDF.st) return false;
-    if(LDF.src&&c.source!==LDF.src) return false; if(LDF.own==="_none"?c.owner:LDF.own&&c.owner!==LDF.own) return false; if(LDF.late&&!late(r)) return false;
-    if(LDF.q){ const n=norm(LDF.q); if(!norm([c.name,c.org,c.phone,c.email,c.province,c.area,c.crop,c.detail,c.referrer,c.sourceNote,c.note,(c.needs||[]).join(" ")].join(" ")).includes(n)) return false; }
-    return true; }).sort((a,b)=>(late(b)-late(a))||((a[1].status||"new")==="new"?0:1)-((b[1].status||"new")==="new"?0:1)||(b[1].createdAt||"").localeCompare(a[1].createdAt||""));
-  const cnt=s=>all.filter(([,c])=>(c.status||"new")===s).length, nLate=all.filter(late).length;
-  let h='<div class="row between" style="gap:8px;align-items:flex-end"><div><h1>Nhu cầu khách hàng</h1><div class="sub">Khách quan tâm dịch vụ: thông tin liên hệ, nhu cầu thực tế, nguồn và người giới thiệu. Nhập tay, dán từ bảng tính, hoặc hệ thống khác gửi qua API.</div></div>'
-   +(ldCanEdit()?'<div class="row" style="gap:6px"><button class="btn" id="ldImp">Nhập từ bảng tính</button><button class="btn pri" id="ldAdd">+ Nhu cầu</button></div>':'')+'</div>';
-  const tile=(v,l,cls,k,on)=>'<button class="tile '+cls+'" data-ldst="'+k+'"'+(on?' style="outline:2px solid var(--brand)"':'')+'><span class="v">'+v+'</span><span class="l">'+l+'</span></button>';
-  h+='<div class="grid kpis" style="margin-top:12px">'+tile(cnt("new"),"Mới, chưa liên hệ",cnt("new")?"warn":"good","new",LDF.st==="new"&&!LDF.late)
-    +tile(cnt("contact")+cnt("quote"),"Đang chăm sóc","","open",LDF.st==="open"&&!LDF.late)+tile(nLate,"Quá hẹn liên hệ lại",nLate?"bad":"good","late",LDF.late)
-    +tile(cnt("won"),"Đã ký","good","won",LDF.st==="won")+tile(all.length,"Tổng nhu cầu","","",LDF.st===""&&!LDF.late)+'</div>';
-  const srcs=[...new Set([...LD_SRC,...all.map(([,c])=>c.source).filter(Boolean)])];
-  h+='<div class="filters" style="margin-top:10px"><input id="ldq" placeholder="Tìm tên, đơn vị, SĐT, nhu cầu, người giới thiệu" value="'+esc(LDF.q)+'" style="flex:1;min-width:180px">'
-    +'<select id="ldst" aria-label="Trạng thái"><option value="open"'+(LDF.st==="open"?" selected":"")+'>Chưa chốt</option><option value=""'+(LDF.st===""?" selected":"")+'>Mọi trạng thái</option>'+LD_ST.map(([k,l])=>'<option value="'+k+'"'+(LDF.st===k?" selected":"")+'>'+l+'</option>').join("")+'</select>'
-    +'<select id="ldsrc" aria-label="Nguồn"><option value="">Mọi nguồn</option>'+srcs.map(s=>'<option'+(LDF.src===s?" selected":"")+'>'+esc(s)+'</option>').join("")+'</select>'
-    +'<select id="ldown" aria-label="Phụ trách"><option value="">Mọi người phụ trách</option><option value="_none"'+(LDF.own==="_none"?" selected":"")+'>Chưa giao</option>'+ldPeople().map(([k,p])=>'<option value="'+k+'"'+(LDF.own===k?" selected":"")+'>'+esc(p.name)+'</option>').join("")+'</select></div>';
-  if(!L.length) return h+'<div class="empty" style="margin-top:10px">'+(all.length?'Không có nhu cầu khớp bộ lọc.':'Chưa có nhu cầu nào. Bấm "+ Nhu cầu" để nhập, hoặc "Nhập từ bảng tính" để dán danh sách từ form.')+'</div>';
-  h+='<div class="sub" style="margin:10px 0 6px">'+L.length+' nhu cầu</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px">';
-  h+=L.map(r=>{ const [id,c]=r, s=c.status||"new", st=LD_ST.find(x=>x[0]===s)||LD_ST[0], lt=late(r), dup=ldDups(id,c).length;
-    return '<button class="panel" data-ld="'+id+'" style="text-align:left;cursor:pointer;padding:10px 12px;border-left:4px solid var(--'+(lt?"bad":s==="new"?"warn":s==="won"?"good":"line")+')">'
-     +'<div class="row between" style="gap:6px;align-items:flex-start"><div style="min-width:0"><b style="overflow-wrap:anywhere">'+esc(c.name||c.org||"(chưa có tên)")+'</b>'+(c.org&&c.name?'<div class="sub" style="overflow-wrap:anywhere">'+esc(c.org)+'</div>':'')+'</div><span class="pill '+st[2]+'">'+st[1]+'</span></div>'
-     +((c.needs||[]).length?'<div class="row" style="flex-wrap:wrap;gap:4px;margin-top:6px">'+c.needs.map(n=>'<span class="pill">'+esc(n)+'</span>').join("")+'</div>':'')
-     +(c.detail?'<div style="margin-top:6px;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">'+esc(c.detail)+'</div>':'')
-     +'<div class="sub" style="margin-top:6px;overflow-wrap:anywhere">'+[c.crop&&esc(c.crop)+(c.ha?' '+esc(c.ha)+' ha':''),[c.area,c.province].filter(Boolean).map(esc).join(", ")].filter(Boolean).join(" · ")+'</div>'
-     +'<div class="sub" style="overflow-wrap:anywhere">Nguồn: '+esc(c.source||"chưa rõ")+(c.referrer?' · Giới thiệu: <b>'+esc(c.referrer)+'</b>':'')+'</div>'
-     +'<div class="sub">'+(c.owner?'Phụ trách: '+esc(pname(c.owner)):'<span style="color:var(--warn)">Chưa giao người phụ trách</span>')+(c.next?' · <span'+(lt?' style="color:var(--bad);font-weight:600"':'')+'>Hẹn '+dm(c.next)+'</span>':'')+(c.createdAt?' · Nhận '+dm(c.createdAt.slice(0,10)):'')+'</div>'
-     +(dup?'<div class="sub" style="color:var(--warn)">Có thể trùng với '+dup+' nhu cầu khác</div>':'')+'</button>'; }).join("");
-  return h+'</div>';
+/* ---------- Sales: dashboard quản lý, dữ liệu ở bảng sales_leads, sales_acts, sales_claims (sales.html là trang làm việc của sales) ---------- */
+let SD={st:null}, SDF={own:"",stage:"",q:"",sel:new Set(),lim:100};
+const sdMgr=()=>!!PROFILE&&["owner","manager"].includes(PROFILE.role);
+const sdOk=()=>!!PROFILE&&["owner","manager","viewer"].includes(PROFILE.role)&&typeof SC!=="undefined";
+const sdName=id=>id?((SD.people||{})[id]||"Người khác"):"Kho chung";
+async function loadSales(){
+  if(SD.st==="loading") return; SD.st="loading";
+  try{
+    const leads=[]; for(let f=0;;f+=1000){ const {data,error}=await SB.from("sales_leads").select("*").order("name").range(f,f+999); if(error) throw error; leads.push(...data); if(data.length<1000) break; }
+    const since=new Date(SC.addDays(SC.vnToday(),-7)+"T00:00:00+07:00").toISOString();
+    const [a,c,p]=await Promise.all([SB.from("sales_acts").select("*").gte("at",since).order("at",{ascending:false}).limit(5000),
+      SB.from("sales_claims").select("*").eq("status","pending").order("at"), SB.rpc("sales_people")]);
+    if(a.error) throw a.error;
+    const people={}, roles={}; (p.data||[]).forEach(x=>{ people[x.id]=x.name; roles[x.id]=x.role; });
+    SD={st:"ok",leads,acts:a.data||[],claims:c.data||[],people,roles,at:Date.now()};
+  }catch(e){ SD={st:"err",err:e.message||String(e)}; }
+  if(ui.view==="nhu-cau") softRender();
 }
-function bindLeads(A){
-  $("#ldAdd")?.addEventListener("click",()=>openLead(null));
-  $("#ldImp")?.addEventListener("click",openLeadImport);
-  A.querySelectorAll("[data-ld]").forEach(b=>b.addEventListener("click",()=>openLead(b.dataset.ld)));
-  A.querySelectorAll("[data-ldst]").forEach(b=>b.addEventListener("click",()=>{ const k=b.dataset.ldst; LDF.late=k==="late"; LDF.st=k==="late"?"open":k; render(); }));
-  $("#ldst")?.addEventListener("change",e=>{ LDF.st=e.target.value; LDF.late=false; render(); });
-  $("#ldsrc")?.addEventListener("change",e=>{ LDF.src=e.target.value; render(); });
-  $("#ldown")?.addEventListener("change",e=>{ LDF.own=e.target.value; render(); });
-  const q=$("#ldq"); q?.addEventListener("input",()=>{ LDF.q=q.value; clearTimeout(q._t); q._t=setTimeout(()=>{ render(); const n=$("#ldq"); if(n){ n.focus(); n.setSelectionRange(n.value.length,n.value.length); } },250); });
+function sdStats(){
+  const td=SC.vnToday(), t0=new Date(td+"T00:00:00+07:00").toISOString(), L=SD.leads, A=SD.acts.filter(a=>a.kind==="act");
+  const today=A.filter(a=>a.at>=t0), B=SC.buckets(L,null);
+  const ids=new Set([...L.map(l=>l.owner_id).filter(Boolean),...A.map(a=>a.by)]);
+  const rows=[...ids].map(u=>{ const mine=L.filter(l=>l.owner_id===u), open=mine.filter(l=>l.stage>=1&&l.stage<=5), ma=A.filter(a=>a.by===u);
+    const ft=mine.filter(l=>l.first_touch_at&&l.assigned_at).map(l=>(Date.parse(l.first_touch_at)-Date.parse(l.assigned_at))/36e5).filter(h=>h>=0);
+    return {u,name:sdName(u),role:SD.roles[u]||"",hold:open.length,today:ma.filter(a=>a.at>=t0).length,week:ma.length,
+      min:ma.filter(a=>a.channel==="call").reduce((s,a)=>s+(a.minutes||0),0),over:B.overdue.filter(l=>l.owner_id===u).length,hot:B.hot.filter(l=>l.owner_id===u).length,
+      ft:ft.length?Math.round(ft.reduce((s,h)=>s+h,0)/ft.length):null,last:ma[0]?.at||null}; }).sort((a,b)=>b.today-a.today||b.week-a.week||a.name.localeCompare(b.name,"vi"));
+  return {td,t0,today,B,rows,calls:today.filter(a=>a.channel==="call").length};
 }
-function openLead(id){ ui.drawer=()=>drawLead(id); drawLead(id); }
-function drawLead(id){
-  const c=id?S.contacts[id]:{type:"lead",status:"new",needs:[],source:"",owner:me||""}; if(!c){ closeDrawer(); return; }
-  const ro=!ldCanEdit(), dis=ro?" disabled":"", dups=id?ldDups(id,c):[];
-  const srcs=[...new Set([...LD_SRC,c.source].filter(Boolean))], needs=[...new Set([...LD_NEED,...(c.needs||[])])];
-  const inp=(i,l,v,ex)=>'<div class="f"><label for="'+i+'">'+l+'</label><input id="'+i+'" value="'+esc(v||"")+'"'+(ex||"")+dis+'></div>';
-  let h='<div class="dh"><h2>'+(id?"Nhu cầu khách hàng":"Thêm nhu cầu khách hàng")+'</h2><button class="btn sm" data-close>Đóng</button></div><form class="db" id="ldform">'
-   +(dups.length?'<div class="alert warn">Có thể trùng (cùng SĐT hoặc email): '+dups.map(([k,x])=>'<button type="button" class="btn sm" data-lddup="'+k+'">'+esc(x.name||x.org||k)+'</button>').join(" ")+'</div>':'')
-   +(c.via&&c.via!=="web"?'<div class="sub">Nhận từ: '+esc(c.via==="import"?"nhập bảng tính":c.via.replace(/^api:/,"API, khóa "))+'</div>':'')
-   +'<h3 style="margin:6px 0 0">Liên hệ</h3><div class="f2">'+inp("ldn","Họ tên người liên hệ",c.name)+inp("ldo","Đơn vị, HTX, công ty",c.org)
-   +inp("ldp","Số điện thoại",c.phone,' inputmode="tel"')+inp("ldz","Zalo (nếu khác số điện thoại)",c.zalo,' inputmode="tel"')+inp("lde","Email",c.email,' type="email"')
-   +inp("ldpr","Tỉnh",c.province)+inp("lda","Địa chỉ, xã",c.area)+'</div>'
-   +'<h3 style="margin:10px 0 0">Nhu cầu thực tế</h3><div class="f"><label>Quan tâm</label><div class="row" style="flex-wrap:wrap;gap:4px 14px">'+needs.map(n=>'<label style="display:flex;gap:6px;align-items:center"><input type="checkbox" name="ldneed" value="'+esc(n)+'"'+((c.needs||[]).includes(n)?" checked":"")+dis+'>'+esc(n)+'</label>').join("")+'</div></div>'
-   +'<div class="f2">'+inp("ldc","Cây trồng",c.crop,' placeholder="Ví dụ: sầu riêng"')+inp("ldh","Diện tích (ha)",c.ha,' inputmode="decimal"')+'</div>'
-   +'<div class="f"><label for="ldd">Mô tả nhu cầu</label><textarea id="ldd" rows="3" placeholder="Khách cần gì, khi nào, số hộ, đã làm gì trước đó…"'+dis+'>'+esc(c.detail||"")+'</textarea></div>'
-   +'<h3 style="margin:10px 0 0">Nguồn</h3><div class="f2"><div class="f"><label for="lds">Nguồn thông tin</label><select id="lds"'+dis+'><option value="">Chưa rõ</option>'+srcs.map(s=>'<option'+(c.source===s?" selected":"")+'>'+esc(s)+'</option>').join("")+'</select></div>'
-   +inp("ldr","Ai giới thiệu",c.referrer,' placeholder="Tên, đơn vị người giới thiệu"')+'</div>'+inp("ldsn","Chi tiết nguồn",c.sourceNote,' placeholder="Ví dụ: hội thảo Buôn Ma Thuột 05/11, bài đăng Facebook…"')
-   +'<h3 style="margin:10px 0 0">Chăm sóc</h3><div class="f2"><div class="f"><label for="ldst2">Trạng thái</label><select id="ldst2"'+dis+'>'+LD_ST.map(([k,l])=>'<option value="'+k+'"'+((c.status||"new")===k?" selected":"")+'>'+l+'</option>').join("")+'</select></div>'
-   +'<div class="f"><label for="ldow">Người phụ trách</label><select id="ldow"'+dis+'><option value="">Chưa giao</option>'+ldPeople().map(([k,p])=>'<option value="'+k+'"'+(c.owner===k?" selected":"")+'>'+esc(p.name)+'</option>').join("")+'</select></div>'
-   +'<div class="f"><label for="ldnx">Hẹn liên hệ lại</label><input id="ldnx" type="date" value="'+esc(c.next||"")+'"'+dis+'></div></div>'
-   +'<div class="f"><label for="ldnote">Ghi chú chăm sóc (đã trao đổi gì)</label><textarea id="ldnote" rows="2"'+dis+'>'+esc(c.note||"")+'</textarea></div>'
-   +((c.hist||[]).length?'<details><summary class="sub" style="cursor:pointer">Lịch sử trạng thái ('+c.hist.length+')</summary><div class="sub">'+c.hist.slice().reverse().map(x=>dmy((x.at||"").slice(0,10))+': '+esc(LD_STL[x.s]||x.s)+(x.by?' · '+esc(pname(x.by)||x.by):'')).join("<br>")+'</div></details>':'')
-   +(ro?'':'<div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn pri" type="submit">Lưu</button>'+(id&&canManage()?'<button class="btn" type="button" id="lddel">Xóa</button>':'')+'<span class="sub" id="ldmsg"></span></div>')
-   +(c.createdAt?'<div class="sub">Nhận '+dmy(c.createdAt.slice(0,10))+(c.createdBy?' · '+esc(pname(c.createdBy)||c.createdBy):'')+(c.at?' · sửa '+dmy(c.at.slice(0,10))+(c.by?' bởi '+esc(pname(c.by)):''):'')+'</div>':'')+'</form>';
-  showDrawer(h);
-  document.querySelectorAll("[data-lddup]").forEach(b=>b.addEventListener("click",()=>openLead(b.dataset.lddup)));
-  $("#ldform")?.addEventListener("submit",async e=>{ e.preventDefault(); if(ro) return;
-    const v=i=>($("#"+i)?.value||"").trim(), now=new Date().toISOString(), st=v("ldst2")||"new";
-    const d={...c,type:"lead",name:v("ldn"),org:v("ldo"),phone:v("ldp"),zalo:v("ldz"),email:v("lde"),province:v("ldpr"),area:v("lda"),
-      needs:[...document.querySelectorAll('input[name="ldneed"]:checked')].map(x=>x.value),crop:v("ldc"),ha:v("ldh"),detail:v("ldd"),
-      source:v("lds"),referrer:v("ldr"),sourceNote:v("ldsn"),status:st,owner:v("ldow")||null,next:v("ldnx")||null,note:v("ldnote"),by:me||"",at:now};
-    if(!d.name&&!d.org){ $("#ldmsg").textContent="Nhập tên người liên hệ hoặc đơn vị."; return; }
-    if(!d.phone&&!d.zalo&&!d.email){ $("#ldmsg").textContent="Nhập ít nhất một cách liên hệ: SĐT, Zalo hoặc email."; return; }
-    if(!id){ d.createdAt=now; d.createdBy=me||""; d.via="web"; }
-    if(!id||st!==(c.status||"new")) d.hist=[...(c.hist||[]),{at:now,by:me||"",s:st}].slice(-30);
-    const nid=id||("ld"+uid());
-    if(await put("contacts",nid,d)){ toast("Đã lưu nhu cầu"); closeDrawer(); } });
-  $("#lddel")?.addEventListener("click",async()=>{ const b=$("#lddel"); if(b.dataset.c!=="1"){ b.dataset.c="1"; b.textContent="Bấm lần nữa để xóa"; return; } if(await del("contacts",id)){ toast("Đã xóa"); closeDrawer(); } });
+function vSales(){
+  if(!sdOk()) return '<div class="panel">Mục này dành cho quản lý.</div>';
+  if(!SD.st){ setTimeout(loadSales,0); return '<div class="panel">Đang tải dữ liệu sales…</div>'; }
+  if(SD.st==="loading") return '<div class="panel">Đang tải dữ liệu sales…</div>';
+  if(SD.st==="err") return '<div class="panel"><div class="alert bad">Chưa tải được dữ liệu sales: '+esc(SD.err)+'</div><button class="btn" id="sdReload">Thử lại</button></div>';
+  const X=sdStats(), L=SD.leads, mg=sdMgr();
+  let h='<div class="row between" style="gap:8px;align-items:flex-end;flex-wrap:wrap"><div style="min-width:0"><h1>Sales</h1><div class="sub">Lead, cuộc gọi và tương tác của đội sales. Sales làm việc ở trang riêng, không thấy trang quản trị.</div></div>'
+   +'<div class="row" style="gap:6px"><button class="btn" id="sdReload">Tải lại</button><a class="btn pri" href="sales.html" target="_blank" rel="noopener">Mở trang sales</a></div></div>';
+  const tile=(k,v,l,cls)=>'<div class="tile '+(cls||"")+'" data-kpi="'+k+'"><span class="v">'+v+'</span><span class="l">'+l+'</span></div>';
+  const open=L.filter(l=>l.stage>=1&&l.stage<=5).length;
+  h+='<div class="grid kpis" style="margin-top:12px">'+tile("calls",X.calls,"Cuộc gọi hôm nay")+tile("acts",X.today.length,"Tương tác hôm nay")+tile("open",open,"Lead đang theo")
+   +tile("over",X.B.overdue.length,"Quá hạn hẹn",X.B.overdue.length?"bad":"good")+tile("won",L.filter(l=>l.stage===6).length,"Đã ký","good")+tile("find",L.filter(l=>l.stage===0).length,"Cần tìm liên hệ",L.some(l=>l.stage===0)?"warn":"")+'</div>';
+  const mx=Math.max(1,...SC.STAGES.map(([k])=>L.filter(l=>l.stage===k).length));
+  h+='<div class="panel" style="margin-top:12px"><h3 style="margin:0 0 8px">Phễu theo giai đoạn</h3>'+SC.STAGES.map(([k,t])=>{ const n=L.filter(l=>l.stage===k).length;
+    return '<div data-fun="'+k+'" style="display:grid;grid-template-columns:118px 1fr 40px;gap:8px;align-items:center;margin:3px 0"><span class="sub">'+t+'</span><span style="background:var(--sunk);border-radius:4px;height:14px;overflow:hidden"><span style="display:block;height:100%;width:'+Math.round(n*100/mx)+'%;background:var(--'+(k===6?"good":k===7?"bad":k===0?"warn":"brand")+')"></span></span><b class="c" style="text-align:right">'+n+'</b></div>'; }).join("")+'</div>';
+  h+='<div class="panel" style="margin-top:12px"><h3 style="margin:0 0 8px">Theo từng sales</h3><div class="tw"><table id="sdTbl"><thead><tr><th>Sales</th><th>Lead đang giữ</th><th>Tương tác hôm nay</th><th>Tương tác 7 ngày</th><th>Phút gọi (7 ngày)</th><th>Quá hạn</th><th>Nóng chưa chạm</th><th>Giao đến lần chạm đầu (giờ)</th><th>Hoạt động gần nhất</th></tr></thead><tbody>'
+   +(X.rows.length?X.rows.map(r=>'<tr data-u="'+esc(r.u)+'"><td><b>'+esc(r.name)+'</b>'+(r.role==="ctv"?' <span class="pill">CTV</span>':'')+'</td><td>'+r.hold+'</td><td>'+(r.today>=SC.CALL_GOAL?'<b style="color:var(--good)">'+r.today+'</b>':r.today)+'</td><td>'+r.week+'</td><td>'+r.min+'</td><td>'+(r.over?'<b style="color:var(--bad)">'+r.over+'</b>':0)+'</td><td>'+(r.hot?'<b style="color:var(--warn)">'+r.hot+'</b>':0)+'</td><td>'+(r.ft==null?"—":r.ft)+'</td><td class="sub">'+esc(SC.ago(r.last))+'</td></tr>').join(""):'<tr><td colspan="9" class="sub">Chưa có lead nào được giao.</td></tr>')+'</tbody></table></div></div>';
+  // Cần can thiệp
+  const lid=Object.fromEntries(L.map(l=>[l.id,l])), td=X.td, late3=X.B.overdue.filter(l=>l.next_at<=SC.addDays(td,-3));
+  const iv=[]; SD.claims.forEach(c=>iv.push('<div class="row between" style="gap:6px;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid var(--line)"><span style="min-width:0;overflow-wrap:anywhere"><b>'+esc(sdName(c.by))+'</b> xin nhận lead <b>'+esc(lid[c.lead_id]?.name||"(lead)")+'</b> · '+esc(SC.ago(c.at))+'</span>'+(mg?'<span class="row" style="gap:4px"><button class="btn sm pri" data-cok="'+esc(c.id)+'">Duyệt</button><button class="btn sm" data-cno="'+esc(c.id)+'">Từ chối</button></span>':'')+'</div>'));
+  late3.slice(0,15).forEach(l=>iv.push('<div style="padding:6px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere"><span class="pill bad">Quá hạn '+Math.round((Date.parse(td)-Date.parse(l.next_at))/864e5)+' ngày</span> <b>'+esc(l.name)+'</b> · '+esc(sdName(l.owner_id))+'</div>'));
+  X.B.hot.slice(0,10).forEach(l=>iv.push('<div style="padding:6px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere"><span class="pill warn">'+(l.temp==="hot"?"Nóng":"Ấm")+' bị bỏ '+esc(SC.ago(l.last_touch_at))+'</span> <b>'+esc(l.name)+'</b> · '+esc(sdName(l.owner_id))+'</div>'));
+  X.B.fresh.slice(0,10).forEach(l=>iv.push('<div style="padding:6px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere"><span class="pill">Giao quá 24 giờ chưa chạm</span> <b>'+esc(l.name)+'</b> · '+esc(sdName(l.owner_id))+'</div>'));
+  h+='<div class="panel" style="margin-top:12px"><h3 style="margin:0 0 4px">Cần can thiệp</h3>'+(iv.length?iv.join(""):'<div class="sub">Không có việc cần can thiệp.</div>')+'</div>';
+  // Dòng hoạt động
+  const feed=SD.acts.slice(0,50);
+  h+='<div class="panel" style="margin-top:12px"><h3 style="margin:0 0 4px">Hoạt động gần đây</h3><div id="sdFeed">'+(feed.length?feed.map(a=>{ const l=lid[a.lead_id], w=new Date(Date.parse(a.at)+7*36e5).toISOString();
+    const what=a.kind==="assign"?esc(a.note||"Giao lead"):a.kind==="claim"?"Nhận lead từ kho chung":[SC.lab(SC.CHANNELS,a.channel),SC.lab(SC.RESULTS,a.result)].filter(Boolean).map(esc).join(" · ")+(a.minutes?" · "+a.minutes+" phút":"");
+    return '<div class="fi" style="padding:7px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere"><div class="sub">'+w.slice(8,10)+"/"+w.slice(5,7)+" "+w.slice(11,16)+' · <b>'+esc(sdName(a.by))+'</b></div><div><b>'+esc(l?.name||"(lead)")+'</b>: '+what+(a.temp_after?' <span class="pill">'+esc(SC.lab(SC.TEMPS,a.temp_after))+'</span>':'')+'</div>'
+     +(a.note&&a.kind==="act"?'<div class="sub">'+esc(a.note)+'</div>':'')+(a.lat!=null?'<div class="sub">📍 <a href="https://www.google.com/maps?q='+a.lat+','+a.lng+'" target="_blank" rel="noopener">Điểm check-in</a></div>':'')
+     +((a.photos||[]).length?'<div class="row" style="gap:4px;margin-top:4px;flex-wrap:wrap">'+a.photos.map(p=>'<span data-sdph="'+esc(p)+'"></span>').join("")+'</div>':'')+'</div>'; }).join(""):'<div class="sub">Chưa có hoạt động trong 7 ngày.</div>')+'</div></div>';
+  // Giao lead
+  let arr=L.filter(l=>SDF.own==="_none"?!l.owner_id:SDF.own?l.owner_id===SDF.own:true);
+  if(SDF.stage!=="") arr=arr.filter(l=>String(l.stage)===SDF.stage);
+  if(SDF.q){ const n=SC.norm(SDF.q); arr=arr.filter(l=>SC.norm([l.name,l.province,l.segment,l.contact_name].join(" ")).includes(n)); }
+  const sel=[...SDF.sel].filter(id=>lid[id]), ppl=Object.entries(SD.people).filter(([u])=>["owner","manager","staff","ctv"].includes(SD.roles[u])).sort((a,b)=>a[1].localeCompare(b[1],"vi"));
+  h+='<div class="panel" style="margin-top:12px"><h3 style="margin:0 0 8px">Danh sách lead'+(mg?' và giao việc':'')+'</h3><div class="filters"><input id="sdQ" placeholder="Tìm tên, tỉnh, loại khách" value="'+esc(SDF.q)+'" style="flex:1;min-width:160px">'
+   +'<select id="sdOwn" aria-label="Phụ trách"><option value="">Mọi người phụ trách</option><option value="_none"'+(SDF.own==="_none"?" selected":"")+'>Kho chung (chưa giao)</option>'+ppl.map(([u,n])=>'<option value="'+esc(u)+'"'+(SDF.own===u?" selected":"")+'>'+esc(n)+'</option>').join("")+'</select>'
+   +'<select id="sdStage" aria-label="Giai đoạn"><option value="">Mọi giai đoạn</option>'+SC.STAGES.map(([k,t])=>'<option value="'+k+'"'+(SDF.stage===String(k)?" selected":"")+'>'+t+'</option>').join("")+'</select></div>'
+   +(mg?'<div class="row" style="gap:6px;flex-wrap:wrap;margin:8px 0"><span class="sub">Đã chọn <b id="sdN">'+sel.length+'</b> lead · giao cho</span><select id="sdTo" aria-label="Giao cho"><option value="">Chọn người</option>'+ppl.map(([u,n])=>'<option value="'+esc(u)+'">'+esc(n)+(SD.roles[u]==="ctv"?" (CTV)":"")+'</option>').join("")+'</select><button class="btn pri sm" id="sdAssign">Giao</button><span class="sub" id="sdMsg"></span></div>':'')
+   +'<div class="sub" style="margin:4px 0">'+arr.length+' lead</div><div class="tw"><table><thead><tr>'+(mg?'<th><input type="checkbox" id="sdAll" aria-label="Chọn tất cả đang hiện"></th>':'')+'<th>Lead</th><th>Giai đoạn</th><th>Phụ trách</th><th>Hẹn</th><th>Chạm gần nhất</th></tr></thead><tbody>'
+   +arr.slice(0,SDF.lim).map(l=>'<tr>'+(mg?'<td><input type="checkbox" data-sdsel="'+esc(l.id)+'"'+(SDF.sel.has(l.id)?" checked":"")+'></td>':'')+'<td style="min-width:160px"><b>'+esc(l.name)+'</b>'+(l.priority?' <span class="pill">'+esc(l.priority)+'</span>':'')+'<div class="sub">'+esc([l.province,l.segment].filter(Boolean).join(" · "))+'</div></td><td>'+esc(SC.lab(SC.STAGES,l.stage))+(l.temp?' <span class="pill">'+esc(SC.lab(SC.TEMPS,l.temp))+'</span>':'')+'</td><td>'+esc(sdName(l.owner_id))+'</td><td'+(l.next_at&&l.next_at<td&&l.stage>=1&&l.stage<=5?' style="color:var(--bad);font-weight:600"':'')+'>'+(l.next_at?dm(l.next_at):"—")+'</td><td class="sub">'+esc(SC.ago(l.last_touch_at))+'</td></tr>').join("")+'</tbody></table></div>'
+   +(arr.length>SDF.lim?'<button class="btn sm" id="sdMore" style="margin-top:6px">Xem thêm</button>':'')+'</div>';
+  return h;
 }
-/* nhập hàng loạt: dán bảng (Google Sheets, Excel, CSV xuất từ form) có dòng tiêu đề */
-function ldParse(txt){
-  txt=String(txt||"").replace(/^﻿/,""); const first=txt.split(/\r?\n/)[0]||""; const sep=first.includes("\t")?"\t":(first.split(";").length>first.split(",").length?";":",");
-  const rows=[]; let row=[],cur="",q=false;
-  for(let i=0;i<txt.length;i++){ const ch=txt[i];
-    if(q){ if(ch==='"'){ if(txt[i+1]==='"'){ cur+='"'; i++; } else q=false; } else cur+=ch; continue; }
-    if(ch==='"'&&cur===""){ q=true; continue; }
-    if(ch===sep){ row.push(cur); cur=""; continue; }
-    if(ch==="\n"||ch==="\r"){ if(ch==="\r"&&txt[i+1]==="\n") i++; row.push(cur); cur=""; if(row.some(x=>x.trim())) rows.push(row); row=[]; continue; }
-    cur+=ch; }
-  row.push(cur); if(row.some(x=>x.trim())) rows.push(row);
-  return rows;
-}
-const LD_MAP=[["createdAt",/dau thoi gian|timestamp|thoi gian|ngay gui|ngay nhan|^ngay$/],["source",/nguon|kenh|source|biet qua|biet den|biet toi|qua dau/],["referrer",/gioi thieu|referr/],["email",/e-?mail/],["zalo",/zalo/],["phone",/dien thoai|sdt|so dt|phone|di dong/],
-  ["org",/don vi|cong ty|htx|hop tac xa|to chuc|doanh nghiep|company/],["name",/ho ten|ho va ten|ten khach|nguoi lien he|khach hang|^ten$|name/],["province",/tinh|province|khu vuc|dia ban/],["area",/dia chi|^xa|huyen|address/],
-  ["crop",/cay trong|loai cay|crop/],["ha",/dien tich|so ha|^ha$|hecta/],["needs",/quan tam|dich vu|service/],["detail",/nhu cau|noi dung|yeu cau|mo ta|tin nhan|message|chi tiet/],["owner",/phu trach/],["note",/ghi chu|note/]];
-function ldMapHead(hd){ const used=new Set(); return hd.map(x=>{ const n=norm(x).replace(/[^a-z0-9 \-]/g," ").replace(/\s+/g," ").trim(); const m=LD_MAP.find(([k,re])=>!used.has(k)&&re.test(n)); if(m){ used.add(m[0]); return m[0]; } return ""; }); }
-function ldRowsToLeads(rows,defSrc){
-  if(rows.length<2) return {map:[],items:[]};
-  const map=ldMapHead(rows[0]); const P=ldPeople();
-  const items=rows.slice(1).slice(0,500).map(r=>{ const d={type:"lead",status:"new",needs:[]}; const extra=[];
-    map.forEach((k,i)=>{ const v=(r[i]||"").trim(); if(!v) return; if(!k){ extra.push(rows[0][i]+": "+v); return; }
-      if(k==="needs"){ d.needs=v.split(/[,;\n]/).map(s=>s.trim()).filter(Boolean).slice(0,10); return; }
-      if(k==="owner"){ const n=norm(v); const p=P.find(([,x])=>norm(x.name)===n||norm(x.name).includes(n)); if(p) d.owner=p[0]; return; }
-      if(k==="createdAt"){ const m=v.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/)||null; const dt=m?new Date(+m[3],+m[2]-1,+m[1],12):new Date(v); if(!isNaN(+dt)) d.createdAt=dt.toISOString(); return; }
-      d[k]=(d[k]?d[k]+"; ":"")+v.slice(0,2000); });
-    if(extra.length) d.detail=[d.detail,...extra].filter(Boolean).join("\n").slice(0,4000);
-    if(!d.source&&defSrc) d.source=defSrc; return d; }).filter(d=>d.name||d.org||d.phone||d.email);
-  return {map,items};
-}
-function openLeadImport(){ ui.drawer=null;
-  showDrawer('<div class="dh"><div><h2>Nhập nhu cầu từ bảng tính</h2><div class="sub">Mở bảng trả lời của form (Google Form, Excel), chọn cả bảng kèm dòng tiêu đề, sao chép rồi dán vào đây. Hoặc chọn tệp CSV.</div></div><button class="btn sm" data-close>Đóng</button></div><div class="db">'
-   +'<textarea id="ldPaste" rows="7" placeholder="Dán bảng có dòng tiêu đề: Họ tên, Số điện thoại, Đơn vị, Tỉnh, Nhu cầu, Nguồn, Người giới thiệu…" style="width:100%"></textarea>'
-   +'<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px"><label class="btn sm" style="cursor:pointer">Chọn tệp CSV<input type="file" id="ldFile" accept=".csv,.tsv,.txt,text/csv" hidden></label>'
-   +'<select id="ldDefSrc" aria-label="Nguồn mặc định"><option value="">Nguồn khi bảng không có cột nguồn…</option>'+LD_SRC.map(s=>'<option>'+esc(s)+'</option>').join("")+'</select>'
-   +'<select id="ldDefOwn" aria-label="Người phụ trách"><option value="">Chưa giao người phụ trách</option>'+ldPeople().map(([k,p])=>'<option value="'+k+'">'+esc(p.name)+'</option>').join("")+'</select></div>'
-   +'<div id="ldPrev" style="margin-top:10px"></div></div>');
-  const prev=()=>{ const {map,items}=ldRowsToLeads(ldParse($("#ldPaste").value),$("#ldDefSrc").value); const box=$("#ldPrev"); if(!box) return;
-    if(!items.length){ box.innerHTML=$("#ldPaste").value.trim()?'<div class="alert warn">Chưa đọc được dòng nào. Cần dòng tiêu đề và ít nhất một cột tên, đơn vị, SĐT hoặc email.</div>':''; return; }
-    const hd=ldParse($("#ldPaste").value)[0]; const LBL={name:"Họ tên",org:"Đơn vị",phone:"SĐT",zalo:"Zalo",email:"Email",province:"Tỉnh",area:"Địa chỉ",crop:"Cây trồng",ha:"Diện tích",needs:"Quan tâm",detail:"Nhu cầu",source:"Nguồn",referrer:"Giới thiệu",owner:"Phụ trách",note:"Ghi chú",createdAt:"Ngày nhận"};
-    const dup=items.map(d=>ldDups(null,d).length>0||items.some(x=>x!==d&&ldPhone(x.phone)&&ldPhone(x.phone).length>=9&&ldPhone(x.phone)===ldPhone(d.phone)&&items.indexOf(x)<items.indexOf(d)));
-    box.innerHTML='<div class="sub">Cột nhận ra: '+hd.map((x,i)=>'<span class="pill'+(map[i]?" good":"")+'" style="margin:1px">'+esc(x)+(map[i]?' → '+LBL[map[i]]:' → ghi vào mô tả')+'</span>').join("")+'</div>'
-      +'<div class="sub" style="margin-top:6px">'+items.length+' dòng, '+dup.filter(Boolean).length+' dòng trùng SĐT hoặc email với dữ liệu đã có (sẽ bỏ qua nếu không tích).</div>'
-      +'<label style="display:flex;gap:6px;align-items:center;margin-top:4px"><input type="checkbox" id="ldDupOk"> Vẫn nhập cả dòng trùng</label>'
-      +'<div class="tw" style="margin-top:6px;max-height:240px;overflow:auto"><table><thead><tr><th>Tên, đơn vị</th><th>Nhu cầu</th><th>Nguồn</th></tr></thead><tbody>'+items.slice(0,50).map((d,i)=>'<tr'+(dup[i]?' style="opacity:.55"':'')+'><td>'+esc(d.name||"")+(d.org?'<div class="sub">'+esc(d.org)+'</div>':'')+(dup[i]?'<div class="sub" style="color:var(--warn)">Trùng</div>':'')+'</td><td style="max-width:220px;overflow-wrap:anywhere">'+esc((d.needs||[]).join(", ")+(d.detail?" "+d.detail.slice(0,80):""))+'</td><td>'+esc(d.source||"")+(d.referrer?'<div class="sub">'+esc(d.referrer)+'</div>':'')+'</td></tr>').join("")+'</tbody></table></div>'
-      +'<div class="row" style="margin-top:8px;gap:6px"><button class="btn pri" id="ldGo">Nhập '+items.length+' dòng</button><span class="sub" id="ldGoMsg"></span></div>';
-    $("#ldGo").addEventListener("click",async()=>{ const b=$("#ldGo"); b.disabled=true; const ok=$("#ldDupOk").checked, own=$("#ldDefOwn").value, now=new Date().toISOString(); let n=0,sk=0;
-      for(let i=0;i<items.length;i++){ if(dup[i]&&!ok){ sk++; continue; } const d={...items[i],via:"import",createdAt:items[i].createdAt||now,createdBy:me||"",by:me||"",at:now,hist:[{at:now,by:me||"",s:"new"}]}; if(!d.owner&&own) d.owner=own;
-        if(await put("contacts","ld"+uid()+i,d)) n++; $("#ldGoMsg").textContent="Đã nhập "+n+"/"+items.length; }
-      toast("Đã nhập "+n+" nhu cầu"+(sk?", bỏ qua "+sk+" dòng trùng":"")); closeDrawer(); }); };
-  $("#ldPaste").addEventListener("input",()=>{ clearTimeout(prev._t); prev._t=setTimeout(prev,300); });
-  $("#ldDefSrc").addEventListener("change",prev);
-  $("#ldFile").addEventListener("change",async e=>{ const f=e.target.files[0]; if(!f) return; $("#ldPaste").value=await f.text(); prev(); });
+function bindSales(A){
+  $("#sdReload")?.addEventListener("click",()=>{ SD={st:null}; render(); });
+  if(SD.st!=="ok") return;
+  const ph=[...A.querySelectorAll("[data-sdph]")];
+  if(ph.length) SB.storage.from("sales").createSignedUrls(ph.map(e=>e.dataset.sdph),3600).then(({data})=>{ const m={}; (data||[]).forEach(x=>m[x.path]=x.signedUrl);
+    ph.forEach(e=>{ const u=m[e.dataset.sdph]; if(u) e.innerHTML='<a href="'+esc(u)+'" target="_blank" rel="noopener"><img src="'+esc(u)+'" alt="Ảnh check-in" style="width:64px;height:64px;object-fit:cover;border-radius:6px"></a>'; }); });
+  const q=$("#sdQ"); q?.addEventListener("input",()=>{ SDF.q=q.value; clearTimeout(q._t); q._t=setTimeout(()=>{ render(); const n=$("#sdQ"); if(n){ n.focus(); n.setSelectionRange(n.value.length,n.value.length); } },250); });
+  $("#sdOwn")?.addEventListener("change",e=>{ SDF.own=e.target.value; SDF.lim=100; render(); });
+  $("#sdStage")?.addEventListener("change",e=>{ SDF.stage=e.target.value; SDF.lim=100; render(); });
+  $("#sdMore")?.addEventListener("click",()=>{ SDF.lim+=200; render(); });
+  A.querySelectorAll("[data-sdsel]").forEach(c=>c.addEventListener("change",()=>{ c.checked?SDF.sel.add(c.dataset.sdsel):SDF.sel.delete(c.dataset.sdsel); const n=$("#sdN"); if(n) n.textContent=SDF.sel.size; }));
+  $("#sdAll")?.addEventListener("change",e=>{ A.querySelectorAll("[data-sdsel]").forEach(c=>{ c.checked=e.target.checked; e.target.checked?SDF.sel.add(c.dataset.sdsel):SDF.sel.delete(c.dataset.sdsel); }); const n=$("#sdN"); if(n) n.textContent=SDF.sel.size; });
+  A.querySelectorAll("[data-cok],[data-cno]").forEach(b=>b.addEventListener("click",async()=>{ if(!sdMgr()) return; b.disabled=true; const ok=!!b.dataset.cok;
+    const {error}=await SB.rpc("sales_claim_decide",{p_claim:b.dataset.cok||b.dataset.cno,p_ok:ok});
+    if(error){ b.disabled=false; toast("Chưa xử lý được: "+error.message); return; } toast(ok?"Đã duyệt, lead đã giao":"Đã từ chối"); logEv("sales",ok?"duyệt yêu cầu nhận lead":"từ chối yêu cầu nhận lead"); SD={st:null}; render(); }));
+  $("#sdAssign")?.addEventListener("click",async()=>{ if(!sdMgr()) return; const to=$("#sdTo").value, ids=[...SDF.sel].filter(id=>SD.leads.some(l=>l.id===id));
+    if(!ids.length){ $("#sdMsg").textContent="Chọn lead trước."; return; } if(!to){ $("#sdMsg").textContent="Chọn người nhận."; return; }
+    const b=$("#sdAssign"); b.disabled=true; $("#sdMsg").textContent="Đang giao…";
+    let err=null; for(let i=0;i<ids.length&&!err;i+=200){ const part=ids.slice(i,i+200); const r=await SB.from("sales_leads").update({owner_id:to}).in("id",part); err=r.error;
+      if(!err){ const r2=await SB.from("sales_acts").insert(part.map(id=>({lead_id:id,kind:"assign",note:"Giao cho "+sdName(to)}))); err=r2.error; } }
+    if(err){ b.disabled=false; $("#sdMsg").textContent="Chưa giao được: "+err.message; return; }
+    toast("Đã giao "+ids.length+" lead cho "+sdName(to)); logEv("sales","giao "+ids.length+" lead"); SDF.sel=new Set(); SD={st:null}; render(); });
 }
