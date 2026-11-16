@@ -75,6 +75,10 @@ textarea.in{min-height:64px;resize:vertical}
 .msg{margin:8px 0;padding:8px 10px;border-radius:10px;font-size:13px}.msg.bad{background:rgba(184,58,46,.12);color:var(--bad)}.msg.ok{background:rgba(47,125,79,.12);color:var(--good)}.msg.warn{background:rgba(183,121,31,.14);color:var(--warn)}
 #toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:999px;font-size:13px;z-index:20;display:none;max-width:90vw}
 #lgSave{position:sticky;bottom:0;box-shadow:0 -8px 12px var(--surface)}
+#lgSave:disabled{opacity:1;background:var(--sunk);color:var(--muted);border-color:var(--line)}
+.thumbs{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.thumbs img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.ph{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}.ph img{width:72px;height:72px;object-fit:cover;border-radius:8px}
+.pick{display:block;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:6px;cursor:pointer}
 .auth{max-width:380px;margin:40px auto}
 .more{display:block;text-align:center;margin:8px 0}
 @media (min-width:900px){main{padding:18px}}
@@ -181,12 +185,21 @@ function vToday(){
  const B=SC.buckets(LEADS,ME.id,new Date(Date.now()));
  const mine=LEADS.filter(l=>l.owner_id===ME.id), open=mine.filter(l=>l.stage>=1&&l.stage<=5).length;
  const G=[["overdue","Quá hạn","bad"],["today","Đến hạn hôm nay",""],["hot","Nóng chưa chạm",""],["fresh","Lead mới giao",""],["nonext","Chưa có bước tiếp",""]];
- let h='<div class="stats"><div class="card"><b>'+MYACTS.length+'</b><span class="sub">Tương tác hôm nay</span></div><div class="card"><b>'+(B.overdue.length+B.today.length)+'</b><span class="sub">Việc cần làm</span></div><div class="card"><b>'+open+'</b><span class="sub">Lead đang theo</span></div></div>';
+ let h='<button class="btn full" id="bCheckToday" style="margin-bottom:10px">📷 Check-in gặp khách</button><div class="stats"><div class="card"><b>'+MYACTS.length+'</b><span class="sub">Tương tác hôm nay</span></div><div class="card"><b>'+(B.overdue.length+B.today.length)+'</b><span class="sub">Việc cần làm</span></div><div class="card"><b>'+open+'</b><span class="sub">Lead đang theo</span></div></div>';
  G.forEach(([k,t,c])=>{ const arr=B[k]; if(k==="nonext"&&!arr.length) return;
   const shown=k==="nonext"?arr.slice(0,20):arr;
   h+='<section data-bk="'+k+'"><h2 class="'+c+'">'+t+' <span class="n">'+arr.length+'</span></h2>'+(arr.length?shown.map(l=>rowHtml(l)).join("")+(shown.length<arr.length?'<a class="sub more" href="#lead">Xem tất cả trong Lead</a>':''):'<div class="empty">Không có</div>')+'</section>'; });
  if(!mine.length) h+='<div class="card" style="margin-top:12px">Bạn chưa có lead nào. '+(isStaff()?'Vào <a href="#lead">Lead › Kho chung</a> để nhận, hoặc ':'')+'<a href="#them">thêm lead mới</a>.</div>';
- $("#app").innerHTML=h;
+ $("#app").innerHTML=h; $("#bCheckToday").onclick=openPicker;
+}
+function openPicker(){
+ const sheet=$("#sheet");
+ sheet.innerHTML='<div class="sh-h"><b>Check-in gặp khách nào?</b><button class="btn" id="lgX" aria-label="Đóng" style="padding:6px 10px">✕</button></div><input class="in" id="ciQ" type="search" placeholder="Tìm tên khách" style="margin-bottom:8px"><div id="ciPick"></div>';
+ sheet.classList.add("open"); $("#sheetBg").classList.add("on"); $("#lgX").onclick=closeSheet; $("#sheetBg").onclick=closeSheet;
+ const draw=()=>{ const q=SC.norm($("#ciQ").value); const arr=LEADS.filter(l=>(l.owner_id===ME.id||!isStaff())&&(!q||SC.norm(l.name+" "+(l.province||"")).includes(q))).slice(0,30);
+  $("#ciPick").innerHTML=arr.length?arr.map(l=>'<button type="button" class="pick" data-id="'+esc(l.id)+'"><b>'+esc(l.name)+'</b><div class="sub">'+esc([SC.lab(SC.STAGES,l.stage),l.province].filter(Boolean).join(" · "))+'</div></button>').join(""):'<div class="empty">Không thấy lead. Thêm lead mới trước rồi check-in.</div>';
+  $$("#ciPick [data-id]").forEach(b=>b.onclick=()=>openSheet(b.dataset.id,{ch:"meet",checkin:true})); };
+ $("#ciQ").oninput=draw; draw();
 }
 
 // ---------- Danh sách ----------
@@ -225,7 +238,7 @@ async function vDetail(id){
   +'<div class="chips" style="gap:4px"><span class="pill">'+esc(SC.lab(SC.STAGES,l.stage))+'</span>'+(l.temp?'<span class="pill '+l.temp+'">'+esc(SC.lab(SC.TEMPS,l.temp))+'</span>':'')+(l.fit?'<span class="pill">Tiềm năng '+esc(SC.lab(SC.FITS,l.fit).toLowerCase())+'</span>':'')+(l.priority?'<span class="pill pa">Ưu tiên '+esc(l.priority)+'</span>':'')+'<span class="pill">'+l.touch_count+' lần chạm · '+esc(SC.ago(l.last_touch_at,new Date(Date.now())))+'</span></div>'
   +'<div class="acts">'+btn("bCall","✆","Gọi",p0?SC.telHref(p0):"")+btn("bZalo","💬","Zalo",p0?SC.zaloHref(p0):"",1)+btn("bMail","✉","Email",email?"mailto:"+email:"")+btn("bDir","➤","Chỉ đường",dir,1)+'</div>'
   +(!l.owner_id&&isStaff()?'<button class="btn full" id="bTake" style="margin-bottom:8px">Nhận lead này</button>':'')
-  +'<button class="btn pri full" id="bLog">Ghi tương tác</button>'
+  +'<div class="row2"><button class="btn pri" id="bLog" style="flex:1">Ghi tương tác</button><button class="btn" id="bCheck" style="flex:1">📷 Check-in</button></div>'
   +'<div class="card next'+(od?" od":"")+'">'+(l.next_at||l.next_type?'<b>Bước tiếp: '+esc(SC.lab(SC.NEXT,l.next_type)||"Liên hệ lại")+(l.next_at?' · '+dmy(l.next_at)+(od?' (quá hạn)':l.next_at===td?' (hôm nay)':''):'')+'</b>'+(l.next_note?'<div class="sub">'+esc(l.next_note)+'</div>':''):'<span class="sub">Chưa có bước tiếp. Ghi tương tác để hẹn lần sau.</span>')+'</div>'
   +(l.stage===0?'<div class="msg warn">Lead này chưa có cách liên hệ. Tìm được số hoặc email thì bấm Sửa liên hệ.</div>':'')
   +'<div class="card"><div class="kv">'+kv.map(([k,v])=>'<div>'+k+'</div><div>'+esc(v)+'</div>').join("")+'</div>'
@@ -234,7 +247,7 @@ async function vDetail(id){
   +'<h2>Dòng thời gian</h2><div class="tl" id="tl"><div class="sub">Đang tải…</div></div>';
  if(p0){ $("#bCall").addEventListener("click",()=>{ CALL={lead:l.id,ch:"call",left:null}; }); $("#bZalo").addEventListener("click",()=>{ CALL={lead:l.id,ch:"zalo",left:null}; }); }
  $$('[aria-disabled=true]').forEach(a=>a.addEventListener("click",e=>{ e.preventDefault(); toast(a.id==="bCall"||a.id==="bZalo"?"Lead chưa có số điện thoại":a.id==="bMail"?"Lead chưa có email":"Lead chưa có địa chỉ"); }));
- $("#bLog").onclick=()=>openSheet(l.id);
+ $("#bLog").onclick=()=>openSheet(l.id); $("#bCheck").onclick=()=>openSheet(l.id,{ch:"meet",checkin:true});
  if($("#bTake")) $("#bTake").onclick=async()=>{ const {error}=await SB.from("sales_leads").update({owner_id:ME.id}).eq("id",l.id).is("owner_id",null); if(error){ toast("Chưa nhận được, thử lại"); return; } await refreshLead(l.id); toast("Đã nhận lead"); route(); };
  if($("#bEdit")) $("#bEdit").onclick=()=>editForm(l);
  drawTimeline(l);
@@ -253,6 +266,9 @@ async function drawTimeline(l){
  if(!$("#tl")) return;
  if(error){ $("#tl").innerHTML='<div class="sub">Chưa tải được lịch sử.</div>'; return; }
  $("#tl").innerHTML=(data||[]).length?data.map(a=>actHtml(a,l)).join(""):'<div class="empty">Chưa có tương tác nào.</div>';
+ const boxes=$$("#tl .ph[data-photos]"), paths=boxes.flatMap(b=>b.dataset.photos.split("|"));
+ if(paths.length){ const {data:u}=await SB.storage.from("sales").createSignedUrls(paths,3600); const m={}; (u||[]).forEach(x=>m[x.path]=x.signedUrl);
+  boxes.forEach(b=>b.innerHTML=b.dataset.photos.split("|").map(p=>m[p]?'<a href="'+esc(m[p])+'" target="_blank" rel="noopener"><img src="'+esc(m[p])+'" alt="Ảnh check-in" loading="lazy"></a>':'').join("")); }
 }
 function actHtml(a,l){
  const when=new Date(Date.parse(a.at)+7*36e5).toISOString(), w=when.slice(8,10)+"/"+when.slice(5,7)+" "+when.slice(11,16);
@@ -283,6 +299,7 @@ function openSheet(leadId,preset){
  SH={lead:leadId,ch:preset.ch||null,rs:preset.rs||null,tp:l.temp||null,ft:l.fit||null,nd:[...(l.needs||[])],st:null,nt:null,nx:null,lost:null};
  const sheet=$("#sheet");
  sheet.innerHTML='<div class="sh-h"><b>'+esc(l.name)+'</b><button class="btn" id="lgX" aria-label="Đóng" style="padding:6px 10px">✕</button></div>'
+  +(preset.checkin?'<div class="grp"><div>Ảnh gặp khách (tối đa 3)</div><label class="btn" for="ciFile">📷 Chụp hoặc chọn ảnh</label><input id="ciFile" type="file" accept="image/*" capture="environment" multiple style="position:absolute;width:1px;height:1px;opacity:0"><div class="thumbs" id="ciThumbs"></div><div class="sub" id="ciMsg"></div><div class="sub" id="ciGeo">📍 Đang lấy vị trí…</div></div>':'')
   +'<div class="grp"><div>Kênh *</div>'+chips("ch",SC.CHANNELS,SH.ch)+'</div>'
   +'<div class="grp"><div>Kết quả *</div>'+chips("rs",SC.RESULTS,SH.rs)+'</div>'
   +'<div class="grp" id="gLost" style="display:none"><div>Lý do không theo</div>'+chips("lost",SC.LOST.map(x=>[x,x]),null)+'</div>'
@@ -295,6 +312,11 @@ function openSheet(leadId,preset){
   +'<div class="grp row2"><div style="margin:0">Thời gian (phút)</div><input class="in" id="lgMin" type="number" min="0" max="600" inputmode="numeric" style="width:90px" value="'+(preset.min!=null?preset.min:"")+'"></div>'
   +'<div id="lgMsg"></div><button class="btn pri full" id="lgSave">Lưu</button>';
  sheet.classList.add("open"); $("#sheetBg").classList.add("on");
+ if(preset.checkin){ SH.checkin=true; SH.files=[]; const me=SH;
+  SH.posP=getPos(10000).then(pos=>{ me.pos=pos; if(SH===me&&$("#ciGeo")) $("#ciGeo").textContent=pos?"📍 "+pos.lat.toFixed(5)+", "+pos.lng.toFixed(5)+" (±"+Math.round(pos.acc||0)+" m)":"📍 Không có vị trí (chưa cho phép hoặc không bắt được GPS). Vẫn lưu được."; return pos; });
+  $("#ciFile").onchange=e=>{ const fs=[...e.target.files]; const room=3-me.files.length; me.files.push(...fs.slice(0,Math.max(0,room)));
+   $("#ciMsg").textContent=fs.length>room?"Tối đa 3 ảnh, đã lấy "+me.files.length+" ảnh đầu.":"";
+   $("#ciThumbs").innerHTML=me.files.map(f=>'<img alt="" src="'+URL.createObjectURL(f)+'">').join(""); e.target.value=""; }; }
  const upd=()=>{ $("#lgSave").disabled=!(SH.ch&&SH.rs); $("#gLost").style.display=SH.rs==="refused"?"":"none"; };
  sheet.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{
   const g=Object.keys(b.dataset)[0], v=b.dataset[g];
@@ -311,13 +333,41 @@ function openSheet(leadId,preset){
   const act={channel:SH.ch,result:SH.rs,note:(SH.lost?"Lý do: "+SH.lost+(note?". ":""):"")+note||null,minutes:m===""?null:Math.max(0,parseInt(m,10)||0),
    temp_after:SH.tp,fit_after:SH.ft,needs_after:SH.nd,stage_after:SH.st==null?null:+SH.st,next_type:SH.nt,next_at:$("#lgDate").value||null};
   if(!act.note) act.note=null;
-  $("#lgSave").disabled=true; $("#lgSave").textContent="Đang lưu…";
-  const ok=await saveAct(SH.lead,act);
+  $("#lgSave").disabled=true; $("#lgSave").textContent="Đang lưu…"; const me=SH;
+  if(me.checkin){
+   const pos=me.pos!==undefined?me.pos:await me.posP; act.lat=pos?pos.lat:null; act.lng=pos?pos.lng:null; act.acc=pos?pos.acc:null;
+   if(me.files.length){ $("#lgSave").textContent="Đang tải ảnh…"; const ph=await uploadPhotos(me.lead,me.files);
+    if(!ph){ $("#lgSave").textContent="Lưu"; $("#lgSave").disabled=false; $("#lgMsg").innerHTML='<div class="msg bad">Chưa tải được ảnh. Kiểm tra mạng rồi bấm Lưu lại.</div>'; return; }
+    act.photos=ph; } }
+  const ok=await saveAct(me.lead,act);
   $("#lgSave").textContent="Lưu"; $("#lgSave").disabled=false;
   if(!ok){ $("#lgMsg").innerHTML='<div class="msg bad">Chưa lưu được. Kiểm tra mạng rồi bấm Lưu lại, ghi chú vẫn còn.</div>'; return; }
   closeSheet(); toast("Đã lưu tương tác"); route(); };
  upd();
 }
+// ---------- Check-in: vị trí, nén ảnh, tải ảnh ----------
+function getPos(timeoutMs=10000){
+ return new Promise(res=>{ if(!navigator.geolocation) return res(null); let done=false; const fin=v=>{ if(!done){ done=true; res(v); } };
+  setTimeout(()=>fin(null),timeoutMs+500);
+  try{ navigator.geolocation.getCurrentPosition(p=>fin({lat:p.coords.latitude,lng:p.coords.longitude,acc:p.coords.accuracy}),()=>fin(null),{enableHighAccuracy:true,timeout:timeoutMs,maximumAge:0}); }catch(e){ fin(null); } });
+}
+async function shrink(file,max=1600){
+ try{
+  const img=await new Promise((ok,no)=>{ const u=URL.createObjectURL(file), i=new Image(); i.onload=()=>{ URL.revokeObjectURL(u); ok(i); }; i.onerror=()=>{ URL.revokeObjectURL(u); no(); }; i.src=u; });
+  if(!img.naturalWidth) return file; const k=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight));
+  const c=document.createElement("canvas"); c.width=Math.max(1,Math.round(img.naturalWidth*k)); c.height=Math.max(1,Math.round(img.naturalHeight*k));
+  c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+  const b=await new Promise(ok=>c.toBlob(ok,"image/jpeg",0.8)); return b&&b.size?b:file;
+ }catch(e){ return file; }
+}
+async function uploadPhotos(leadId,files){
+ const out=[];
+ for(let i=0;i<files.length;i++){ const f=files[i], b=await shrink(f), ext=b===f?(((f.name||"").split(".").pop()||"jpg").toLowerCase().replace(/[^a-z0-9]/g,"")||"jpg"):"jpg";
+  const path=ME.id+"/"+leadId+"/"+Date.now()+"_"+i+"."+ext;
+  const {error}=await SB.storage.from("sales").upload(path,b,{contentType:b.type||"image/jpeg",upsert:false}); if(error) return null; out.push(path); }
+ return out;
+}
+window.getPos=getPos; window.shrink=shrink; window.uploadPhotos=uploadPhotos;
 function closeSheet(){ $("#sheet").classList.remove("open"); $("#sheetBg").classList.remove("on"); SH=null; }
 document.addEventListener("visibilitychange",()=>{
  if(!CALL) return;
