@@ -79,4 +79,24 @@ assert.strictEqual(SC.norm("Công ty Dũng Thái Sơn"), "cong ty dung thai son"
 
 assert.strictEqual(SC.STAGES.length, 8);
 assert.strictEqual(SC.STAGES[7][1], "Không theo");
+
+// contactOf: có SĐT, email, địa chỉ hay chưa
+eq(SC.contactOf({ phones: ["0901694999"], contact_email: "", org_email_web: "www.abc.vn", address: " " }), { ph: true, em: false, ad: false });
+eq(SC.contactOf({ phones: [], org_email_web: "info@abc.vn", address: "Thôn 3, Cư M'gar" }), { ph: false, em: true, ad: true });
+eq(SC.contactOf({ contact_phone: "0983 408 009" }), { ph: true, em: false, ad: false });
+eq(SC.contactOf({}), { ph: false, em: false, ad: false });
+
+// provKey: gộp cách viết khác nhau của cùng một tỉnh
+assert.strictEqual(SC.provKey("Tỉnh Khánh Hòa"), "Khánh Hòa");
+assert.strictEqual(SC.provKey("tỉnh Khánh Hòa"), "Khánh Hòa");
+assert.strictEqual(SC.provKey("TP HCM"), "TP.HCM");
+assert.strictEqual(SC.provKey("Thành phố Hồ Chí Minh"), "TP.HCM");
+assert.strictEqual(SC.provKey("TP Đà Nẵng"), "Đà Nẵng");
+assert.strictEqual(SC.provKey("Đắk Lắk"), "Đắk Lắk");
+assert.strictEqual(SC.provKey(""), "Chưa rõ");
+assert.strictEqual(SC.provKey(null), "Chưa rõ");
+assert.strictEqual(SC.contactMatch({ ph: false, em: false, ad: true }, "none"), true);
+assert.strictEqual(SC.contactMatch({ ph: true, em: false, ad: true }, "none"), false);
+assert.strictEqual(SC.contactMatch({ ph: true, em: false, ad: false }, "noad"), true);
+assert.strictEqual(SC.contactMatch({ ph: true, em: false, ad: false }, ""), true);
 console.log("OK");

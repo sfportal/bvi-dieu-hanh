@@ -806,7 +806,7 @@ function bindRecon(A){
 }
 
 /* ---------- Sales: dashboard quản lý, dữ liệu ở bảng sales_leads, sales_acts, sales_claims (sales.html là trang làm việc của sales) ---------- */
-let SD={st:null}, SDF={own:"",stage:"",q:"",sel:new Set(),lim:100};
+let SD={st:null}, SDF={own:"",stage:"",q:"",prov:"",ct:"",sel:new Set(),lim:100};
 const sdMgr=()=>!!PROFILE&&["owner","manager"].includes(PROFILE.role);
 const sdOk=()=>!!PROFILE&&["owner","manager","viewer"].includes(PROFILE.role)&&typeof SC!=="undefined";
 const sdName=id=>id?((SD.people||{})[id]||"Người khác"):"Kho chung";
@@ -868,14 +868,21 @@ function vSales(){
   // Giao lead
   let arr=L.filter(l=>SDF.own==="_none"?!l.owner_id:SDF.own?l.owner_id===SDF.own:true);
   if(SDF.stage!=="") arr=arr.filter(l=>String(l.stage)===SDF.stage);
-  if(SDF.q){ const n=SC.norm(SDF.q); arr=arr.filter(l=>SC.norm([l.name,l.province,l.segment,l.contact_name].join(" ")).includes(n)); }
+  if(SDF.q){ const n=SC.norm(SDF.q); arr=arr.filter(l=>SC.norm([l.name,l.province,l.segment,l.contact_name,l.address].join(" ")).includes(n)); }
+  const provs=(()=>{ const m=new Map(); L.forEach(l=>{ const k=SC.provKey(l.province); m.set(k,(m.get(k)||0)+1); }); return [...m].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],"vi")); })();
+  if(SDF.prov) arr=arr.filter(l=>SC.provKey(l.province)===SDF.prov);
+  const ctc={}; arr.forEach(l=>{ const c=SC.contactOf(l); SC.CONTACT_F.forEach(([k])=>{ if(SC.contactMatch(c,k)) ctc[k]=(ctc[k]||0)+1; }); });
+  if(SDF.ct) arr=arr.filter(l=>SC.contactMatch(SC.contactOf(l),SDF.ct));
+  const ciB=l=>{ const c=SC.contactOf(l); return [["ph","SĐT"],["em","Email"],["ad","Địa chỉ"]].map(([k,t])=>'<span style="font-size:11px;border-radius:6px;padding:0 5px;white-space:nowrap;'+(c[k]?'border:1px solid var(--ok,#2f7d4f);color:var(--ok,#2f7d4f)':'border:1px dashed var(--line,#ccc);color:var(--muted,#888);text-decoration:line-through')+'" title="'+(c[k]?"Có ":"Chưa có ")+t.toLowerCase()+'">'+t+'</span>').join(" "); };
   const sel=[...SDF.sel].filter(id=>lid[id]), ppl=Object.entries(SD.people).filter(([u])=>["owner","manager","staff","ctv"].includes(SD.roles[u])).sort((a,b)=>a[1].localeCompare(b[1],"vi"));
-  h+='<div class="panel" style="margin-top:12px"><h3 style="margin:0 0 8px">Danh sách lead'+(mg?' và giao việc':'')+'</h3><div class="filters"><input id="sdQ" placeholder="Tìm tên, tỉnh, loại khách" value="'+esc(SDF.q)+'" style="flex:1;min-width:160px">'
+  h+='<div class="panel" style="margin-top:12px"><h3 style="margin:0 0 8px">Danh sách lead'+(mg?' và giao việc':'')+'</h3><div class="filters"><input id="sdQ" placeholder="Tìm tên, tỉnh, địa chỉ, loại khách" value="'+esc(SDF.q)+'" style="flex:1;min-width:160px">'
    +'<select id="sdOwn" aria-label="Phụ trách"><option value="">Mọi người phụ trách</option><option value="_none"'+(SDF.own==="_none"?" selected":"")+'>Kho chung (chưa giao)</option>'+ppl.map(([u,n])=>'<option value="'+esc(u)+'"'+(SDF.own===u?" selected":"")+'>'+esc(n)+'</option>').join("")+'</select>'
-   +'<select id="sdStage" aria-label="Giai đoạn"><option value="">Mọi giai đoạn</option>'+SC.STAGES.map(([k,t])=>'<option value="'+k+'"'+(SDF.stage===String(k)?" selected":"")+'>'+t+'</option>').join("")+'</select></div>'
+   +'<select id="sdStage" aria-label="Giai đoạn"><option value="">Mọi giai đoạn</option>'+SC.STAGES.map(([k,t])=>'<option value="'+k+'"'+(SDF.stage===String(k)?" selected":"")+'>'+t+'</option>').join("")+'</select>'
+   +'<select id="sdProv" aria-label="Tỉnh thành"><option value="">Mọi tỉnh thành</option>'+provs.map(([k,n])=>'<option value="'+esc(k)+'"'+(SDF.prov===k?" selected":"")+'>'+esc(k)+' ('+n+')</option>').join("")+'</select>'
+   +'<select id="sdCt" aria-label="Thông tin liên hệ"><option value="">Mọi thông tin liên hệ</option>'+SC.CONTACT_F.map(([k,t])=>'<option value="'+k+'"'+(SDF.ct===k?" selected":"")+'>'+t+(SDF.ct?'':' ('+(ctc[k]||0)+')')+'</option>').join("")+'</select></div>'
    +(mg?'<div class="row" style="gap:6px;flex-wrap:wrap;margin:8px 0"><span class="sub">Đã chọn <b id="sdN">'+sel.length+'</b> lead · giao cho</span><select id="sdTo" aria-label="Giao cho"><option value="">Chọn người</option>'+ppl.map(([u,n])=>'<option value="'+esc(u)+'">'+esc(n)+(SD.roles[u]==="ctv"?" (CTV)":"")+'</option>').join("")+'</select><button class="btn pri sm" id="sdAssign">Giao</button><span class="sub" id="sdMsg"></span></div>':'')
-   +'<div class="sub" style="margin:4px 0">'+arr.length+' lead</div><div class="tw"><table><thead><tr>'+(mg?'<th><input type="checkbox" id="sdAll" aria-label="Chọn tất cả đang hiện"></th>':'')+'<th>Lead</th><th>Giai đoạn</th><th>Phụ trách</th><th>Hẹn</th><th>Chạm gần nhất</th></tr></thead><tbody>'
-   +arr.slice(0,SDF.lim).map(l=>'<tr>'+(mg?'<td><input type="checkbox" data-sdsel="'+esc(l.id)+'"'+(SDF.sel.has(l.id)?" checked":"")+'></td>':'')+'<td style="min-width:160px"><b>'+esc(l.name)+'</b>'+(l.priority?' <span class="pill">'+esc(l.priority)+'</span>':'')+'<div class="sub">'+esc([l.province,l.segment].filter(Boolean).join(" · "))+'</div></td><td>'+esc(SC.lab(SC.STAGES,l.stage))+(l.temp?' <span class="pill">'+esc(SC.lab(SC.TEMPS,l.temp))+'</span>':'')+'</td><td>'+esc(sdName(l.owner_id))+'</td><td'+(l.next_at&&l.next_at<td&&l.stage>=1&&l.stage<=5?' style="color:var(--bad);font-weight:600"':'')+'>'+(l.next_at?dm(l.next_at):"—")+'</td><td class="sub">'+esc(SC.ago(l.last_touch_at))+'</td></tr>').join("")+'</tbody></table></div>'
+   +'<div class="sub" style="margin:4px 0">'+arr.length+' lead</div><div class="tw"><table><thead><tr>'+(mg?'<th><input type="checkbox" id="sdAll" aria-label="Chọn tất cả đang hiện"></th>':'')+'<th>Lead</th><th>Liên hệ</th><th>Giai đoạn</th><th>Phụ trách</th><th>Hẹn</th><th>Chạm gần nhất</th></tr></thead><tbody>'
+   +arr.slice(0,SDF.lim).map(l=>'<tr>'+(mg?'<td><input type="checkbox" data-sdsel="'+esc(l.id)+'"'+(SDF.sel.has(l.id)?" checked":"")+'></td>':'')+'<td style="min-width:160px"><b>'+esc(l.name)+'</b>'+(l.priority?' <span class="pill">'+esc(l.priority)+'</span>':'')+'<div class="sub">'+esc([SC.provKey(l.province),l.segment].filter(Boolean).join(" · "))+'</div></td><td style="white-space:nowrap">'+ciB(l)+'</td><td>'+esc(SC.lab(SC.STAGES,l.stage))+(l.temp?' <span class="pill">'+esc(SC.lab(SC.TEMPS,l.temp))+'</span>':'')+'</td><td>'+esc(sdName(l.owner_id))+'</td><td'+(l.next_at&&l.next_at<td&&l.stage>=1&&l.stage<=5?' style="color:var(--bad);font-weight:600"':'')+'>'+(l.next_at?dm(l.next_at):"—")+'</td><td class="sub">'+esc(SC.ago(l.last_touch_at))+'</td></tr>').join("")+'</tbody></table></div>'
    +(arr.length>SDF.lim?'<button class="btn sm" id="sdMore" style="margin-top:6px">Xem thêm</button>':'')+'</div>';
   return h;
 }
@@ -888,6 +895,8 @@ function bindSales(A){
   const q=$("#sdQ"); q?.addEventListener("input",()=>{ SDF.q=q.value; clearTimeout(q._t); q._t=setTimeout(()=>{ render(); const n=$("#sdQ"); if(n){ n.focus(); n.setSelectionRange(n.value.length,n.value.length); } },250); });
   $("#sdOwn")?.addEventListener("change",e=>{ SDF.own=e.target.value; SDF.lim=100; render(); });
   $("#sdStage")?.addEventListener("change",e=>{ SDF.stage=e.target.value; SDF.lim=100; render(); });
+  $("#sdProv")?.addEventListener("change",e=>{ SDF.prov=e.target.value; SDF.lim=100; render(); });
+  $("#sdCt")?.addEventListener("change",e=>{ SDF.ct=e.target.value; SDF.lim=100; render(); });
   $("#sdMore")?.addEventListener("click",()=>{ SDF.lim+=200; render(); });
   A.querySelectorAll("[data-sdsel]").forEach(c=>c.addEventListener("change",()=>{ c.checked?SDF.sel.add(c.dataset.sdsel):SDF.sel.delete(c.dataset.sdsel); const n=$("#sdN"); if(n) n.textContent=SDF.sel.size; }));
   $("#sdAll")?.addEventListener("change",e=>{ A.querySelectorAll("[data-sdsel]").forEach(c=>{ c.checked=e.target.checked; e.target.checked?SDF.sel.add(c.dataset.sdsel):SDF.sel.delete(c.dataset.sdsel); }); const n=$("#sdN"); if(n) n.textContent=SDF.sel.size; });

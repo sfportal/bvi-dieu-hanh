@@ -81,8 +81,25 @@
   }
   const norm = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase().replace(/\s+/g, " ").trim();
   const lab = (arr, k) => (arr.find(x => x[0] === k) || [])[1] || "";
+  // lead đã có SĐT, email, địa chỉ chưa (org_email_web có thể là web, chỉ tính khi có @)
+  function contactOf(l) {
+    const t = v => String(v || "").trim();
+    const ph = (l.phones && l.phones.length > 0) || normPhones([l.contact_phone, l.contact_zalo, l.org_phone].filter(Boolean).join(", ")).length > 0;
+    const em = /@/.test(t(l.contact_email)) || /@/.test(t(l.org_email_web));
+    return { ph, em, ad: t(l.address).length > 0 };
+  }
+  const CONTACT_F = [["ph", "Có SĐT"], ["noph", "Chưa có SĐT"], ["em", "Có email"], ["noem", "Chưa có email"], ["ad", "Có địa chỉ"], ["noad", "Chưa có địa chỉ"], ["none", "Thiếu SĐT và email"]];
+  const contactMatch = (c, k) => k === "ph" ? c.ph : k === "noph" ? !c.ph : k === "em" ? c.em : k === "noem" ? !c.em : k === "ad" ? c.ad : k === "noad" ? !c.ad : k === "none" ? !c.ph && !c.em : true;
+  // gộp cách viết tỉnh: bỏ chữ "tỉnh", "TP", "Thành phố"; Hồ Chí Minh viết TP.HCM
+  function provKey(s) {
+    let v = String(s || "").trim();
+    if (!v) return "Chưa rõ";
+    if (/^(tp\.?\s*hcm|tp\.?\s*hồ chí minh|thành phố hồ chí minh|hồ chí minh|hcm)$/i.test(v)) return "TP.HCM";
+    v = v.replace(/^(tỉnh|thành phố|tp\.?)\s+/i, "").trim();
+    return v || "Chưa rõ";
+  }
 
   const SC = { STAGES, TEMPS, FITS, CHANNELS, RESULTS, NEEDS, LOST, NEXT, HOT_DAYS, WARM_DAYS, FRESH_HOURS, CALL_GOAL,
-    normPhones, vnToday, addDays, nextPreset, buckets, applyAct, callMinutes, ago, telHref, zaloHref, distM, norm, lab };
+    normPhones, vnToday, addDays, nextPreset, buckets, applyAct, callMinutes, ago, telHref, zaloHref, distM, norm, lab, contactOf, provKey, CONTACT_F, contactMatch };
   if (typeof module !== "undefined" && module.exports) module.exports = SC; else root.SC = SC;
 })(typeof window !== "undefined" ? window : this);
