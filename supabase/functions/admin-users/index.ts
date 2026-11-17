@@ -9,7 +9,7 @@ const cors = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
-const ROLES = ["owner", "manager", "staff", "viewer"];
+const ROLES = ["owner", "manager", "staff", "viewer", "ctv"];
 function tempPw() {
   const a = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
   const r = crypto.getRandomValues(new Uint32Array(10));
@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
   if (!who?.user) return json({ error: "not_signed_in" }, 401);
   const { data: me } = await admin.from("profiles").select("*").eq("id", who.user.id).single();
   if (!me || !me.active || me.role !== "owner") return json({ error: "owner_only" }, 403);
-  const RL: Record<string, string> = { owner: "Owner", manager: "Quản lý", staff: "Nhân viên", viewer: "Chỉ xem" };
+  const RL: Record<string, string> = { owner: "Owner", manager: "Quản lý", staff: "Nhân viên", viewer: "Chỉ xem", ctv: "Cộng tác viên" };
   const log = async (summary: string, title: string, docId: string | null) => {
     try { await admin.from("activity_log").insert({ user_id: me.id, email: me.email, name: me.name || me.email, action: "account", col: "accounts", doc_id: docId, title, summary }); } catch (_) { /* nhật ký lỗi không chặn thao tác */ }
   };
