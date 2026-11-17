@@ -26,8 +26,8 @@ const H = 3600e3, D = 24 * H, iso = ms => new Date(now - ms).toISOString();
 const L = [
   { id: "od", stage: 2, owner_id: uid, next_at: "2026-11-14", last_touch_at: iso(3 * D) },
   { id: "td", stage: 3, owner_id: uid, next_at: "2026-11-16", last_touch_at: iso(1 * D) },
-  { id: "hot", stage: 2, owner_id: uid, temp: "hot", next_at: "2026-11-20", last_touch_at: iso(3 * D) },
-  { id: "warm8", stage: 2, owner_id: uid, temp: "warm", next_at: "2026-11-25", last_touch_at: iso(8 * D) },
+  { id: "hot", stage: 2, owner_id: uid, priority: "A", next_at: "2026-11-20", last_touch_at: iso(3 * D) },
+  { id: "warm8", stage: 2, owner_id: uid, priority: "B", next_at: "2026-11-25", last_touch_at: iso(8 * D) },
   { id: "fresh", stage: 1, owner_id: uid, assigned_at: iso(30 * H), last_touch_at: null },
   { id: "fresh_new", stage: 1, owner_id: uid, assigned_at: iso(2 * H), last_touch_at: null, next_at: null },
   { id: "nonext", stage: 3, owner_id: uid, last_touch_at: iso(1 * D), next_at: null },
@@ -99,4 +99,15 @@ assert.strictEqual(SC.contactMatch({ ph: false, em: false, ad: true }, "none"), 
 assert.strictEqual(SC.contactMatch({ ph: true, em: false, ad: true }, "none"), false);
 assert.strictEqual(SC.contactMatch({ ph: true, em: false, ad: false }, "noad"), true);
 assert.strictEqual(SC.contactMatch({ ph: true, em: false, ad: false }, ""), true);
+// ưu tiên High/Normal/Low lưu A/B/C
+eq(SC.PRIOS, [["A", "High"], ["B", "Normal"], ["C", "Low"]]);
+assert.strictEqual(SC.prioOf({ priority: "A" }), "A");
+assert.strictEqual(SC.prioOf({ priority: " b " }), "B");
+assert.strictEqual(SC.prioOf({ priority: "high" }), "A");
+assert.strictEqual(SC.prioOf({ priority: "Low" }), "C");
+assert.strictEqual(SC.prioOf({ priority: "" }), "");
+assert.strictEqual(SC.prioOf({}), "");
+// nóng cũ không còn quyết định nhóm "lâu chưa chạm"
+eq(SC.buckets([{ id: "t", stage: 2, owner_id: uid, temp: "hot", next_at: "2026-11-20", last_touch_at: iso(3 * D) }], uid, now).hot, []);
+eq(SC.buckets([{ id: "c", stage: 2, owner_id: uid, priority: "C", next_at: "2026-11-20", last_touch_at: iso(30 * D) }], uid, now).hot, []);
 console.log("OK");

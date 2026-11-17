@@ -806,7 +806,7 @@ function bindRecon(A){
 }
 
 /* ---------- Sales: dashboard quản lý, dữ liệu ở bảng sales_leads, sales_acts, sales_claims (sales.html là trang làm việc của sales) ---------- */
-let SD={st:null}, SDF={own:"",stage:"",q:"",prov:"",ct:"",sel:new Set(),lim:100};
+let SD={st:null}, SDF={own:"",stage:"",q:"",prov:"",ct:"",pri:"",sel:new Set(),lim:100};
 const sdMgr=()=>!!PROFILE&&["owner","manager"].includes(PROFILE.role);
 const sdOk=()=>!!PROFILE&&["owner","manager","viewer"].includes(PROFILE.role)&&typeof SC!=="undefined";
 const sdName=id=>id?((SD.people||{})[id]||"Người khác"):"Kho chung";
@@ -849,13 +849,13 @@ function vSales(){
   const mx=Math.max(1,...SC.STAGES.map(([k])=>L.filter(l=>l.stage===k).length));
   h+='<div class="panel" style="margin-top:12px"><h3 style="margin:0 0 8px">Phễu theo giai đoạn</h3>'+SC.STAGES.map(([k,t])=>{ const n=L.filter(l=>l.stage===k).length;
     return '<div data-fun="'+k+'" style="display:grid;grid-template-columns:118px 1fr 40px;gap:8px;align-items:center;margin:3px 0"><span class="sub">'+t+'</span><span style="background:var(--sunk);border-radius:4px;height:14px;overflow:hidden"><span style="display:block;height:100%;width:'+Math.round(n*100/mx)+'%;background:var(--'+(k===6?"good":k===7?"bad":k===0?"warn":"brand")+')"></span></span><b class="c" style="text-align:right">'+n+'</b></div>'; }).join("")+'</div>';
-  h+='<div class="panel" style="margin-top:12px"><h3 style="margin:0 0 8px">Theo từng sales</h3><div class="tw"><table id="sdTbl"><thead><tr><th>Sales</th><th>Lead đang giữ</th><th>Tương tác hôm nay</th><th>Tương tác 7 ngày</th><th>Phút gọi (7 ngày)</th><th>Quá hạn</th><th>Nóng chưa chạm</th><th>Giao đến lần chạm đầu (giờ)</th><th>Hoạt động gần nhất</th></tr></thead><tbody>'
+  h+='<div class="panel" style="margin-top:12px"><h3 style="margin:0 0 8px">Theo từng sales</h3><div class="tw"><table id="sdTbl"><thead><tr><th>Sales</th><th>Lead đang giữ</th><th>Tương tác hôm nay</th><th>Tương tác 7 ngày</th><th>Phút gọi (7 ngày)</th><th>Quá hạn</th><th>Ưu tiên cao lâu chưa chạm</th><th>Giao đến lần chạm đầu (giờ)</th><th>Hoạt động gần nhất</th></tr></thead><tbody>'
    +(X.rows.length?X.rows.map(r=>'<tr data-u="'+esc(r.u)+'"><td><b>'+esc(r.name)+'</b>'+(r.role==="ctv"?' <span class="pill">CTV</span>':'')+'</td><td>'+r.hold+'</td><td>'+(r.today>=SC.CALL_GOAL?'<b style="color:var(--good)">'+r.today+'</b>':r.today)+'</td><td>'+r.week+'</td><td>'+r.min+'</td><td>'+(r.over?'<b style="color:var(--bad)">'+r.over+'</b>':0)+'</td><td>'+(r.hot?'<b style="color:var(--warn)">'+r.hot+'</b>':0)+'</td><td>'+(r.ft==null?"—":r.ft)+'</td><td class="sub">'+esc(SC.ago(r.last))+'</td></tr>').join(""):'<tr><td colspan="9" class="sub">Chưa có lead nào được giao.</td></tr>')+'</tbody></table></div></div>';
   // Cần can thiệp
   const lid=Object.fromEntries(L.map(l=>[l.id,l])), td=X.td, late3=X.B.overdue.filter(l=>l.next_at<=SC.addDays(td,-3));
   const iv=[]; SD.claims.forEach(c=>iv.push('<div class="row between" style="gap:6px;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid var(--line)"><span style="min-width:0;overflow-wrap:anywhere"><b>'+esc(sdName(c.by))+'</b> xin nhận lead <b>'+esc(lid[c.lead_id]?.name||"(lead)")+'</b> · '+esc(SC.ago(c.at))+'</span>'+(mg?'<span class="row" style="gap:4px"><button class="btn sm pri" data-cok="'+esc(c.id)+'">Duyệt</button><button class="btn sm" data-cno="'+esc(c.id)+'">Từ chối</button></span>':'')+'</div>'));
   late3.slice(0,15).forEach(l=>iv.push('<div style="padding:6px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere"><span class="pill bad">Quá hạn '+Math.round((Date.parse(td)-Date.parse(l.next_at))/864e5)+' ngày</span> <b>'+esc(l.name)+'</b> · '+esc(sdName(l.owner_id))+'</div>'));
-  X.B.hot.slice(0,10).forEach(l=>iv.push('<div style="padding:6px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere"><span class="pill warn">'+(l.temp==="hot"?"Nóng":"Ấm")+' bị bỏ '+esc(SC.ago(l.last_touch_at))+'</span> <b>'+esc(l.name)+'</b> · '+esc(sdName(l.owner_id))+'</div>'));
+  X.B.hot.slice(0,10).forEach(l=>iv.push('<div style="padding:6px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere"><span class="pill warn">Ưu tiên '+esc(SC.lab(SC.PRIOS,SC.prioOf(l)))+' bị bỏ '+esc(SC.ago(l.last_touch_at))+'</span> <b>'+esc(l.name)+'</b> · '+esc(sdName(l.owner_id))+'</div>'));
   X.B.fresh.slice(0,10).forEach(l=>iv.push('<div style="padding:6px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere"><span class="pill">Giao quá 24 giờ chưa chạm</span> <b>'+esc(l.name)+'</b> · '+esc(sdName(l.owner_id))+'</div>'));
   h+='<div class="panel" style="margin-top:12px"><h3 style="margin:0 0 4px">Cần can thiệp</h3>'+(iv.length?iv.join(""):'<div class="sub">Không có việc cần can thiệp.</div>')+'</div>';
   // Dòng hoạt động
@@ -872,6 +872,7 @@ function vSales(){
   const provs=(()=>{ const m=new Map(); L.forEach(l=>{ const k=SC.provKey(l.province); m.set(k,(m.get(k)||0)+1); }); return [...m].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],"vi")); })();
   if(SDF.prov) arr=arr.filter(l=>SC.provKey(l.province)===SDF.prov);
   const ctc={}; arr.forEach(l=>{ const c=SC.contactOf(l); SC.CONTACT_F.forEach(([k])=>{ if(SC.contactMatch(c,k)) ctc[k]=(ctc[k]||0)+1; }); });
+  if(SDF.pri) arr=arr.filter(l=>SDF.pri==="none"?!SC.prioOf(l):SC.prioOf(l)===SDF.pri);
   if(SDF.ct) arr=arr.filter(l=>SC.contactMatch(SC.contactOf(l),SDF.ct));
   const ciB=l=>{ const c=SC.contactOf(l); return [["ph","SĐT"],["em","Email"],["ad","Địa chỉ"]].map(([k,t])=>'<span style="font-size:11px;border-radius:6px;padding:0 5px;white-space:nowrap;'+(c[k]?'border:1px solid var(--ok,#2f7d4f);color:var(--ok,#2f7d4f)':'border:1px dashed var(--line,#ccc);color:var(--muted,#888);text-decoration:line-through')+'" title="'+(c[k]?"Có ":"Chưa có ")+t.toLowerCase()+'">'+t+'</span>').join(" "); };
   const sel=[...SDF.sel].filter(id=>lid[id]), ppl=Object.entries(SD.people).filter(([u])=>["owner","manager","staff","ctv"].includes(SD.roles[u])).sort((a,b)=>a[1].localeCompare(b[1],"vi"));
@@ -879,10 +880,11 @@ function vSales(){
    +'<select id="sdOwn" aria-label="Phụ trách"><option value="">Mọi người phụ trách</option><option value="_none"'+(SDF.own==="_none"?" selected":"")+'>Kho chung (chưa giao)</option>'+ppl.map(([u,n])=>'<option value="'+esc(u)+'"'+(SDF.own===u?" selected":"")+'>'+esc(n)+'</option>').join("")+'</select>'
    +'<select id="sdStage" aria-label="Giai đoạn"><option value="">Mọi giai đoạn</option>'+SC.STAGES.map(([k,t])=>'<option value="'+k+'"'+(SDF.stage===String(k)?" selected":"")+'>'+t+'</option>').join("")+'</select>'
    +'<select id="sdProv" aria-label="Tỉnh thành"><option value="">Mọi tỉnh thành</option>'+provs.map(([k,n])=>'<option value="'+esc(k)+'"'+(SDF.prov===k?" selected":"")+'>'+esc(k)+' ('+n+')</option>').join("")+'</select>'
+   +'<select id="sdPri" aria-label="Độ ưu tiên"><option value="">Mọi độ ưu tiên</option>'+SC.PRIOS.concat([["none","Chưa xếp ưu tiên"]]).map(([k,t])=>'<option value="'+k+'"'+(SDF.pri===k?" selected":"")+'>'+t+'</option>').join("")+'</select>'
    +'<select id="sdCt" aria-label="Thông tin liên hệ"><option value="">Mọi thông tin liên hệ</option>'+SC.CONTACT_F.map(([k,t])=>'<option value="'+k+'"'+(SDF.ct===k?" selected":"")+'>'+t+(SDF.ct?'':' ('+(ctc[k]||0)+')')+'</option>').join("")+'</select></div>'
    +(mg?'<div class="row" style="gap:6px;flex-wrap:wrap;margin:8px 0"><span class="sub">Đã chọn <b id="sdN">'+sel.length+'</b> lead · giao cho</span><select id="sdTo" aria-label="Giao cho"><option value="">Chọn người</option>'+ppl.map(([u,n])=>'<option value="'+esc(u)+'">'+esc(n)+(SD.roles[u]==="ctv"?" (CTV)":"")+'</option>').join("")+'</select><button class="btn pri sm" id="sdAssign">Giao</button><span class="sub" id="sdMsg"></span></div>':'')
-   +'<div class="sub" style="margin:4px 0">'+arr.length+' lead</div><div class="tw"><table><thead><tr>'+(mg?'<th><input type="checkbox" id="sdAll" aria-label="Chọn tất cả đang hiện"></th>':'')+'<th>Lead</th><th>Liên hệ</th><th>Giai đoạn</th><th>Phụ trách</th><th>Hẹn</th><th>Chạm gần nhất</th></tr></thead><tbody>'
-   +arr.slice(0,SDF.lim).map(l=>'<tr>'+(mg?'<td><input type="checkbox" data-sdsel="'+esc(l.id)+'"'+(SDF.sel.has(l.id)?" checked":"")+'></td>':'')+'<td style="min-width:160px"><b>'+esc(l.name)+'</b>'+(l.priority?' <span class="pill">'+esc(l.priority)+'</span>':'')+'<div class="sub">'+esc([SC.provKey(l.province),l.segment].filter(Boolean).join(" · "))+'</div></td><td style="white-space:nowrap">'+ciB(l)+'</td><td>'+esc(SC.lab(SC.STAGES,l.stage))+(l.temp?' <span class="pill">'+esc(SC.lab(SC.TEMPS,l.temp))+'</span>':'')+'</td><td>'+esc(sdName(l.owner_id))+'</td><td'+(l.next_at&&l.next_at<td&&l.stage>=1&&l.stage<=5?' style="color:var(--bad);font-weight:600"':'')+'>'+(l.next_at?dm(l.next_at):"—")+'</td><td class="sub">'+esc(SC.ago(l.last_touch_at))+'</td></tr>').join("")+'</tbody></table></div>'
+   +'<div class="sub" style="margin:4px 0">'+arr.length+' lead</div><div class="tw"><table><thead><tr>'+(mg?'<th><input type="checkbox" id="sdAll" aria-label="Chọn tất cả đang hiện"></th>':'')+'<th>Lead</th><th>Liên hệ</th><th>Giai đoạn</th><th>Ưu tiên</th><th>Phụ trách</th><th>Hẹn</th><th>Chạm gần nhất</th></tr></thead><tbody>'
+   +arr.slice(0,SDF.lim).map(l=>'<tr>'+(mg?'<td><input type="checkbox" data-sdsel="'+esc(l.id)+'"'+(SDF.sel.has(l.id)?" checked":"")+'></td>':'')+'<td style="min-width:160px"><b>'+esc(l.name)+'</b>'+'<div class="sub">'+esc([SC.provKey(l.province),l.segment].filter(Boolean).join(" · "))+'</div></td><td style="white-space:nowrap">'+ciB(l)+'</td><td>'+esc(SC.lab(SC.STAGES,l.stage))+'</td><td>'+(SC.prioOf(l)?'<span class="pill'+(SC.prioOf(l)==="A"?" bad":SC.prioOf(l)==="B"?" warn":"")+'">'+esc(SC.lab(SC.PRIOS,SC.prioOf(l)))+'</span>':'')+'</td><td>'+esc(sdName(l.owner_id))+'</td><td'+(l.next_at&&l.next_at<td&&l.stage>=1&&l.stage<=5?' style="color:var(--bad);font-weight:600"':'')+'>'+(l.next_at?dm(l.next_at):"—")+'</td><td class="sub">'+esc(SC.ago(l.last_touch_at))+'</td></tr>').join("")+'</tbody></table></div>'
    +(arr.length>SDF.lim?'<button class="btn sm" id="sdMore" style="margin-top:6px">Xem thêm</button>':'')+'</div>';
   return h;
 }
@@ -896,6 +898,7 @@ function bindSales(A){
   $("#sdOwn")?.addEventListener("change",e=>{ SDF.own=e.target.value; SDF.lim=100; render(); });
   $("#sdStage")?.addEventListener("change",e=>{ SDF.stage=e.target.value; SDF.lim=100; render(); });
   $("#sdProv")?.addEventListener("change",e=>{ SDF.prov=e.target.value; SDF.lim=100; render(); });
+  $("#sdPri")?.addEventListener("change",e=>{ SDF.pri=e.target.value; SDF.lim=100; render(); });
   $("#sdCt")?.addEventListener("change",e=>{ SDF.ct=e.target.value; SDF.lim=100; render(); });
   $("#sdMore")?.addEventListener("click",()=>{ SDF.lim+=200; render(); });
   A.querySelectorAll("[data-sdsel]").forEach(c=>c.addEventListener("change",()=>{ c.checked?SDF.sel.add(c.dataset.sdsel):SDF.sel.delete(c.dataset.sdsel); const n=$("#sdN"); if(n) n.textContent=SDF.sel.size; }));

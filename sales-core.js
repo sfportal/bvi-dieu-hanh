@@ -2,6 +2,13 @@
 (function (root) {
   const STAGES = [[0, "Cần tìm liên hệ"], [1, "Mới"], [2, "Đã liên hệ"], [3, "Đang tư vấn"], [4, "Đã báo giá"], [5, "Thương lượng"], [6, "Đã ký"], [7, "Không theo"]];
   const TEMPS = [["cold", "Lạnh"], ["warm", "Ấm"], ["hot", "Nóng"]];
+  // độ ưu tiên: lưu A/B/C trong cột priority, hiện High/Normal/Low
+  const PRIOS = [["A", "High"], ["B", "Normal"], ["C", "Low"]];
+  const PRIO_CLS = { A: "hot", B: "warm", C: "cold" };
+  function prioOf(l) {
+    const v = String((l && l.priority) || "").trim().toLowerCase();
+    return v === "a" || v === "high" ? "A" : v === "b" || v === "normal" ? "B" : v === "c" || v === "low" ? "C" : "";
+  }
   const FITS = [["low", "Thấp"], ["mid", "Vừa"], ["high", "Cao"]];
   const CHANNELS = [["call", "Gọi"], ["zalo", "Zalo"], ["meet", "Gặp"], ["email", "Email"], ["other", "Khác"]];
   const RESULTS = [["noans", "Không nghe"], ["later", "Hẹn lại"], ["talked", "Đã nói chuyện"], ["interested", "Quan tâm"], ["sent", "Đã gửi tài liệu"], ["refused", "Từ chối"]];
@@ -39,7 +46,8 @@
       if (l.next_at && l.next_at < td) return B.overdue.push(l);
       if (l.next_at === td) return B.today.push(l);
       const idle = since(l.last_touch_at, now);
-      if (l.last_touch_at && ((l.temp === "hot" && idle > HOT_DAYS * D) || (l.temp === "warm" && idle > WARM_DAYS * D))) return B.hot.push(l);
+      const pr = prioOf(l);
+      if (l.last_touch_at && ((pr === "A" && idle > HOT_DAYS * D) || (pr === "B" && idle > WARM_DAYS * D))) return B.hot.push(l);
       if (!l.last_touch_at && l.owner_id && since(l.assigned_at, now) > FRESH_HOURS * 36e5) return B.fresh.push(l);
       if (!l.next_at) return B.nonext.push(l);
     });
@@ -100,6 +108,6 @@
   }
 
   const SC = { STAGES, TEMPS, FITS, CHANNELS, RESULTS, NEEDS, LOST, NEXT, HOT_DAYS, WARM_DAYS, FRESH_HOURS, CALL_GOAL,
-    normPhones, vnToday, addDays, nextPreset, buckets, applyAct, callMinutes, ago, telHref, zaloHref, distM, norm, lab, contactOf, provKey, CONTACT_F, contactMatch };
+    normPhones, vnToday, addDays, nextPreset, buckets, applyAct, callMinutes, ago, telHref, zaloHref, distM, norm, lab, contactOf, provKey, CONTACT_F, contactMatch, PRIOS, PRIO_CLS, prioOf };
   if (typeof module !== "undefined" && module.exports) module.exports = SC; else root.SC = SC;
 })(typeof window !== "undefined" ? window : this);
