@@ -85,7 +85,14 @@ Thêm một trang mới: thêm mã trang vào `NAV`, `VLAB` và `navOk` trong `s
 | `app_secrets` | Khóa, giá trị. Không có policy nên chỉ Edge Function (service role) đọc ghi. Tiền tố khóa: `apikey:` khóa API (chỉ lưu sha256), `apiuse:` lượt dùng, `share:` bản báo cáo đã phát hành, `shareview:` lượt xem, `sharedraft:` bản nháp báo cáo, `exp:` phiếu thu chi. |
 | `activity_log` | Nhật ký thao tác. Không ghi số tiền. |
 
-Nhu cầu khách hàng (trang `nhu-cau`) lưu trong `docs` loại `contacts` với `type = "lead"`, id bắt đầu bằng `ld`; trang Liên hệ tự bỏ qua các bản ghi này. API gọi loại này là `leads`.
+Lead và sales lưu ở bảng riêng (file `supabase/sales.sql`, kiểm thử quyền `supabase/sales_test.sql`):
+
+- `sales_leads`: lead, giai đoạn `stage` 0–7 (0 Cần tìm liên hệ … 6 Đã ký, 7 Không theo), `temp`, `fit`, `owner_id`, bước tiếp `next_*`. Cột `phones` tự chuẩn hóa từ các cột số điện thoại để chống trùng.
+- `sales_acts`: mỗi lần gọi, Zalo, gặp, check-in (ảnh trong bucket riêng tư `sales`, đường dẫn `<uid>/<lead>/…`). Trigger cập nhật lại lead (lần chạm, giai đoạn, bước tiếp).
+- `sales_claims`: cộng tác viên xin nhận lead đang ở kho chung, quản lý duyệt bằng RPC `sales_claim_decide`.
+- RPC `sales_dup` (kiểm tra trùng khi thêm lead), `sales_claim`, `sales_people` (tên người cho trang sales).
+
+Vai trò `ctv` (cộng tác viên) chỉ thấy lead của mình, không đọc được `docs`; đăng nhập app quản trị sẽ bị chuyển sang `sales.html`. Staff thấy mọi lead và tự nhận lead ở kho chung. Trang `sales.html` viết tay (không qua build), dùng chung logic `sales-core.js` với dashboard mục Sales (`#nhu-cau`, chỉ owner, manager, viewer). Nhập danh sách Excel: `python3 tools/sales_import.py`. Bản ghi `docs` loại `contacts` có `type = "lead"` là dữ liệu cũ, API không trả nữa. API gọi lead là `leads`.
 
 Quyền ghi `docs`: owner, manager ghi mọi loại; staff ghi mọi loại trừ people, units, contracts; viewer chỉ đọc.
 

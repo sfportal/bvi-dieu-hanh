@@ -20,12 +20,12 @@ const json = (b: unknown, s = 200, extra: Record<string, string> = {}) =>
 export const RESOURCES: Record<string, string> = {
   zones: "Vùng trồng", tasks: "Công việc", events: "Lịch công tác", leaves: "Lịch nghỉ",
   daily: "Báo cáo ngày", units: "Công ty, khách hàng", people: "Nhân sự", faqs: "Hỏi đáp",
-  supports: "Yêu cầu hỗ trợ", contracts: "Hợp đồng (không có số tiền)", leads: "Nhu cầu khách hàng (che SĐT, email)",
+  supports: "Yêu cầu hỗ trợ", contracts: "Hợp đồng (không có số tiền)", leads: "Lead khách hàng, pipeline sales (che SĐT, email, MST)",
 };
 // quyền ghi: không phải loại dữ liệu đọc được
 export const WRITES: Record<string, string> = { leads_write: "Gửi nhu cầu khách hàng (chỉ ghi)" };
-// loại dữ liệu ảo: nhu cầu khách hàng nằm trong docs loại contacts với type = "lead"
-const COL_OF: Record<string, string> = { leads: "contacts" };
+// lead khách hàng nằm ở bảng sales_leads (trang sales.html); docs loại contacts type "lead" là dữ liệu cũ, không trả nữa
+const COL_OF: Record<string, string> = {};
 const colOf = (res: string) => COL_OF[res] || res;
 const rowOk = (res: string, d: any) => res === "leads" ? d?.type === "lead" : res === "contacts" ? d?.type !== "lead" : true;
 const PFX = "apikey:";
@@ -164,32 +164,76 @@ async function authKey(req: Request, override: string | null): Promise<{ m: any 
   return { m };
 }
 
-// ---- tạo nhu cầu khách hàng từ hệ thống khác (form web, Zapier, Apps Script, AI qua MCP) ----
+// ---- lead khách hàng: bảng sales_leads ----
 const LEAD_ST = ["new", "contact", "quote", "won", "lost"];
+const STAGE_L = ["Cần tìm liên hệ", "Mới", "Đã liên hệ", "Đang tư vấn", "Đã báo giá", "Thương lượng", "Đã ký", "Không theo"];
+const stStatus = (s: number) => (s <= 1 ? "new" : s <= 3 ? "contact" : s <= 5 ? "quote" : s === 6 ? "won" : "lost");
+const NEED_L: Record<string, string> = { msvt: "Mã số vùng trồng", csdg: "Cơ sở đóng gói", txng: "Truy xuất nguồn gốc, FarmBase", qr: "Tem QR", kt: "Tư vấn kỹ thuật", khac: "Khác" };
+// chỉ đọc các cột này: không bao giờ lấy SĐT, email, MST ra khỏi DB
+const LEAD_COLS = "id,name,contact_name,contact_title,segment,org_type,province,area,address,crops,scale,priority,needs,need_note,need_signal,offer,source,referrer,stage,temp,fit,owner_id,next_at,next_type,last_touch_at,touch_count,created_at,updated_at";
+function leadOut(r: any): Record<string, unknown> {
+  const st = typeof r.stage === "number" ? r.stage : 1;
+  const o = scrub({ name: r.name, contact_name: r.contact_name, contact_title: r.contact_title, segment: r.segment, org_type: r.org_type, province: r.province, area: r.area, address: r.address,
+    crops: r.crops, scale: r.scale, priority: r.priority, needs: (r.needs || []).map((k: string) => NEED_L[k] || k), need_note: r.need_note, need_signal: r.need_signal, offer: r.offer,
+    source: r.source, referrer: r.referrer, status: stStatus(st), stage: st, stage_label: STAGE_L[st], temp: r.temp || null, fit: r.fit || null, owner_id: r.owner_id || null,
+    next_contact: r.next_at || null, next_type: r.next_type || null, last_touch: r.last_touch_at || null, touch_count: r.touch_count || 0, received: String(r.created_at || "").slice(0, 10) }) as Record<string, unknown>;
+  return { id: r.id, ...o, updated_at: r.updated_at || "" };
+}
+async function loadLeads(): Promise<any[]> {
+  const all: any[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await db.from("sales_leads").select(LEAD_COLS).order("name").range(from, from + 999);
+    if (error) throw new Error("db");
+    all.push(...(data || []).map(leadOut)); if (!data || data.length < 1000) break;
+  }
+  return all;
+}
+async function ownerNames(): Promise<Record<string, string>> {
+  const { data } = await db.from("profiles").select("id,name");
+  return Object.fromEntries((data || []).map((p: any) => [p.id, p.name]));
+}
+function normPhones(s: string): string[] {
+  const out: string[] = [];
+  String(s || "").split(/[,;/]|[A-Za-zÀ-ỹ]+/).forEach((t) => { let d = t.replace(/\D/g, ""); if (/^84\d{9,10}$/.test(d)) d = "0" + d.slice(2); if (d.length >= 9 && d.length <= 11 && !out.includes(d)) out.push(d); });
+  return out;
+}
+function needKeys(arr: string[]): string[] {
+  const n = (x: string) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").toLowerCase();
+  const out = new Set<string>();
+  arr.forEach((x) => { const t = n(x); if (/vung trong|msvt/.test(t)) out.add("msvt"); else if (/dong goi|csdg/.test(t)) out.add("csdg"); else if (/truy xuat|farmbase/.test(t)) out.add("txng"); else if (/\bqr\b|tem/.test(t)) out.add("qr"); else if (/ky thuat/.test(t)) out.add("kt"); else out.add("khac"); });
+  return [...out];
+}
+
+// ---- tạo lead từ hệ thống khác (form web, Zapier, Apps Script, AI qua MCP) ----
 const str = (v: unknown, n = 300) => (v === undefined || v === null ? "" : String(v)).replace(/[\u0000-\u001f]+/g, " ").trim().slice(0, n);
 async function createLead(x: any, m: any): Promise<any> {
   if (!x || typeof x !== "object") return { ok: false, error: "bad_lead", message: "Mỗi nhu cầu là một object JSON" };
   const needs = (Array.isArray(x.needs) ? x.needs : typeof x.needs === "string" ? x.needs.split(/[,;]/) : []).map((s: unknown) => str(s, 80)).filter(Boolean).slice(0, 10);
-  const now = new Date().toISOString();
-  const d: Record<string, unknown> = {
-    type: "lead", status: "new", needs,
-    name: str(x.name, 120), org: str(x.org ?? x.company, 160), phone: str(x.phone, 40), zalo: str(x.zalo, 40), email: str(x.email, 160),
-    province: str(x.province, 80), area: str(x.area ?? x.address, 200), crop: str(x.crop, 80), ha: str(x.ha ?? x.area_ha, 20),
-    detail: str(x.detail ?? x.message ?? x.need, 4000), source: str(x.source, 80) || "Hệ thống khác (form, API)", sourceNote: str(x.source_note ?? x.sourceNote, 300),
-    referrer: str(x.referrer ?? x.referred_by, 160), note: str(x.note, 2000), extId: str(x.external_id ?? x.id, 120),
-    via: "api:" + str(m.name, 80), createdAt: now, at: now, hist: [{ at: now, by: "", s: "new" }],
-  };
-  if (!d.name && !d.org) return { ok: false, error: "missing_name", message: "Cần name (họ tên) hoặc org (đơn vị)" };
-  if (!d.phone && !d.zalo && !d.email) return { ok: false, error: "missing_contact", message: "Cần ít nhất phone, zalo hoặc email" };
-  // trùng mã ngoài: không tạo lại
-  if (d.extId) {
-    const { data: ex } = await db.from("docs").select("id").eq("col", "contacts").eq("data->>type", "lead").eq("data->>extId", d.extId as string).limit(1);
+  const person = str(x.name, 120), org = str(x.org ?? x.company, 160), phone = str(x.phone, 40), zalo = str(x.zalo, 40), email = str(x.email, 160);
+  if (!person && !org) return { ok: false, error: "missing_name", message: "Cần name (họ tên) hoặc org (đơn vị)" };
+  if (!phone && !zalo && !email) return { ok: false, error: "missing_contact", message: "Cần ít nhất phone, zalo hoặc email" };
+  const ext = str(x.external_id ?? x.id, 120);
+  // trùng mã ngoài hoặc trùng số điện thoại: không tạo lại
+  if (ext) {
+    const { data: ex } = await db.from("sales_leads").select("id").eq("ext_id", "api:" + ext).limit(1);
     if (ex && ex.length) return { ok: true, id: ex[0].id, duplicate: true };
   }
-  const id = "ld" + Date.now().toString(36) + crypto.getRandomValues(new Uint32Array(1))[0].toString(36).slice(0, 5);
-  const { error } = await db.from("docs").insert({ col: "contacts", id, data: d });
-  if (error) return { ok: false, error: "server_error" };
-  return { ok: true, id, status: "new" };
+  const ph = normPhones([phone, zalo].join(","));
+  if (ph.length) {
+    const { data: ex } = await db.from("sales_leads").select("id").overlaps("phones", ph).limit(1);
+    if (ex && ex.length) return { ok: true, id: ex[0].id, duplicate: true };
+  }
+  const ha = str(x.ha ?? x.area_ha, 20), detail = str(x.detail ?? x.message ?? x.need, 4000), note = str(x.note, 2000), srcNote = str(x.source_note ?? x.sourceNote, 300);
+  const row: Record<string, unknown> = {
+    name: org || person, contact_name: person || null, contact_phone: phone || null, contact_zalo: zalo || null, contact_email: email || null,
+    province: str(x.province, 80) || null, address: str(x.area ?? x.address, 200) || null, crops: str(x.crop, 80) || null, scale: ha ? ha + " ha" : null,
+    needs: needKeys(needs), need_note: [needs.length ? "Quan tâm: " + needs.join(", ") : "", detail, note].filter(Boolean).join("\n") || null,
+    source: str(x.source, 80) || "Hệ thống khác (form, API)", referrer: str(x.referrer ?? x.referred_by, 160) || null,
+    verify: ["Nhận qua API: " + str(m.name, 80), srcNote].filter(Boolean).join("; "), ext_id: ext ? "api:" + ext : null, stage: 1,
+  };
+  const { data, error } = await db.from("sales_leads").insert(row).select("id").single();
+  if (error || !data) return { ok: false, error: "server_error" };
+  return { ok: true, id: data.id, status: "new" };
 }
 
 async function handleData(req: Request, parts: string[]) {
@@ -217,6 +261,23 @@ async function handleData(req: Request, parts: string[]) {
     params: { updated_since: "ISO 8601, chỉ lấy bản ghi sửa từ thời điểm này", limit: "1-1000, mặc định 500", offset: "bỏ qua N bản ghi đầu" } });
   if (!RESOURCES[res]) return json({ error: "unknown_resource", resources: Object.keys(RESOURCES) }, 404);
   if (!(m.scopes as string[]).includes(res)) return json({ error: "forbidden_resource", message: "Khóa này không được đọc " + res }, 403);
+  if (res === "leads") {
+    if (id) {
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return json({ error: "not_found" }, 404);
+      const { data, error } = await db.from("sales_leads").select(LEAD_COLS).eq("id", id).maybeSingle();
+      if (error) return json({ error: "server_error" }, 500);
+      if (!data) return json({ error: "not_found" }, 404);
+      return json({ data: leadOut(data) });
+    }
+    const u0 = new globalThis.URL(req.url);
+    const lim = Math.min(1000, Math.max(1, Number(u0.searchParams.get("limit")) || 500)), off = Math.max(0, Number(u0.searchParams.get("offset")) || 0);
+    const sn = u0.searchParams.get("updated_since"); let si = "";
+    if (sn) { const d = new Date(sn); if (isNaN(+d)) return json({ error: "bad_updated_since" }, 400); si = d.toISOString(); }
+    let L: any[]; try { L = await loadLeads(); } catch { return json({ error: "server_error" }, 500); }
+    if (si) L = L.filter((x) => new Date(x.updated_at).toISOString() >= si);
+    const rows = L.slice(off, off + lim);
+    return json({ resource: res, total: L.length, offset: off, limit: lim, next_offset: off + rows.length < L.length ? off + rows.length : null, data: rows });
+  }
   if (id) {
     const { data, error } = await db.from("docs").select("id,data,updated_at").eq("col", colOf(res)).eq("id", id).maybeSingle();
     if (error) return json({ error: "server_error" }, 500);
@@ -248,6 +309,7 @@ async function handleData(req: Request, parts: string[]) {
 const STEP_NAMES = ["Mở quan hệ xã", "Gom dân, chốt hình thức", "Khảo sát từng lô", "Thu giấy tờ", "Tập huấn, ký hồ sơ", "Xã kiểm tra", "Nộp DVC, chờ mã nội địa", "Phía Trung Quốc bổ sung", "Mã GACC, duy trì"];
 async function loadCol(col: string): Promise<Record<string, any>> {
   const out: Record<string, any> = {};
+  if (col === "leads") { (await loadLeads()).forEach((x) => (out[x.id as string] = x)); return out; }
   for (let from = 0; ; from += 1000) {
     const { data, error } = await db.from("docs").select("id,data,updated_at").eq("col", colOf(col)).order("id").range(from, from + 999);
     if (error) throw new Error("db");
@@ -309,15 +371,14 @@ async function callTool(name: string, a: any, scopes: string[]) {
     return { resource: a.resource, total: L.length, offset: off, next_offset: off + lim < L.length ? off + lim : null, data: L.slice(off, off + lim) };
   }
   if (name === "bvi_list_leads") {
-    const L0 = await loadCol("leads"); let L = Object.values(L0);
-    if (a.status) L = L.filter((x: any) => a.status === "open" ? !["won", "lost"].includes(x.status || "new") : (x.status || "new") === a.status);
+    let L: any[] = Object.values(await loadCol("leads"));
+    if (a.status) L = L.filter((x: any) => a.status === "open" ? !["won", "lost"].includes(x.status) : x.status === a.status);
     if (a.source) { const n = norm(a.source); L = L.filter((x: any) => norm(x.source || "").includes(n)); }
-    if (a.since) L = L.filter((x: any) => (x.createdAt || "") >= a.since);
-    if (a.q) { const n = norm(a.q); L = L.filter((x: any) => norm([x.name, x.org, x.province, x.area, x.crop, x.detail, x.referrer, x.sourceNote, (x.needs || []).join(" ")].join(" ")).includes(n)); }
-    L.sort((x: any, y: any) => (y.createdAt || "").localeCompare(x.createdAt || ""));
-    const lim = Math.min(200, a.limit || 50);
-    const ST: Record<string, string> = { new: "Mới", contact: "Đã liên hệ", quote: "Đã báo giá", won: "Đã ký", lost: "Không theo" };
-    return { total: L.length, leads: L.slice(0, lim).map((x: any) => ({ id: x.id, name: x.name, org: x.org, province: x.province, area: x.area, crop: x.crop, ha: x.ha, needs: x.needs, detail: x.detail, source: x.source, source_note: x.sourceNote, referrer: x.referrer, status: ST[x.status || "new"] || x.status, owner: P[x.owner]?.name || x.owner || null, next_contact: x.next || null, received: (x.createdAt || "").slice(0, 10), via: x.via })) };
+    if (a.since) L = L.filter((x: any) => (x.received || "") >= a.since);
+    if (a.q) { const n = norm(a.q); L = L.filter((x: any) => norm([x.name, x.contact_name, x.province, x.area, x.address, x.crops, x.segment, x.need_note, x.need_signal, x.referrer, (x.needs || []).join(" ")].join(" ")).includes(n)); }
+    L.sort((x: any, y: any) => String(y.updated_at || "").localeCompare(String(x.updated_at || "")));
+    const lim = Math.min(200, a.limit || 50), O = await ownerNames();
+    return { total: L.length, leads: L.slice(0, lim).map((x: any) => ({ ...x, owner: x.owner_id ? O[x.owner_id] || null : null, owner_id: undefined })) };
   }
   if (name === "bvi_list_people") return Object.values(P).map((p: any) => ({ id: p.id, name: p.name, role: p.role, team: p.team, provinces: p.provinces, active: p.active !== false }));
   const Z = can("zones") ? await loadCol("zones") : {};
@@ -333,8 +394,9 @@ async function callTool(name: string, a: any, scopes: string[]) {
       out.tasks_open = open.length; out.tasks_overdue = open.filter((t: any) => t.due && t.due < td).sort((x: any, y: any) => x.due.localeCompare(y.due)).slice(0, 40).map((t: any) => taskBrief(t, P, Z, T));
       out.tasks_due_7d = open.filter((t: any) => t.due && t.due >= td && t.due <= addDays(td, 7)).sort((x: any, y: any) => x.due.localeCompare(y.due)).slice(0, 40).map((t: any) => taskBrief(t, P, Z, T)); }
     if (can("events")) { const E = await loadCol("events"); out.events_7d = Object.values(E).filter((e: any) => e.date && e.date >= td && e.date <= addDays(td, 7)).sort((x: any, y: any) => x.date.localeCompare(y.date)).map((e: any) => ({ date: e.date, end: e.end, title: e.title, kind: e.kind, lead: P[e.lead]?.name || e.lead, people: (e.people || []).map((p: string) => P[p]?.name || p) })); }
-    if (can("leads")) { const LD = Object.values(await loadCol("leads")); const c = (s: string) => LD.filter((x: any) => (x.status || "new") === s).length;
-      out.leads = { total: LD.length, new: c("new"), in_progress: c("contact") + c("quote"), won: c("won"), lost: c("lost"), overdue_follow_up: LD.filter((x: any) => x.next && x.next < td && !["won", "lost"].includes(x.status || "new")).length }; }
+    if (can("leads")) { const LD: any[] = Object.values(await loadCol("leads")); const c = (s: string) => LD.filter((x: any) => x.status === s).length;
+      out.leads = { total: LD.length, need_contact_info: LD.filter((x: any) => x.stage === 0).length, new: c("new"), in_progress: c("contact") + c("quote"), won: c("won"), lost: c("lost"),
+        hot: LD.filter((x: any) => x.temp === "hot" && !["won", "lost"].includes(x.status)).length, overdue_follow_up: LD.filter((x: any) => x.next_contact && x.next_contact < td && !["won", "lost"].includes(x.status)).length }; }
     if (can("leaves")) { const L = await loadCol("leaves"); out.on_leave_7d = Object.values(L).filter((l: any) => l.status !== "rejected" && l.to >= td && l.from <= addDays(td, 7)).map((l: any) => ({ person: P[l.person]?.name || l.person, from: l.from, to: l.to, status: l.status })); }
     return out;
   }

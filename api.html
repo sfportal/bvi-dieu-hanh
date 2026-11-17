@@ -73,7 +73,7 @@ footer{margin-top:40px;color:var(--sub);font-size:13px}
 <tr><td><code>GET /v1/faqs</code></td><td>Hỏi đáp</td></tr>
 <tr><td><code>GET /v1/supports</code></td><td>Yêu cầu hỗ trợ</td></tr>
 <tr><td><code>GET /v1/contracts</code></td><td>Hợp đồng (hạng mục, điều kiện thanh toán theo %, không có số tiền)</td></tr>
-<tr><td><code>GET /v1/leads</code></td><td>Nhu cầu khách hàng: nhu cầu thực tế, nguồn, người giới thiệu, trạng thái chăm sóc (không có số điện thoại, email)</td></tr>
+<tr><td><code>GET /v1/leads</code></td><td>Lead khách hàng: giai đoạn pipeline, độ nóng, nhu cầu, nguồn, sales phụ trách (không có số điện thoại, email, mã số thuế)</td></tr>
 <tr><td><code>POST /v1/leads</code></td><td>Gửi nhu cầu khách hàng mới (cần quyền <code>leads_write</code>)</td></tr>
 <tr><td><code>GET /v1/&lt;loại&gt;/&lt;id&gt;</code></td><td>Một bản ghi theo mã</td></tr>
 </tbody></table></div>
@@ -172,16 +172,20 @@ footer{margin-top:40px;color:var(--sub);font-size:13px}
 <tr><td><code>status</code></td><td><code>pending</code> chờ duyệt, <code>approved</code> đã duyệt, <code>rejected</code> từ chối</td></tr>
 <tr><td><code>handover</code></td><td>Bàn giao công việc khi nghỉ</td></tr>
 </tbody></table></div>
-<h3>Nhu cầu khách hàng <span class="pill">leads</span></h3>
+<h3>Lead khách hàng <span class="pill">leads</span></h3>
+<p class="sub">Lấy từ pipeline sales (trang sales). Không bao giờ trả số điện thoại, Zalo, email, mã số thuế; dãy số dài trong ghi chú bị che thành •••.</p>
 <div class="tw"><table><thead><tr><th>Trường</th><th>Ý nghĩa</th></tr></thead><tbody>
-<tr><td><code>name</code>, <code>org</code></td><td>Người liên hệ, đơn vị (HTX, công ty)</td></tr>
-<tr><td><code>province</code>, <code>area</code></td><td>Tỉnh, địa chỉ</td></tr>
-<tr><td><code>needs</code>, <code>detail</code></td><td>Dịch vụ quan tâm (mảng), mô tả nhu cầu thực tế</td></tr>
-<tr><td><code>crop</code>, <code>ha</code></td><td>Cây trồng, diện tích (ha)</td></tr>
-<tr><td><code>source</code>, <code>sourceNote</code>, <code>referrer</code></td><td>Nguồn thông tin, chi tiết nguồn, người giới thiệu</td></tr>
-<tr><td><code>status</code></td><td><code>new</code> mới, <code>contact</code> đã liên hệ, <code>quote</code> đã báo giá, <code>won</code> đã ký, <code>lost</code> không theo</td></tr>
-<tr><td><code>owner</code>, <code>next</code></td><td>Nhân sự phụ trách, ngày hẹn liên hệ lại</td></tr>
-<tr><td><code>via</code>, <code>extId</code>, <code>createdAt</code></td><td>Kênh nhận (web, import, api:&lt;tên khóa&gt;), mã bên hệ thống gửi, thời điểm nhận</td></tr>
+<tr><td><code>name</code>, <code>contact_name</code>, <code>contact_title</code></td><td>Tên tổ chức (HTX, công ty, hộ), người liên hệ, chức vụ</td></tr>
+<tr><td><code>segment</code>, <code>org_type</code>, <code>priority</code></td><td>Nhóm khách, loại hình, mức ưu tiên A/B/C</td></tr>
+<tr><td><code>province</code>, <code>area</code>, <code>address</code></td><td>Tỉnh, địa bàn, địa chỉ</td></tr>
+<tr><td><code>crops</code>, <code>scale</code></td><td>Cây trồng, quy mô</td></tr>
+<tr><td><code>needs</code>, <code>need_note</code>, <code>need_signal</code>, <code>offer</code></td><td>Dịch vụ quan tâm (mảng), ghi chú nhu cầu, dấu hiệu nhu cầu, dịch vụ nên chào</td></tr>
+<tr><td><code>status</code></td><td><code>new</code> mới, <code>contact</code> đã liên hệ hoặc đang tư vấn, <code>quote</code> đã báo giá hoặc thương lượng, <code>won</code> đã ký, <code>lost</code> không theo</td></tr>
+<tr><td><code>stage</code>, <code>stage_label</code></td><td>Giai đoạn chi tiết 0 đến 7: 0 Cần tìm liên hệ, 1 Mới, 2 Đã liên hệ, 3 Đang tư vấn, 4 Đã báo giá, 5 Thương lượng, 6 Đã ký, 7 Không theo</td></tr>
+<tr><td><code>temp</code>, <code>fit</code></td><td>Độ nóng (<code>cold</code>, <code>warm</code>, <code>hot</code>), tiềm năng (<code>low</code>, <code>mid</code>, <code>high</code>) do sales đánh giá</td></tr>
+<tr><td><code>owner</code> (MCP), <code>owner_id</code></td><td>Sales phụ trách</td></tr>
+<tr><td><code>next_contact</code>, <code>next_type</code>, <code>last_touch</code>, <code>touch_count</code></td><td>Ngày và loại bước tiếp, lần chạm gần nhất, số lần chạm</td></tr>
+<tr><td><code>source</code>, <code>referrer</code>, <code>received</code></td><td>Nguồn, người giới thiệu, ngày nhận</td></tr>
 </tbody></table></div>
 <p class="sub">Các mã nhân sự (<code>owner</code>, <code>R</code>, <code>lead</code>, <code>person</code>…) tra tên trong <code>/v1/people</code>. Mã đơn vị tra trong <code>/v1/units</code>.</p>
 
@@ -226,7 +230,7 @@ def get_all(resource, since=None):
 tasks = get_all("tasks", since="2026-11-01T00:00:00Z")</code></pre>
 
 <h2 id="gui-nhu-cau">Gửi nhu cầu khách hàng</h2>
-<p>Dùng khi website, form đăng ký, Zapier, Make, Google Apps Script hay CRM khác muốn đẩy khách quan tâm vào hệ thống. Nhu cầu vào ở trạng thái <b>Mới</b>, hiện ngay trong trang Nhu cầu khách hàng để nhân sự liên hệ. Khóa cần quyền <code>leads_write</code>; nên xin một khóa chỉ có quyền này.</p>
+<p>Dùng khi website, form đăng ký, Zapier, Make, Google Apps Script hay CRM khác muốn đẩy khách quan tâm vào hệ thống. Lead vào giai đoạn <b>Mới</b>, nằm trong kho chung của trang sales để quản lý giao cho sales. Trùng <code>external_id</code> hoặc trùng số điện thoại với lead đã có thì không tạo mới, kết quả có <code>"duplicate": true</code> và id lead cũ. Khóa cần quyền <code>leads_write</code>; nên xin một khóa chỉ có quyền này.</p>
 <pre><code>POST /v1/leads
 X-API-Key: bvi_xxxxxxxx
 Content-Type: application/json
@@ -254,7 +258,7 @@ Content-Type: application/json
 <tr><td><code>source</code>, <code>source_note</code>, <code>referrer</code></td><td>Nên có</td><td>Nguồn (Website, Facebook, Zalo, Hội thảo, Người giới thiệu, Đối tác…), chi tiết nguồn, người giới thiệu</td></tr>
 <tr><td><code>external_id</code></td><td>Không</td><td>Mã bên hệ thống gửi. Gửi lại cùng mã sẽ không tạo trùng, trả <code>duplicate: true</code></td></tr>
 </tbody></table></div>
-<p>Kết quả: <code>201 {"ok": true, "id": "ld…", "status": "new"}</code>. Gửi nhiều một lần: <code>{"leads": [ … ]}</code> tối đa 100, kết quả có <code>created</code> và <code>results</code> theo từng dòng.</p>
+<p>Kết quả: <code>201 {"ok": true, "id": "&lt;uuid&gt;", "status": "new"}</code>. Gửi nhiều một lần: <code>{"leads": [ … ]}</code> tối đa 100, kết quả có <code>created</code> và <code>results</code> theo từng dòng.</p>
 <div class="note">Không đặt khóa trong mã JavaScript của trang web công khai. Hãy để máy chủ của website, Zapier, Make hoặc Google Apps Script gọi API. Chỉ gửi thông tin khi khách đã đồng ý để lại liên hệ.</div>
 <h3>Google Form qua Apps Script</h3>
 <p>Trong bảng tính nhận câu trả lời: Tiện ích mở rộng, Apps Script, dán đoạn sau, sửa tên cột cho khớp, rồi tạo trình kích hoạt "Khi gửi biểu mẫu".</p>
