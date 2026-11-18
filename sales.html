@@ -203,6 +203,7 @@ function rowHtml(l,showOwner){
  const bits=['<span class="pill">'+esc(SC.lab(SC.STAGES,l.stage))+'</span>'];
  if(SC.prioOf(l)) bits.push(prHtml(l));
  if(l.next_at) bits.push('<span'+(od?' style="color:var(--bad);font-weight:600"':'')+'>'+esc(SC.lab(SC.NEXT,l.next_type)||"Hẹn")+' '+dmy(l.next_at)+'</span>');
+ else if(l.next_type) bits.push('<span>'+esc(SC.lab(SC.NEXT,l.next_type))+', chưa hẹn ngày</span>');
  bits.push('<span>'+esc(SC.ago(l.last_touch_at,new Date(Date.now())))+'</span>');
  if(showOwner&&l.owner_id!==ME.id) bits.push('<span>'+(l.owner_id?esc(pname(l.owner_id)):"Kho chung")+'</span>');
  return '<a class="lrow" href="#lead/'+encodeURIComponent(l.id)+'"><div class="nm">'+esc(l.name)+'</div><div class="mt">'+bits.join("")+'</div><div class="mt">'+ciHtml(l)+(l.province||l.segment?'<span>'+esc([SC.provKey(l.province),l.segment].filter(Boolean).join(" · "))+'</span>':'')+'</div></a>';
@@ -297,7 +298,7 @@ function drawList(){
   +show.map(l=>{ const od=l.next_at&&l.next_at<td; return '<tr data-id="'+esc(l.id)+'"><td><a href="#lead/'+encodeURIComponent(l.id)+'">'+esc(l.name)+'</a>'+(l.contact_name?'<div class="sub">'+esc([l.contact_name,l.contact_title].filter(Boolean).join(", "))+'</div>':'')+'</td>'
    +'<td>'+esc(SC.provKey(l.province))+'</td><td>'+esc(l.segment||"")+'</td><td>'+esc(SC.lab(SC.STAGES,l.stage))+'</td>'
    +'<td>'+prHtml(l)+'</td>'
-   +'<td>'+ciHtml(l)+'</td><td'+(od?' style="color:var(--bad);font-weight:600"':'')+'>'+(l.next_at?esc(SC.lab(SC.NEXT,l.next_type)||"Hẹn")+' '+dmy(l.next_at):'<span class="sub">Chưa hẹn</span>')+'</td>'
+   +'<td>'+ciHtml(l)+'</td><td'+(od?' style="color:var(--bad);font-weight:600"':'')+'>'+(l.next_at?esc(SC.lab(SC.NEXT,l.next_type)||"Hẹn")+' '+dmy(l.next_at):l.next_type?esc(SC.lab(SC.NEXT,l.next_type))+'<div class="sub">chưa hẹn ngày</div>':'<span class="sub">Chưa hẹn</span>')+'</td>'
    +'<td><span class="sub">'+(l.touch_count||0)+' lần · '+esc(SC.ago(l.last_touch_at,new Date(Date.now())))+'</span></td>'
    +(ownCol?'<td>'+(l.owner_id?esc(pname(l.owner_id)):'<span class="sub">Kho chung</span>')+'</td>':'')+'</tr>'; }).join("")+'</tbody></table>';
  else body=show.map(l=>rowHtml(l,ownCol)).join("");

@@ -1300,7 +1300,7 @@ function bindSales(A){
   $("#sdAssign")?.addEventListener("click",async()=>{ if(!sdMgr()) return; const to=$("#sdTo").value, ids=[...SDF.sel].filter(id=>SD.leads.some(l=>l.id===id));
     if(!ids.length){ $("#sdMsg").textContent="Chọn lead trước."; return; } if(!to){ $("#sdMsg").textContent="Chọn người nhận."; return; }
     const b=$("#sdAssign"); b.disabled=true; $("#sdMsg").textContent="Đang giao…";
-    let err=null; for(let i=0;i<ids.length&&!err;i+=200){ const part=ids.slice(i,i+200); const r=await SB.from("sales_leads").update({owner_id:to}).in("id",part); err=r.error;
+    let err=null; for(let i=0;i<ids.length&&!err;i+=200){ const part=ids.slice(i,i+200); const r=await SB.from("sales_leads").update({owner_id:to,next_at:null}).in("id",part); err=r.error;
       if(!err){ const r2=await SB.from("sales_acts").insert(part.map(id=>({lead_id:id,kind:"assign",note:"Giao cho "+sdName(to)}))); err=r2.error; } }
     if(err){ b.disabled=false; $("#sdMsg").textContent="Chưa giao được: "+err.message; return; }
     toast("Đã giao "+ids.length+" lead cho "+sdName(to)); logEv("sales","giao "+ids.length+" lead"); SDF.sel=new Set(); SD={st:null}; render(); });
