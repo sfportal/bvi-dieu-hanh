@@ -24,7 +24,9 @@ button,input,select,textarea{font:inherit;color:inherit}
 .goal{background:rgba(255,255,255,.16);border-radius:999px;padding:3px 10px;font-weight:600;font-size:13px;white-space:nowrap}
 .goal i{display:inline-block;height:6px;width:46px;background:rgba(255,255,255,.3);border-radius:3px;vertical-align:middle;margin-left:6px;overflow:hidden;position:relative}
 .goal i s{position:absolute;inset:0 auto 0 0;background:#fff;border-radius:3px}
-.me{background:none;border:0;color:inherit;padding:4px;cursor:pointer;font-size:13px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.me{font-size:13px;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.out{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);color:inherit;border-radius:999px;padding:4px 10px;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap}
+@media (max-width:420px){.me{display:none}}
 main{max-width:720px;margin:0 auto;padding:12px}
 .bot{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom)}
 .bot a{flex:1;text-align:center;padding:9px 4px 8px;text-decoration:none;color:var(--muted);font-size:12px;font-weight:600}
@@ -113,7 +115,7 @@ textarea.in{min-height:64px;resize:vertical}
 </style>
 </head>
 <body>
-<header class="top" id="top" style="display:none"><b>BVI Sales</b><nav class="topnav"><a href="#hom-nay" data-r="hom-nay">Hôm nay</a><a href="#lead" data-r="lead">Lead</a><a href="#them" data-r="them">Thêm lead</a></nav><span class="sp"></span><span class="goal" id="goal"></span><button class="me" id="meBtn"></button></header>
+<header class="top" id="top" style="display:none"><b>BVI Sales</b><nav class="topnav"><a href="#hom-nay" data-r="hom-nay">Hôm nay</a><a href="#lead" data-r="lead">Lead</a><a href="#them" data-r="them">Thêm lead</a></nav><span class="sp"></span><span class="goal" id="goal"></span><span class="me" id="meBtn"></span><button class="out" id="bLogout" type="button">Đăng xuất</button></header>
 <main id="app"><div class="sub" style="padding:30px;text-align:center">Đang tải…</div></main>
 <nav class="bot" id="bot" style="display:none">
  <a href="#hom-nay" data-r="hom-nay"><span>☀</span>Hôm nay</a>
@@ -153,7 +155,7 @@ function showLogin(msg){
   start(); });
 }
 function block(msg){ shell(false); $("#app").innerHTML='<div class="auth card"><h1 style="margin:0 0 6px;font-size:18px">BVI Sales</h1><div class="msg warn">'+esc(msg)+'</div><button class="btn full" id="bOut">Đăng xuất</button></div>'; $("#bOut").onclick=logout; }
-async function logout(){ await SB.auth.signOut(); ME=null; LEADS=[]; showLogin(); }
+async function logout(){ try{ await SB.auth.signOut({scope:"local"}); }catch(e){} try{ Object.keys(localStorage).filter(k=>/^sb-.*-auth-token$/.test(k)).forEach(k=>localStorage.removeItem(k)); }catch(e){} ME=null; LEADS=[]; MYACTS=[]; closeSheet(); location.hash=""; showLogin(); }
 function showChangePw(){
  shell(false);
  $("#app").innerHTML='<div class="auth card"><h1 style="margin:0 0 6px;font-size:18px">Đổi mật khẩu lần đầu</h1><form id="pf"><div class="f"><label for="p1">Mật khẩu mới (từ 8 ký tự)</label><input class="in" id="p1" type="password" minlength="8" autocomplete="new-password" required></div><div class="f"><label for="p2">Nhập lại</label><input class="in" id="p2" type="password" minlength="8" autocomplete="new-password" required></div><button class="btn pri full">Lưu mật khẩu</button><div class="sub" id="pmsg" style="margin-top:8px"></div></form></div>';
@@ -325,10 +327,10 @@ async function vDetail(id){
   +(!l.owner_id&&isStaff()?'<button class="btn full" id="bTake" style="margin-bottom:8px">Nhận lead này</button>':'')
   +'<div class="row2"><button class="btn pri" id="bLog" style="flex:1">Ghi tương tác</button><button class="btn" id="bCheck" style="flex:1">📷 Check-in</button></div>'
   +'<div class="card next'+(od?" od":"")+'">'+(l.next_at||l.next_type?'<b>Bước tiếp: '+esc(SC.lab(SC.NEXT,l.next_type)||"Liên hệ lại")+(l.next_at?' · '+dmy(l.next_at)+(od?' (quá hạn)':l.next_at===td?' (hôm nay)':''):'')+'</b>'+(l.next_note?'<div class="sub">'+esc(l.next_note)+'</div>':''):'<span class="sub">Chưa có bước tiếp. Ghi tương tác để hẹn lần sau.</span>')+'</div>'
-  +(l.stage===0?'<div class="msg warn">Lead này chưa có cách liên hệ. Tìm được số hoặc email thì bấm Sửa liên hệ.</div>':'')
+  +(l.stage===0?'<div class="msg warn">Lead này chưa có cách liên hệ. Tìm được số hoặc email thì bấm Sửa lead.</div>':'')
   +'<div class="card"><div class="kv">'+kv.map(([k,v])=>'<div>'+k+'</div><div>'+esc(v)+'</div>').join("")+'</div>'
   +(l.source_url?'<div style="margin-top:6px"><a class="sub" href="'+esc(l.source_url)+'" target="_blank" rel="noopener">Nguồn thông tin ›</a></div>':'')
-  +(mine||isStaff()?'<button class="btn" id="bEdit" style="margin-top:8px">Sửa liên hệ</button><div id="edit"></div>':'')+'</div>'
+  +(mine||isStaff()?'<button class="btn" id="bEdit" style="margin-top:8px">✎ Sửa lead</button><div id="edit"></div>':'')+'</div>'
   +'<h2>Dòng thời gian</h2><div class="tl" id="tl"><div class="sub">Đang tải…</div></div>';
  if(p0){ $("#bCall").addEventListener("click",()=>{ CALL={lead:l.id,ch:"call",left:null}; }); $("#bZalo").addEventListener("click",()=>{ CALL={lead:l.id,ch:"zalo",left:null}; }); }
  $$('[aria-disabled=true]').forEach(a=>a.addEventListener("click",e=>{ e.preventDefault(); toast(a.id==="bCall"||a.id==="bZalo"?"Lead chưa có số điện thoại":a.id==="bMail"?"Lead chưa có email":"Lead chưa có địa chỉ"); }));
@@ -338,10 +340,21 @@ async function vDetail(id){
  drawTimeline(l);
 }
 function editForm(l){
- const F=[["contact_name","Người liên hệ"],["contact_title","Chức vụ"],["contact_phone","Số điện thoại"],["contact_zalo","Zalo (nếu khác)"],["contact_email","Email"],["address","Địa chỉ"]];
- $("#edit").innerHTML='<div style="margin-top:10px">'+F.map(([k,t])=>'<div class="f"><label for="e_'+k+'">'+t+'</label><input class="in" id="e_'+k+'" value="'+esc(l[k]||"")+'"></div>').join("")+'<button class="btn pri" id="eSave">Lưu</button> <span class="sub" id="eMsg"></span></div>';
+ const T=[["name","Tên khách (tổ chức, hộ)"],["contact_name","Người liên hệ"],["contact_title","Chức vụ"],["contact_phone","Số điện thoại"],["contact_zalo","Zalo (nếu khác)"],["contact_email","Email"],["province","Tỉnh thành"],["address","Địa chỉ"],["segment","Nhóm khách"],["crops","Cây trồng"],["scale","Quy mô"]];
+ const sel=(id,arr,v,all)=>'<select class="in" id="'+id+'"><option value="">'+all+'</option>'+arr.map(([k,t])=>'<option value="'+esc(k)+'"'+(String(v||"")===String(k)?" selected":"")+'>'+esc(t)+'</option>').join("")+'</select>';
+ $("#edit").innerHTML='<div style="margin-top:10px">'
+  +T.map(([k,t])=>'<div class="f"><label for="e_'+k+'">'+t+'</label><input class="in" id="e_'+k+'" value="'+esc(l[k]||"")+'"></div>').join("")
+  +'<div class="f"><label for="e_priority">Độ ưu tiên</label>'+sel("e_priority",SC.PRIOS,SC.prioOf(l),"Chưa xếp")+'</div>'
+  +'<div class="f"><label>Bước tiếp</label><div class="row2">'+sel("e_next_type",SC.NEXT,l.next_type,"Chưa có")+'<input class="in" type="date" id="e_next_at" value="'+esc(l.next_at||"")+'" aria-label="Ngày hẹn" style="width:auto;flex:1"><button type="button" class="btn" id="eNoDate" style="padding:8px 10px">Bỏ ngày</button></div></div>'
+  +'<div class="f"><label for="e_next_note">Ghi chú bước tiếp</label><textarea class="in" id="e_next_note">'+esc(l.next_note||"")+'</textarea></div>'
+  +'<div class="row2"><button class="btn pri" id="eSave">Lưu</button><button class="btn" id="eCancel" type="button">Hủy</button><span class="sub" id="eMsg"></span></div></div>';
  $("#bEdit").style.display="none";
- $("#eSave").onclick=async()=>{ const p={}; F.forEach(([k])=>{ const v=$("#e_"+k).value.trim(); p[k]=v||null; });
+ $("#eNoDate").onclick=()=>{ $("#e_next_at").value=""; };
+ $("#eCancel").onclick=()=>route();
+ $("#eSave").onclick=async()=>{ const p={};
+  T.forEach(([k])=>{ const v=$("#e_"+k).value.trim(); p[k]=v||null; });
+  if(!p.name){ $("#eMsg").textContent="Cần tên khách"; return; }
+  p.priority=$("#e_priority").value||null; p.next_type=$("#e_next_type").value||null; p.next_at=$("#e_next_at").value||null; p.next_note=$("#e_next_note").value.trim()||null;
   if(l.stage===0&&(SC.normPhones([p.contact_phone,p.contact_zalo].join(",")).length||p.contact_email)) p.stage=1;
   $("#eSave").disabled=true; const {error}=await SB.from("sales_leads").update(p).eq("id",l.id); $("#eSave").disabled=false;
   if(error){ $("#eMsg").textContent="Chưa lưu được: "+error.message; return; } await refreshLead(l.id); toast("Đã lưu"); route(); };
@@ -505,8 +518,7 @@ function vAdd(){
   LEADS.push(data); toast("Đã thêm lead"); location.hash="#lead/"+data.id; });
 }
 
-$("#meBtn").onclick=()=>{ if(confirmOut()) logout(); };
-function confirmOut(){ const s=$("#meBtn"); if(s.dataset.ask){ delete s.dataset.ask; return true; } s.dataset.ask=1; const t=s.textContent; s.textContent="Bấm lần nữa để đăng xuất"; setTimeout(()=>{ if(s.dataset.ask){ delete s.dataset.ask; s.textContent=t; } },3000); return false; }
+$("#bLogout").onclick=()=>logout();
 (function boot(){
  if(!window.supabase){ $("#app").innerHTML='<div class="msg bad">Không tải được thư viện. Kiểm tra mạng rồi tải lại trang.</div>'; return; }
  SB=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
