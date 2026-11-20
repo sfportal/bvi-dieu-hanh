@@ -103,6 +103,20 @@
   const CONTACT_F = [["ph", "Có SĐT"], ["noph", "Chưa có SĐT"], ["em", "Có email"], ["noem", "Chưa có email"], ["ad", "Có địa chỉ"], ["noad", "Chưa có địa chỉ"], ["none", "Thiếu SĐT và email"]];
   const contactMatch = (c, k) => k === "ph" ? c.ph : k === "noph" ? !c.ph : k === "em" ? c.em : k === "noem" ? !c.em : k === "ad" ? c.ad : k === "noad" ? !c.ad : k === "none" ? !c.ph && !c.em : true;
   // gộp cách viết tỉnh: bỏ chữ "tỉnh", "TP", "Thành phố"; Hồ Chí Minh viết TP.HCM
+  // Nguồn: "agrimap-dl-ocop", "agrimap-dl-vungxk" gom thêm mục "agrimap-dl (tất cả)", giá trị "agrimap-dl*".
+  function srcOptions(leads) {
+    const m = new Map(); (leads || []).forEach(l => { const k = l && l.source; if (k) m.set(k, (m.get(k) || 0) + 1); });
+    const keys = [...m.keys()], grp = new Map();
+    keys.forEach(k => { const p = k.split("-"); for (let n = 1; n < p.length; n++) { const pre = p.slice(0, n).join("-"); if (!grp.has(pre)) grp.set(pre, keys.filter(x => x === pre || x.startsWith(pre + "-"))); } });
+    const used = new Set(), items = [];
+    [...grp].filter(([, ks]) => ks.length > 1).sort((a, b) => b[0].length - a[0].length).forEach(([pre, ks]) => {
+      if (ks.some(k => used.has(k))) return; ks.forEach(k => used.add(k));
+      items.push({ n: ks.reduce((a, k) => a + m.get(k), 0), rows: [[pre + "*", pre + " (tất cả) (" + ks.reduce((a, k) => a + m.get(k), 0) + ")"]].concat(ks.sort((a, b) => m.get(b) - m.get(a) || a.localeCompare(b, "vi")).map(k => [k, "  · " + k + " (" + m.get(k) + ")"])) });
+    });
+    keys.filter(k => !used.has(k)).forEach(k => items.push({ n: m.get(k), rows: [[k, k + " (" + m.get(k) + ")"]] }));
+    return items.sort((a, b) => b.n - a.n || a.rows[0][0].localeCompare(b.rows[0][0], "vi")).flatMap(i => i.rows);
+  }
+  const srcMatch = (l, v) => !v ? true : v.endsWith("*") ? ((s, p) => s === p || s.startsWith(p + "-"))(String(l.source || ""), v.slice(0, -1)) : l.source === v;
   function provKey(s) {
     let v = String(s || "").trim();
     if (!v) return "Chưa rõ";
@@ -112,6 +126,6 @@
   }
 
   const SC = { STAGES, TEMPS, FITS, CHANNELS, RESULTS, NEEDS, LOST, NEXT, HOT_DAYS, WARM_DAYS, FRESH_HOURS, CALL_GOAL,
-    normPhones, vnToday, addDays, nextPreset, buckets, applyAct, callMinutes, ago, telHref, zaloHref, distM, norm, lab, contactOf, provKey, CONTACT_F, contactMatch, PRIOS, PRIO_CLS, prioOf, CONTACT_STATES, contactState, NOREACH };
+    normPhones, vnToday, addDays, nextPreset, buckets, applyAct, callMinutes, ago, telHref, zaloHref, distM, norm, lab, contactOf, provKey, CONTACT_F, contactMatch, srcOptions, srcMatch, PRIOS, PRIO_CLS, prioOf, CONTACT_STATES, contactState, NOREACH };
   if (typeof module !== "undefined" && module.exports) module.exports = SC; else root.SC = SC;
 })(typeof window !== "undefined" ? window : this);

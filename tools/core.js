@@ -873,10 +873,10 @@ function vSales(){
   const provs=(()=>{ const m=new Map(); L.forEach(l=>{ const k=SC.provKey(l.province); m.set(k,(m.get(k)||0)+1); }); return [...m].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],"vi")); })();
   if(SDF.prov) arr=arr.filter(l=>SC.provKey(l.province)===SDF.prov);
   const cnt=f=>{ const m=new Map(); L.forEach(l=>{ const k=f(l); if(k) m.set(k,(m.get(k)||0)+1); }); return [...m].sort((a,b)=>b[1]-a[1]||String(a[0]).localeCompare(String(b[0]),"vi")); };
-  const segs=cnt(l=>l.segment), srcs=cnt(l=>l.source);
+  const segs=cnt(l=>l.segment);
   if(SDF.seg) arr=arr.filter(l=>l.segment===SDF.seg);
   if(SDF.cs) arr=arr.filter(l=>SC.contactState(l)===SDF.cs);
-  if(SDF.src) arr=arr.filter(l=>l.source===SDF.src);
+  if(SDF.src) arr=arr.filter(l=>SC.srcMatch(l,SDF.src));
   if(SDF.tc){ const d14=new Date(Date.now()-14*864e5).toISOString(); arr=arr.filter(l=>SDF.tc==="never"?!l.last_touch_at:SDF.tc==="stale"?!!l.last_touch_at&&l.last_touch_at<d14:!!l.last_touch_at&&l.last_touch_at>=d14); }
   const ctc={}; arr.forEach(l=>{ const c=SC.contactOf(l); SC.CONTACT_F.forEach(([k])=>{ if(SC.contactMatch(c,k)) ctc[k]=(ctc[k]||0)+1; }); });
   if(SDF.pri) arr=arr.filter(l=>SDF.pri==="none"?!SC.prioOf(l):SC.prioOf(l)===SDF.pri);
@@ -888,7 +888,7 @@ function vSales(){
    +'<select id="sdStage" aria-label="Giai đoạn"><option value="">Mọi giai đoạn</option>'+SC.STAGES.map(([k,t])=>'<option value="'+k+'"'+(SDF.stage===String(k)?" selected":"")+'>'+t+'</option>').join("")+'</select>'
    +'<select id="sdProv" aria-label="Tỉnh thành"><option value="">Mọi tỉnh thành</option>'+provs.map(([k,n])=>'<option value="'+esc(k)+'"'+(SDF.prov===k?" selected":"")+'>'+esc(k)+' ('+n+')</option>').join("")+'</select>'
    +'<select id="sdSeg" aria-label="Nhóm khách"><option value="">Mọi nhóm khách</option>'+segs.map(([k,n])=>'<option value="'+esc(k)+'"'+(SDF.seg===k?" selected":"")+'>'+esc(k)+' ('+n+')</option>').join("")+'</select>'
-   +'<select id="sdSrc" aria-label="Nguồn lead"><option value="">Mọi nguồn</option>'+srcs.map(([k,n])=>'<option value="'+esc(k)+'"'+(SDF.src===k?" selected":"")+'>'+esc(String(k).slice(0,60))+' ('+n+')</option>').join("")+'</select>'
+   +'<select id="sdSrc" aria-label="Nguồn lead"><option value="">Mọi nguồn</option>'+SC.srcOptions(L).map(([k,t])=>'<option value="'+esc(k)+'"'+(SDF.src===k?" selected":"")+'>'+esc(String(t).slice(0,70))+'</option>').join("")+'</select>'
    +'<select id="sdCs" aria-label="Trạng thái liên hệ"><option value="">Mọi trạng thái liên hệ</option>'+SC.CONTACT_STATES.map(([k,t])=>'<option value="'+k+'"'+(SDF.cs===k?" selected":"")+'>'+t+'</option>').join("")+'</select>'
    +'<select id="sdTc" aria-label="Lần chạm"><option value="">Mọi lần chạm</option>'+[["never","Chưa ai liên hệ"],["stale","Quá 14 ngày chưa chạm"],["recent","Có chạm trong 14 ngày"]].map(([k,t])=>'<option value="'+k+'"'+(SDF.tc===k?" selected":"")+'>'+t+'</option>').join("")+'</select>'
    +'<select id="sdNx" aria-label="Ngày hẹn"><option value="">Mọi ngày hẹn</option>'+[["has","Có ngày hẹn"],["late","Quá hạn hẹn"],["none","Chưa hẹn ngày"]].map(([k,t])=>'<option value="'+k+'"'+(SDF.nx===k?" selected":"")+'>'+t+'</option>').join("")+'</select>'

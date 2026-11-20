@@ -128,7 +128,7 @@ textarea.in{min-height:64px;resize:vertical}
 <script src="sales-core.js"></script>
 <script>
 const SB_URL="https://pkckduidwfcncipwzdxa.supabase.co", SB_KEY="sb_publishable_ZHvz0flMvyIsxmT-tKS_Hw_q_Vz_7RF";
-let SB, ME=null, LEADS=[], MYACTS=[], PEOPLE={}, PROLE={}, TAB="mine", Q="", STF="", F={prov:"",pri:"",seg:"",ct:"",own:"",cs:"",sort:"next"}, LIMIT=150, CALL=null, SH=null;
+let SB, ME=null, LEADS=[], MYACTS=[], PEOPLE={}, PROLE={}, TAB="mine", Q="", STF="", F={prov:"",pri:"",seg:"",ct:"",own:"",cs:"",src:"",sort:"next"}, LIMIT=150, CALL=null, SH=null;
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const isStaff=()=>ME&&["owner","manager","staff"].includes(ME.role);
@@ -247,7 +247,7 @@ function opts(arr,sel,all){ return '<option value="">'+all+'</option>'+arr.map((
 function countBy(arr,f){ const m=new Map(); arr.forEach(l=>{ const k=f(l); if(k) m.set(k,(m.get(k)||0)+1); }); return [...m].sort((a,b)=>b[1]-a[1]||String(a[0]).localeCompare(String(b[0]),"vi")); }
 function vList(){
  const T=isStaff()?[["mine","Của tôi"],["all","Tất cả"],["pool","Kho chung"]]:[];
- const base=tabSet(), nF=["prov","pri","seg","ct","own","cs"].filter(k=>F[k]).length+(STF!==""?1:0);
+ const base=tabSet(), nF=["prov","pri","seg","ct","own","cs","src"].filter(k=>F[k]).length+(STF!==""?1:0);
  const prov=countBy(base,l=>SC.provKey(l.province)).map(([k,n])=>[k,k+" ("+n+")"]), seg=countBy(base,l=>l.segment).map(([k,n])=>[k,k+" ("+n+")"]);
  const own=TAB==="all"?[["__pool","Kho chung"]].concat(countBy(base,l=>l.owner_id).map(([k,n])=>[k,pname(k)+" ("+n+")"])):[];
  $("#app").innerHTML=(T.length?'<div class="tabs">'+T.map(([k,t])=>'<button data-tab="'+k+'" class="'+(TAB===k?"on":"")+'">'+t+'</button>').join("")+'</div>':'')
@@ -260,14 +260,15 @@ function vList(){
   +'<select class="in" id="fCt" aria-label="Thông tin liên hệ">'+opts(CTF,F.ct,"Mọi thông tin liên hệ")+'</select>'
   +'<select class="in" id="fPri" aria-label="Độ ưu tiên">'+opts(SC.PRIOS.concat([["none","Chưa xếp ưu tiên"]]),F.pri,"Mọi độ ưu tiên")+'</select>'
   +'<select class="in" id="fSeg" aria-label="Nhóm khách">'+opts(seg,F.seg,"Mọi nhóm khách")+'</select>'
+  +'<select class="in" id="fSrc" aria-label="Nguồn lead">'+opts(SC.srcOptions(base),F.src,"Mọi nguồn")+'</select>'
   +(own.length?'<select class="in" id="fOwn" aria-label="Phụ trách">'+opts(own,F.own,"Mọi người phụ trách")+'</select>':'')
   +'<select class="in" id="fSort" aria-label="Sắp xếp">'+opts([["next","Xếp: bước tiếp gần nhất"],["name","Xếp: tên A đến Z"],["recent","Xếp: mới chạm gần đây"],["stale","Xếp: lâu chưa chạm"],["prio","Xếp: ưu tiên High trước"]],F.sort,"Xếp: bước tiếp gần nhất")+'</select>'
   +(nF?'<button class="btn" id="fClr" type="button">Xóa lọc</button>':'')+'</div></details><div id="list"></div>';
  $$("[data-tab]").forEach(b=>b.onclick=()=>{ TAB=b.dataset.tab; LIMIT=150; if(TAB!=="all") F.own=""; F.prov=F.seg=""; vList(); });
  $("#q").oninput=e=>{ Q=e.target.value; LIMIT=150; drawList(); };
  $("#stf").onchange=e=>{ STF=e.target.value; LIMIT=150; vList(); };
- [["fCs","cs"],["fProv","prov"],["fCt","ct"],["fPri","pri"],["fSeg","seg"],["fOwn","own"],["fSort","sort"]].forEach(([i,k])=>{ const el=$("#"+i); if(el) el.onchange=()=>{ F[k]=el.value; LIMIT=150; vList(); }; });
- if($("#fClr")) $("#fClr").onclick=()=>{ F={prov:"",pri:"",seg:"",ct:"",own:"",cs:"",sort:F.sort}; STF=""; vList(); };
+ [["fCs","cs"],["fProv","prov"],["fCt","ct"],["fPri","pri"],["fSeg","seg"],["fSrc","src"],["fOwn","own"],["fSort","sort"]].forEach(([i,k])=>{ const el=$("#"+i); if(el) el.onchange=()=>{ F[k]=el.value; LIMIT=150; vList(); }; });
+ if($("#fClr")) $("#fClr").onclick=()=>{ F={prov:"",pri:"",seg:"",ct:"",own:"",cs:"",src:"",sort:F.sort}; STF=""; vList(); };
  drawList();
 }
 function drawList(){
@@ -275,6 +276,7 @@ function drawList(){
  let scope=tabSet();
  if(F.prov) scope=scope.filter(l=>SC.provKey(l.province)===F.prov);
  if(F.seg) scope=scope.filter(l=>l.segment===F.seg);
+ if(F.src) scope=scope.filter(l=>SC.srcMatch(l,F.src));
  if(F.cs) scope=scope.filter(l=>SC.contactState(l)===F.cs);
  if(F.pri) scope=scope.filter(l=>F.pri==="none"?!SC.prioOf(l):SC.prioOf(l)===F.pri);
  if(F.own) scope=scope.filter(l=>F.own==="__pool"?!l.owner_id:l.owner_id===F.own);

@@ -124,4 +124,12 @@ assert.strictEqual(SC.contactState({ last_result: "unreach" }), "unreach");
 eq(SC.CONTACT_STATES.map(x => x[0]), ["none", "noans", "unreach", "wrong", "nofind", "reached", "refused"]);
 assert.strictEqual(SC.contactState({ last_result: "talked" }), "reached");
 assert.strictEqual(SC.contactState({ last_result: "later" }), "reached");
+// nguồn: nhóm theo tiền tố
+const SL = [{ source: "agrimap-dl-ocop" }, { source: "agrimap-dl-ocop" }, { source: "agrimap-dl-vungxk" }, { source: "Danh bạ" }, {}];
+eq(SC.srcOptions(SL), [["agrimap-dl*", "agrimap-dl (tất cả) (3)"], ["agrimap-dl-ocop", "  · agrimap-dl-ocop (2)"], ["agrimap-dl-vungxk", "  · agrimap-dl-vungxk (1)"], ["Danh bạ", "Danh bạ (1)"]]);
+assert.strictEqual(SC.srcMatch({ source: "agrimap-dl-ocop" }, "agrimap-dl*"), true);
+assert.strictEqual(SC.srcMatch({ source: "agrimap-dl" }, "agrimap-dl*"), true);
+assert.strictEqual(SC.srcMatch({ source: "agrimap-dlx" }, "agrimap-dl*"), false);
+assert.strictEqual(SC.srcMatch({ source: "Danh bạ" }, "Danh bạ"), true);
+assert.strictEqual(SC.srcMatch({}, ""), true);
 console.log("OK");
