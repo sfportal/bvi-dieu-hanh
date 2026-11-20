@@ -110,4 +110,18 @@ assert.strictEqual(SC.prioOf({}), "");
 // nóng cũ không còn quyết định nhóm "lâu chưa chạm"
 eq(SC.buckets([{ id: "t", stage: 2, owner_id: uid, temp: "hot", next_at: "2026-11-20", last_touch_at: iso(3 * D) }], uid, now).hot, []);
 eq(SC.buckets([{ id: "c", stage: 2, owner_id: uid, priority: "C", next_at: "2026-11-20", last_touch_at: iso(30 * D) }], uid, now).hot, []);
+// trạng thái liên hệ
+assert.strictEqual(SC.lab(SC.RESULTS, "unreach"), "Không liên hệ được");
+assert.strictEqual(SC.lab(SC.RESULTS, "wrong"), "Sai số, sai người");
+assert.strictEqual(SC.lab(SC.RESULTS, "nofind"), "Chưa tìm được liên hệ");
+assert.strictEqual(SC.lab(SC.CHANNELS, "search"), "Tìm thông tin");
+assert.strictEqual(SC.applyAct({ stage: 0 }, { result: "nofind" }).stage, 0);
+assert.strictEqual(SC.applyAct({ stage: 1 }, { result: "unreach" }).stage, 1);
+assert.strictEqual(SC.applyAct({ stage: 1 }, { result: "wrong" }).stage, 1);
+assert.strictEqual(SC.applyAct({ stage: 1 }, { result: "unreach" }).last_result, "unreach");
+assert.strictEqual(SC.contactState({}), "none");
+assert.strictEqual(SC.contactState({ last_result: "unreach" }), "unreach");
+eq(SC.CONTACT_STATES.map(x => x[0]), ["none", "noans", "unreach", "wrong", "nofind", "reached", "refused"]);
+assert.strictEqual(SC.contactState({ last_result: "talked" }), "reached");
+assert.strictEqual(SC.contactState({ last_result: "later" }), "reached");
 console.log("OK");

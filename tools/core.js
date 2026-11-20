@@ -806,7 +806,7 @@ function bindRecon(A){
 }
 
 /* ---------- Sales: dashboard quản lý, dữ liệu ở bảng sales_leads, sales_acts, sales_claims (sales.html là trang làm việc của sales) ---------- */
-let SD={st:null}, SDF={own:"",stage:"",q:"",prov:"",ct:"",pri:"",nx:"",seg:"",src:"",tc:"",sel:new Set(),lim:100};
+let SD={st:null}, SDF={own:"",stage:"",q:"",prov:"",ct:"",pri:"",nx:"",seg:"",src:"",tc:"",cs:"",sel:new Set(),lim:100};
 const sdMgr=()=>!!PROFILE&&["owner","manager"].includes(PROFILE.role);
 const sdOk=()=>!!PROFILE&&["owner","manager","viewer"].includes(PROFILE.role)&&typeof SC!=="undefined";
 const sdName=id=>id?((SD.people||{})[id]||"Người khác"):"Kho chung";
@@ -875,6 +875,7 @@ function vSales(){
   const cnt=f=>{ const m=new Map(); L.forEach(l=>{ const k=f(l); if(k) m.set(k,(m.get(k)||0)+1); }); return [...m].sort((a,b)=>b[1]-a[1]||String(a[0]).localeCompare(String(b[0]),"vi")); };
   const segs=cnt(l=>l.segment), srcs=cnt(l=>l.source);
   if(SDF.seg) arr=arr.filter(l=>l.segment===SDF.seg);
+  if(SDF.cs) arr=arr.filter(l=>SC.contactState(l)===SDF.cs);
   if(SDF.src) arr=arr.filter(l=>l.source===SDF.src);
   if(SDF.tc){ const d14=new Date(Date.now()-14*864e5).toISOString(); arr=arr.filter(l=>SDF.tc==="never"?!l.last_touch_at:SDF.tc==="stale"?!!l.last_touch_at&&l.last_touch_at<d14:!!l.last_touch_at&&l.last_touch_at>=d14); }
   const ctc={}; arr.forEach(l=>{ const c=SC.contactOf(l); SC.CONTACT_F.forEach(([k])=>{ if(SC.contactMatch(c,k)) ctc[k]=(ctc[k]||0)+1; }); });
@@ -888,14 +889,15 @@ function vSales(){
    +'<select id="sdProv" aria-label="Tỉnh thành"><option value="">Mọi tỉnh thành</option>'+provs.map(([k,n])=>'<option value="'+esc(k)+'"'+(SDF.prov===k?" selected":"")+'>'+esc(k)+' ('+n+')</option>').join("")+'</select>'
    +'<select id="sdSeg" aria-label="Nhóm khách"><option value="">Mọi nhóm khách</option>'+segs.map(([k,n])=>'<option value="'+esc(k)+'"'+(SDF.seg===k?" selected":"")+'>'+esc(k)+' ('+n+')</option>').join("")+'</select>'
    +'<select id="sdSrc" aria-label="Nguồn lead"><option value="">Mọi nguồn</option>'+srcs.map(([k,n])=>'<option value="'+esc(k)+'"'+(SDF.src===k?" selected":"")+'>'+esc(String(k).slice(0,60))+' ('+n+')</option>').join("")+'</select>'
+   +'<select id="sdCs" aria-label="Trạng thái liên hệ"><option value="">Mọi trạng thái liên hệ</option>'+SC.CONTACT_STATES.map(([k,t])=>'<option value="'+k+'"'+(SDF.cs===k?" selected":"")+'>'+t+'</option>').join("")+'</select>'
    +'<select id="sdTc" aria-label="Lần chạm"><option value="">Mọi lần chạm</option>'+[["never","Chưa ai liên hệ"],["stale","Quá 14 ngày chưa chạm"],["recent","Có chạm trong 14 ngày"]].map(([k,t])=>'<option value="'+k+'"'+(SDF.tc===k?" selected":"")+'>'+t+'</option>').join("")+'</select>'
    +'<select id="sdNx" aria-label="Ngày hẹn"><option value="">Mọi ngày hẹn</option>'+[["has","Có ngày hẹn"],["late","Quá hạn hẹn"],["none","Chưa hẹn ngày"]].map(([k,t])=>'<option value="'+k+'"'+(SDF.nx===k?" selected":"")+'>'+t+'</option>').join("")+'</select>'
    +'<select id="sdPri" aria-label="Độ ưu tiên"><option value="">Mọi độ ưu tiên</option>'+SC.PRIOS.concat([["none","Chưa xếp ưu tiên"]]).map(([k,t])=>'<option value="'+k+'"'+(SDF.pri===k?" selected":"")+'>'+t+'</option>').join("")+'</select>'
-   +'<select id="sdCt" aria-label="Thông tin liên hệ"><option value="">Mọi thông tin liên hệ</option>'+SC.CONTACT_F.map(([k,t])=>'<option value="'+k+'"'+(SDF.ct===k?" selected":"")+'>'+t+(SDF.ct?'':' ('+(ctc[k]||0)+')')+'</option>').join("")+'</select>'+(['own','stage','q','prov','ct','pri','nx','seg','src','tc'].some(k=>SDF[k])?'<button class="btn sm" id="sdClr">Xóa lọc</button>':'')+'</div>'
+   +'<select id="sdCt" aria-label="Thông tin liên hệ"><option value="">Mọi thông tin liên hệ</option>'+SC.CONTACT_F.map(([k,t])=>'<option value="'+k+'"'+(SDF.ct===k?" selected":"")+'>'+t+(SDF.ct?'':' ('+(ctc[k]||0)+')')+'</option>').join("")+'</select>'+(['own','stage','q','prov','ct','pri','nx','seg','src','tc','cs'].some(k=>SDF[k])?'<button class="btn sm" id="sdClr">Xóa lọc</button>':'')+'</div>'
    +(mg?'<div class="row" style="gap:6px;flex-wrap:wrap;margin:8px 0"><span class="sub">Đã chọn <b id="sdN">'+sel.length+'</b> lead · giao cho</span><select id="sdTo" aria-label="Giao cho"><option value="">Chọn người</option>'+ppl.map(([u,n])=>'<option value="'+esc(u)+'">'+esc(n)+(SD.roles[u]==="ctv"?" (CTV)":"")+'</option>').join("")+'</select><button class="btn pri sm" id="sdAssign">Giao</button><span class="sub">· hoặc</span><select id="sdSetPri" aria-label="Đặt ưu tiên"><option value="">Đặt ưu tiên</option>'+SC.PRIOS.map(([k,t])=>'<option value="'+k+'">'+t+'</option>').join("")+'</select><button class="btn sm" id="sdNoDate">Bỏ ngày hẹn</button><span class="sub" id="sdMsg"></span></div>'
    +'<div class="row" style="gap:6px;flex-wrap:wrap;margin:0 0 8px;align-items:center"><span class="sub">Chia đều lead đã chọn cho:</span>'+ppl.map(([u,n])=>'<label class="pill" style="cursor:pointer;display:inline-flex;gap:4px;align-items:center"><input type="checkbox" data-sdsplit="'+esc(u)+'">'+esc(n)+(SD.roles[u]==="ctv"?" (CTV)":"")+'</label>').join("")+'<button class="btn pri sm" id="sdSplit">Chia đều</button><span class="sub" id="sdSplitMsg"></span></div>':'')
-   +'<div class="sub" style="margin:4px 0">'+arr.length+' lead</div><div class="tw"><table><thead><tr>'+(mg?'<th><input type="checkbox" id="sdAll" aria-label="Chọn tất cả đang hiện"></th>':'')+'<th>Lead</th><th>Liên hệ</th><th>Giai đoạn</th><th>Ưu tiên</th><th>Phụ trách</th><th>Hẹn</th><th>Chạm gần nhất</th></tr></thead><tbody>'
-   +arr.slice(0,SDF.lim).map(l=>'<tr>'+(mg?'<td><input type="checkbox" data-sdsel="'+esc(l.id)+'"'+(SDF.sel.has(l.id)?" checked":"")+'></td>':'')+'<td style="min-width:160px"><b>'+esc(l.name)+'</b>'+'<div class="sub">'+esc([SC.provKey(l.province),l.segment].filter(Boolean).join(" · "))+'</div></td><td style="white-space:nowrap">'+ciB(l)+'</td><td>'+esc(SC.lab(SC.STAGES,l.stage))+'</td><td>'+(SC.prioOf(l)?'<span class="pill'+(SC.prioOf(l)==="A"?" bad":SC.prioOf(l)==="B"?" warn":"")+'">'+esc(SC.lab(SC.PRIOS,SC.prioOf(l)))+'</span>':'')+'</td><td>'+esc(sdName(l.owner_id))+'</td><td'+(l.next_at&&l.next_at<td&&l.stage>=1&&l.stage<=5?' style="color:var(--bad);font-weight:600"':'')+'>'+(l.next_at?dm(l.next_at):"—")+'</td><td class="sub">'+esc(SC.ago(l.last_touch_at))+'</td></tr>').join("")+'</tbody></table></div>'
+   +'<div class="sub" style="margin:4px 0">'+arr.length+' lead</div><div class="tw"><table><thead><tr>'+(mg?'<th><input type="checkbox" id="sdAll" aria-label="Chọn tất cả đang hiện"></th>':'')+'<th>Lead</th><th>Liên hệ</th><th>Giai đoạn</th><th>Ưu tiên</th><th>Phụ trách</th><th>Hẹn</th><th>Liên hệ gần nhất</th></tr></thead><tbody>'
+   +arr.slice(0,SDF.lim).map(l=>'<tr>'+(mg?'<td><input type="checkbox" data-sdsel="'+esc(l.id)+'"'+(SDF.sel.has(l.id)?" checked":"")+'></td>':'')+'<td style="min-width:160px"><b>'+esc(l.name)+'</b>'+'<div class="sub">'+esc([SC.provKey(l.province),l.segment].filter(Boolean).join(" · "))+'</div></td><td style="white-space:nowrap">'+ciB(l)+'</td><td>'+esc(SC.lab(SC.STAGES,l.stage))+'</td><td>'+(SC.prioOf(l)?'<span class="pill'+(SC.prioOf(l)==="A"?" bad":SC.prioOf(l)==="B"?" warn":"")+'">'+esc(SC.lab(SC.PRIOS,SC.prioOf(l)))+'</span>':'')+'</td><td>'+esc(sdName(l.owner_id))+'</td><td'+(l.next_at&&l.next_at<td&&l.stage>=1&&l.stage<=5?' style="color:var(--bad);font-weight:600"':'')+'>'+(l.next_at?dm(l.next_at):"—")+'</td><td>'+(l.last_result?'<span class="pill'+(SC.contactState(l)==="reached"?"":" bad")+'">'+esc(SC.lab(SC.CONTACT_STATES,SC.contactState(l)))+'</span> ':'')+'<span class="sub">'+esc(SC.ago(l.last_touch_at))+'</span></td></tr>').join("")+'</tbody></table></div>'
    +(arr.length>SDF.lim?'<button class="btn sm" id="sdMore" style="margin-top:6px">Xem thêm</button>':'')+'</div>';
   return h;
 }
@@ -909,8 +911,8 @@ function bindSales(A){
   $("#sdOwn")?.addEventListener("change",e=>{ SDF.own=e.target.value; SDF.lim=100; render(); });
   $("#sdStage")?.addEventListener("change",e=>{ SDF.stage=e.target.value; SDF.lim=100; render(); });
   $("#sdProv")?.addEventListener("change",e=>{ SDF.prov=e.target.value; SDF.lim=100; render(); });
-  $("#sdClr")?.addEventListener("click",()=>{ ["own","stage","q","prov","ct","pri","nx","seg","src","tc"].forEach(k=>SDF[k]=""); SDF.lim=100; render(); });
-  [["sdSeg","seg"],["sdSrc","src"],["sdTc","tc"]].forEach(([i,k])=>$("#"+i)?.addEventListener("change",e=>{ SDF[k]=e.target.value; SDF.lim=100; render(); }));
+  $("#sdClr")?.addEventListener("click",()=>{ ["own","stage","q","prov","ct","pri","nx","seg","src","tc","cs"].forEach(k=>SDF[k]=""); SDF.lim=100; render(); });
+  [["sdSeg","seg"],["sdSrc","src"],["sdTc","tc"],["sdCs","cs"]].forEach(([i,k])=>$("#"+i)?.addEventListener("change",e=>{ SDF[k]=e.target.value; SDF.lim=100; render(); }));
   $("#sdNx")?.addEventListener("change",e=>{ SDF.nx=e.target.value; SDF.lim=100; render(); });
   const sdBulk=async(patch,label)=>{ if(!sdMgr()) return; const ids=[...SDF.sel].filter(id=>SD.leads.some(l=>l.id===id));
     if(!ids.length){ $("#sdMsg").textContent="Chọn lead trước."; return; } $("#sdMsg").textContent="Đang lưu…";

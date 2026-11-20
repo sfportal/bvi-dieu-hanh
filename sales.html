@@ -42,7 +42,7 @@ h2.bad{color:var(--bad)}
 .lrow .mt{display:flex;flex-wrap:wrap;gap:4px 8px;margin-top:3px;color:var(--muted);font-size:12.5px}
 .pill{display:inline-block;border-radius:999px;padding:1px 8px;font-size:12px;background:var(--chip);color:var(--fg);white-space:nowrap}
 .pill.hot{background:var(--hot);color:#fff}.pill.warm{background:var(--warm);color:#fff}.pill.cold{background:var(--cold);color:#fff}
-.pill.od{background:var(--bad);color:#fff}.pill.pa{background:var(--fg);color:var(--bg)}
+.pill.od{background:var(--bad);color:#fff}.pill.cs-bad{background:rgba(184,58,46,.12);color:var(--bad)}.pill.pa{background:var(--fg);color:var(--bg)}
 .empty{color:var(--muted);font-size:13px;padding:4px 2px 8px}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .stats .card{padding:10px;text-align:center}.stats b{display:block;font-size:20px}
@@ -128,7 +128,7 @@ textarea.in{min-height:64px;resize:vertical}
 <script src="sales-core.js"></script>
 <script>
 const SB_URL="https://pkckduidwfcncipwzdxa.supabase.co", SB_KEY="sb_publishable_ZHvz0flMvyIsxmT-tKS_Hw_q_Vz_7RF";
-let SB, ME=null, LEADS=[], MYACTS=[], PEOPLE={}, TAB="mine", Q="", STF="", F={prov:"",pri:"",seg:"",ct:"",own:"",sort:"next"}, LIMIT=150, CALL=null, SH=null;
+let SB, ME=null, LEADS=[], MYACTS=[], PEOPLE={}, PROLE={}, TAB="mine", Q="", STF="", F={prov:"",pri:"",seg:"",ct:"",own:"",cs:"",sort:"next"}, LIMIT=150, CALL=null, SH=null;
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const isStaff=()=>ME&&["owner","manager","staff"].includes(ME.role);
@@ -182,7 +182,7 @@ async function loadAll(){
  LEADS=all;
  const st=new Date(tday()+"T00:00:00+07:00").toISOString();
  const a=await SB.from("sales_acts").select("id,lead_id,channel,result,kind,at").eq("by",ME.id).gte("at",st); MYACTS=(a.data||[]).filter(x=>x.kind==="act");
- const p=await SB.rpc("sales_people"); PEOPLE={}; (p.data||[]).forEach(x=>PEOPLE[x.id]=x.name);
+ const p=await SB.rpc("sales_people"); PEOPLE={}; PROLE={}; (p.data||[]).forEach(x=>{ PEOPLE[x.id]=x.name; PROLE[x.id]=x.role; });
  return true;
 }
 function drawGoal(){ const n=MYACTS.filter(a=>a.channel==="call").length; const w=Math.min(100,Math.round(n*100/SC.CALL_GOAL));
@@ -206,10 +206,12 @@ function rowHtml(l,showOwner){
  if(SC.prioOf(l)) bits.push(prHtml(l));
  if(l.next_at) bits.push('<span'+(od?' style="color:var(--bad);font-weight:600"':'')+'>'+esc(SC.lab(SC.NEXT,l.next_type)||"Hẹn")+' '+dmy(l.next_at)+'</span>');
  else if(l.next_type) bits.push('<span>'+esc(SC.lab(SC.NEXT,l.next_type))+', chưa hẹn ngày</span>');
+ if(l.last_result) bits.push(csHtml(l));
  bits.push('<span>'+esc(SC.ago(l.last_touch_at,new Date(Date.now())))+'</span>');
  if(showOwner&&l.owner_id!==ME.id) bits.push('<span>'+(l.owner_id?esc(pname(l.owner_id)):"Kho chung")+'</span>');
  return '<a class="lrow" href="#lead/'+encodeURIComponent(l.id)+'"><div class="nm">'+esc(l.name)+'</div><div class="mt">'+bits.join("")+'</div><div class="mt">'+ciHtml(l)+(l.province||l.segment?'<span>'+esc([SC.provKey(l.province),l.segment].filter(Boolean).join(" · "))+'</span>':'')+'</div></a>';
 }
+function csHtml(l){ const k=SC.contactState(l); return '<span class="pill'+(k==='reached'||k==='none'?'':' cs-bad')+'">'+esc(SC.lab(SC.CONTACT_STATES,k))+'</span>'; }
 function prHtml(l,pre){ const k=SC.prioOf(l); return k?'<span class="pill '+SC.PRIO_CLS[k]+'">'+(pre||"")+esc(SC.lab(SC.PRIOS,k))+'</span>':''; }
 function ciHtml(l){ const c=SC.contactOf(l); return '<span class="ci">'+[["ph","SĐT"],["em","Email"],["ad","Địa chỉ"]].map(([k,t])=>'<i class="'+(c[k]?"":"no")+'" title="'+(c[k]?"Có ":"Chưa có ")+t.toLowerCase()+'">'+t+'</i>').join("")+'</span>';
 }
@@ -245,7 +247,7 @@ function opts(arr,sel,all){ return '<option value="">'+all+'</option>'+arr.map((
 function countBy(arr,f){ const m=new Map(); arr.forEach(l=>{ const k=f(l); if(k) m.set(k,(m.get(k)||0)+1); }); return [...m].sort((a,b)=>b[1]-a[1]||String(a[0]).localeCompare(String(b[0]),"vi")); }
 function vList(){
  const T=isStaff()?[["mine","Của tôi"],["all","Tất cả"],["pool","Kho chung"]]:[];
- const base=tabSet(), nF=["prov","pri","seg","ct","own"].filter(k=>F[k]).length+(STF!==""?1:0);
+ const base=tabSet(), nF=["prov","pri","seg","ct","own","cs"].filter(k=>F[k]).length+(STF!==""?1:0);
  const prov=countBy(base,l=>SC.provKey(l.province)).map(([k,n])=>[k,k+" ("+n+")"]), seg=countBy(base,l=>l.segment).map(([k,n])=>[k,k+" ("+n+")"]);
  const own=TAB==="all"?[["__pool","Kho chung"]].concat(countBy(base,l=>l.owner_id).map(([k,n])=>[k,pname(k)+" ("+n+")"])):[];
  $("#app").innerHTML=(T.length?'<div class="tabs">'+T.map(([k,t])=>'<button data-tab="'+k+'" class="'+(TAB===k?"on":"")+'">'+t+'</button>').join("")+'</div>':'')
@@ -254,6 +256,7 @@ function vList(){
   +'<details class="flt"'+(nF||WIDE.matches?" open":"")+'><summary>Bộ lọc'+(nF?" ("+nF+")":"")+' ▾</summary><div class="fg">'
   +'<select class="in" id="fProv" aria-label="Tỉnh thành">'+opts(prov,F.prov,"Mọi tỉnh thành")+'</select>'
   +'<select class="in" id="stf" aria-label="Giai đoạn">'+opts(SC.STAGES,STF,"Mọi giai đoạn")+'</select>'
+  +'<select class="in" id="fCs" aria-label="Trạng thái liên hệ">'+opts(SC.CONTACT_STATES,F.cs,"Mọi trạng thái liên hệ")+'</select>'
   +'<select class="in" id="fCt" aria-label="Thông tin liên hệ">'+opts(CTF,F.ct,"Mọi thông tin liên hệ")+'</select>'
   +'<select class="in" id="fPri" aria-label="Độ ưu tiên">'+opts(SC.PRIOS.concat([["none","Chưa xếp ưu tiên"]]),F.pri,"Mọi độ ưu tiên")+'</select>'
   +'<select class="in" id="fSeg" aria-label="Nhóm khách">'+opts(seg,F.seg,"Mọi nhóm khách")+'</select>'
@@ -263,8 +266,8 @@ function vList(){
  $$("[data-tab]").forEach(b=>b.onclick=()=>{ TAB=b.dataset.tab; LIMIT=150; if(TAB!=="all") F.own=""; F.prov=F.seg=""; vList(); });
  $("#q").oninput=e=>{ Q=e.target.value; LIMIT=150; drawList(); };
  $("#stf").onchange=e=>{ STF=e.target.value; LIMIT=150; vList(); };
- [["fProv","prov"],["fCt","ct"],["fPri","pri"],["fSeg","seg"],["fOwn","own"],["fSort","sort"]].forEach(([i,k])=>{ const el=$("#"+i); if(el) el.onchange=()=>{ F[k]=el.value; LIMIT=150; vList(); }; });
- if($("#fClr")) $("#fClr").onclick=()=>{ F={prov:"",pri:"",seg:"",ct:"",own:"",sort:F.sort}; STF=""; vList(); };
+ [["fCs","cs"],["fProv","prov"],["fCt","ct"],["fPri","pri"],["fSeg","seg"],["fOwn","own"],["fSort","sort"]].forEach(([i,k])=>{ const el=$("#"+i); if(el) el.onchange=()=>{ F[k]=el.value; LIMIT=150; vList(); }; });
+ if($("#fClr")) $("#fClr").onclick=()=>{ F={prov:"",pri:"",seg:"",ct:"",own:"",cs:"",sort:F.sort}; STF=""; vList(); };
  drawList();
 }
 function drawList(){
@@ -272,6 +275,7 @@ function drawList(){
  let scope=tabSet();
  if(F.prov) scope=scope.filter(l=>SC.provKey(l.province)===F.prov);
  if(F.seg) scope=scope.filter(l=>l.segment===F.seg);
+ if(F.cs) scope=scope.filter(l=>SC.contactState(l)===F.cs);
  if(F.pri) scope=scope.filter(l=>F.pri==="none"?!SC.prioOf(l):SC.prioOf(l)===F.pri);
  if(F.own) scope=scope.filter(l=>F.own==="__pool"?!l.owner_id:l.owner_id===F.own);
  if(q) scope=scope.filter(l=>SC.norm([l.name,l.province,l.area,l.address,l.contact_name,l.segment,l.crops].join(" ")).includes(q)||(qd.length>=4&&(l.phones||[]).some(p=>p.includes(qd))));
@@ -296,12 +300,12 @@ function drawList(){
  const show=arr.slice(0,LIMIT), ownCol=TAB!=="mine";
  let body;
  if(!arr.length) body='<div class="empty">Không có lead phù hợp</div>';
- else if(WIDE.matches) body='<table class="ltab"><thead><tr><th>Tên</th><th>Tỉnh</th><th>Nhóm khách</th><th>Giai đoạn</th><th>Ưu tiên</th><th>Liên hệ</th><th>Bước tiếp</th><th>Lần chạm</th>'+(ownCol?'<th>Phụ trách</th>':'')+'</tr></thead><tbody>'
+ else if(WIDE.matches) body='<table class="ltab"><thead><tr><th>Tên</th><th>Tỉnh</th><th>Nhóm khách</th><th>Giai đoạn</th><th>Ưu tiên</th><th>Liên hệ</th><th>Bước tiếp</th><th>Liên hệ gần nhất</th>'+(ownCol?'<th>Phụ trách</th>':'')+'</tr></thead><tbody>'
   +show.map(l=>{ const od=l.next_at&&l.next_at<td; return '<tr data-id="'+esc(l.id)+'"><td><a href="#lead/'+encodeURIComponent(l.id)+'">'+esc(l.name)+'</a>'+(l.contact_name?'<div class="sub">'+esc([l.contact_name,l.contact_title].filter(Boolean).join(", "))+'</div>':'')+'</td>'
    +'<td>'+esc(SC.provKey(l.province))+'</td><td>'+esc(l.segment||"")+'</td><td>'+esc(SC.lab(SC.STAGES,l.stage))+'</td>'
    +'<td>'+prHtml(l)+'</td>'
    +'<td>'+ciHtml(l)+'</td><td'+(od?' style="color:var(--bad);font-weight:600"':'')+'>'+(l.next_at?esc(SC.lab(SC.NEXT,l.next_type)||"Hẹn")+' '+dmy(l.next_at):l.next_type?esc(SC.lab(SC.NEXT,l.next_type))+'<div class="sub">chưa hẹn ngày</div>':'<span class="sub">Chưa hẹn</span>')+'</td>'
-   +'<td><span class="sub">'+(l.touch_count||0)+' lần · '+esc(SC.ago(l.last_touch_at,new Date(Date.now())))+'</span></td>'
+   +'<td>'+csHtml(l)+'<div class="sub">'+(l.touch_count||0)+' lần · '+esc(SC.ago(l.last_touch_at,new Date(Date.now())))+'</div></td>'
    +(ownCol?'<td>'+(l.owner_id?esc(pname(l.owner_id)):'<span class="sub">Kho chung</span>')+'</td>':'')+'</tr>'; }).join("")+'</tbody></table>';
  else body=show.map(l=>rowHtml(l,ownCol)).join("");
  $("#list").innerHTML='<div class="sub" style="margin:0 2px 6px">'+arr.length+' lead'+(arr.length>LIMIT?', đang hiện '+LIMIT:'')+'</div>'+body+(arr.length>LIMIT?'<button class="btn full" id="bMore" style="margin-top:8px">Xem thêm</button>':'');
@@ -322,22 +326,24 @@ async function vDetail(id){
  const kv=[["Người liên hệ",[l.contact_name,l.contact_title].filter(Boolean).join(", ")],["Số điện thoại",ph.join(", ")],["Email/Web",[l.contact_email,l.org_email_web].filter(Boolean).join(" · ")],["Loại hình",[l.segment,l.org_type].filter(Boolean).join(" · ")],["Cây trồng",l.crops],["Quy mô",l.scale],["Địa chỉ",[l.address,l.area,l.province].filter(Boolean).join(", ")],["MST",l.tax_id],["Dấu hiệu nhu cầu",l.need_signal],["Nên chào",l.offer],["Cách tiếp cận",l.approach],["Nhu cầu đã ghi",(l.needs||[]).map(k=>SC.lab(SC.NEEDS,k)).join(", ")+(l.need_note?" · "+l.need_note:"")],["Khách hiện có",l.is_customer],["Phụ trách",l.owner_id?pname(l.owner_id):"Kho chung"],["Nguồn",l.source]].filter(x=>x[1]);
  $("#app").innerHTML='<a href="#lead" class="sub" style="text-decoration:none">‹ Danh sách</a>'
   +'<h1 style="font-size:19px;margin:6px 0 4px;overflow-wrap:anywhere">'+esc(l.name)+'</h1>'
-  +'<div class="chips" style="gap:4px"><span class="pill">'+esc(SC.lab(SC.STAGES,l.stage))+'</span>'+prHtml(l,"Ưu tiên ")+(l.fit?'<span class="pill">Tiềm năng '+esc(SC.lab(SC.FITS,l.fit).toLowerCase())+'</span>':'')+'<span class="pill">'+l.touch_count+' lần chạm · '+esc(SC.ago(l.last_touch_at,new Date(Date.now())))+'</span></div>'
+  +'<div class="chips" style="gap:4px"><span class="pill">'+esc(SC.lab(SC.STAGES,l.stage))+'</span>'+prHtml(l,"Ưu tiên ")+(l.fit?'<span class="pill">Tiềm năng '+esc(SC.lab(SC.FITS,l.fit).toLowerCase())+'</span>':'')+csHtml(l)+'<span class="pill">'+l.touch_count+' lần chạm · '+esc(SC.ago(l.last_touch_at,new Date(Date.now())))+'</span></div>'
   +'<div class="acts">'+btn("bCall","✆","Gọi",p0?SC.telHref(p0):"")+btn("bZalo","💬","Zalo",p0?SC.zaloHref(p0):"",1)+btn("bMail","✉","Email",email?"mailto:"+email:"")+btn("bDir","➤","Chỉ đường",dir,1)+'</div>'
   +(!l.owner_id&&isStaff()?'<button class="btn full" id="bTake" style="margin-bottom:8px">Nhận lead này</button>':'')
   +'<div class="row2"><button class="btn pri" id="bLog" style="flex:1">Ghi tương tác</button><button class="btn" id="bCheck" style="flex:1">📷 Check-in</button></div>'
+  +(mine||(["owner","manager"].includes(ME.role)&&l.owner_id)?'<button class="btn full" id="bMove" style="margin-top:8px">↪ Chuyển lead cho người khác</button>':'')
   +'<div class="card next'+(od?" od":"")+'">'+(l.next_at||l.next_type?'<b>Bước tiếp: '+esc(SC.lab(SC.NEXT,l.next_type)||"Liên hệ lại")+(l.next_at?' · '+dmy(l.next_at)+(od?' (quá hạn)':l.next_at===td?' (hôm nay)':''):'')+'</b>'+(l.next_note?'<div class="sub">'+esc(l.next_note)+'</div>':''):'<span class="sub">Chưa có bước tiếp. Ghi tương tác để hẹn lần sau.</span>')+'</div>'
-  +(l.stage===0?'<div class="msg warn">Lead này chưa có cách liên hệ. Tìm được số hoặc email thì bấm Sửa lead.</div>':'')
+  +(l.stage===0?'<div class="msg warn">Lead này chưa có cách liên hệ. Tìm được số hoặc email thì bấm Sửa lead. Chưa tìm được thì bấm Ghi tương tác, chọn Tìm thông tin để lưu lại đã tìm.</div>':'')
   +'<div class="card"><div class="kv">'+kv.map(([k,v])=>'<div>'+k+'</div><div>'+esc(v)+'</div>').join("")+'</div>'
   +(l.source_url?'<div style="margin-top:6px"><a class="sub" href="'+esc(l.source_url)+'" target="_blank" rel="noopener">Nguồn thông tin ›</a></div>':'')
   +(mine||isStaff()?'<button class="btn" id="bEdit" style="margin-top:8px">✎ Sửa lead</button><div id="edit"></div>':'')+'</div>'
   +'<h2>Ghi chú chung</h2><div class="card"><textarea class="in" id="ntTxt" placeholder="Ghi chú cho cả đội: khách nói gì, cần lưu ý gì, ai đã hỏi gì"></textarea><div class="row2" style="margin-top:6px"><button class="btn pri" id="ntAdd" disabled>Thêm ghi chú</button><span class="sub" id="ntMsg"></span></div><div id="notes" style="margin-top:8px"><div class="sub">Đang tải…</div></div></div>'
-  +'<h2>Dòng thời gian</h2><div class="tl" id="tl"><div class="sub">Đang tải…</div></div>';
+  +'<h2>Lịch sử tương tác</h2><div class="tl" id="tl"><div class="sub">Đang tải…</div></div>';
  if(p0){ $("#bCall").addEventListener("click",()=>{ CALL={lead:l.id,ch:"call",left:null}; }); $("#bZalo").addEventListener("click",()=>{ CALL={lead:l.id,ch:"zalo",left:null}; }); }
  $$('[aria-disabled=true]').forEach(a=>a.addEventListener("click",e=>{ e.preventDefault(); toast(a.id==="bCall"||a.id==="bZalo"?"Lead chưa có số điện thoại":a.id==="bMail"?"Lead chưa có email":"Lead chưa có địa chỉ"); }));
- $("#bLog").onclick=()=>openSheet(l.id); $("#bCheck").onclick=()=>openSheet(l.id,{ch:"meet",checkin:true});
+ $("#bLog").onclick=()=>openSheet(l.id,p0?{}:{ch:"search"}); $("#bCheck").onclick=()=>openSheet(l.id,{ch:"meet",checkin:true});
  if($("#bTake")) $("#bTake").onclick=async()=>{ const {error}=await SB.from("sales_leads").update({owner_id:ME.id}).eq("id",l.id).is("owner_id",null); if(error){ toast("Chưa nhận được, thử lại"); return; } await refreshLead(l.id); toast("Đã nhận lead"); route(); };
  if($("#bEdit")) $("#bEdit").onclick=()=>editForm(l);
+ if($("#bMove")) $("#bMove").onclick=()=>openMove(l);
  $("#ntTxt").oninput=()=>{ $("#ntAdd").disabled=!$("#ntTxt").value.trim(); };
  $("#ntAdd").onclick=async()=>{ const t=$("#ntTxt").value.trim(); if(!t) return; $("#ntAdd").disabled=true; $("#ntMsg").textContent="Đang lưu…";
   const {error}=await SB.from("sales_acts").insert({lead_id:l.id,kind:"note",note:t.slice(0,4000)});
@@ -375,6 +381,21 @@ async function drawTimeline(l){
  const boxes=$$("#tl .ph[data-photos]"), paths=boxes.flatMap(b=>b.dataset.photos.split("|"));
  if(paths.length){ const {data:u}=await SB.storage.from("sales").createSignedUrls(paths,3600); const m={}; (u||[]).forEach(x=>m[x.path]=x.signedUrl);
   boxes.forEach(b=>b.innerHTML=b.dataset.photos.split("|").map(p=>m[p]?'<a href="'+esc(m[p])+'" target="_blank" rel="noopener"><img src="'+esc(m[p])+'" alt="Ảnh check-in" loading="lazy"></a>':'').join("")); }
+}
+function openMove(l){
+ const ppl=Object.keys(PEOPLE).filter(u=>u!==l.owner_id&&["owner","manager","staff","ctv"].includes(PROLE[u])).sort((a,b)=>String(PEOPLE[a]).localeCompare(String(PEOPLE[b]),"vi"));
+ const sheet=$("#sheet");
+ sheet.innerHTML='<div class="sh-h"><b>Chuyển lead: '+esc(l.name)+'</b><button class="btn" id="lgX" aria-label="Đóng" style="padding:6px 10px">✕</button></div>'
+  +(ppl.length?'<div class="grp"><div>Chuyển cho</div><div class="chips">'+ppl.map(u=>'<button type="button" class="chip" data-mv="'+esc(u)+'">'+esc(PEOPLE[u])+(PROLE[u]==="ctv"?" (CTV)":"")+'</button>').join("")+'</div></div>'
+  +'<div class="grp"><div>Lý do, dặn dò (không bắt buộc)</div><textarea class="in" id="mvNote" placeholder="Ví dụ: khách ở gần chỗ bạn, đã hẹn gặp thứ 5"></textarea></div>'
+  +'<div id="mvMsg"></div><button class="btn pri full" id="mvGo" disabled>Chuyển</button>':'<div class="empty">Chưa có người nào để chuyển.</div>');
+ sheet.classList.add("open"); $("#sheetBg").classList.add("on"); $("#lgX").onclick=closeSheet; $("#sheetBg").onclick=closeSheet;
+ let to=null; $$("#sheet [data-mv]").forEach(b=>b.onclick=()=>{ to=b.dataset.mv; $$("#sheet [data-mv]").forEach(x=>x.classList.toggle("on",x===b)); $("#mvGo").disabled=false; });
+ if($("#mvGo")) $("#mvGo").onclick=async()=>{ if(!to) return; $("#mvGo").disabled=true; $("#mvGo").textContent="Đang chuyển…";
+  const {error}=await SB.rpc("sales_transfer",{p_lead:l.id,p_to:to,p_note:$("#mvNote").value.trim()||null});
+  if(error){ $("#mvGo").disabled=false; $("#mvGo").textContent="Chuyển"; $("#mvMsg").innerHTML='<div class="msg bad">'+(/not_owner/.test(error.message||"")?"Bạn không còn giữ lead này.":/sales_transfer|function|schema cache/i.test(error.message||"")?"Máy chủ chưa bật chuyển lead. Báo quản lý.":"Chưa chuyển được, thử lại.")+'</div>'; return; }
+  closeSheet(); toast("Đã chuyển cho "+PEOPLE[to]);
+  const fresh=await refreshLead(l.id); if(!fresh||(ME.role==="ctv"&&fresh.owner_id!==ME.id)){ LEADS=LEADS.filter(x=>x.id!==l.id); location.hash="#lead"; } else route(); };
 }
 function noteHtml(a){
  const when=new Date(Date.parse(a.at)+7*36e5).toISOString();

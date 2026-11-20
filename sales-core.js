@@ -10,8 +10,12 @@
     return v === "a" || v === "high" ? "A" : v === "b" || v === "normal" ? "B" : v === "c" || v === "low" ? "C" : "";
   }
   const FITS = [["low", "Thấp"], ["mid", "Vừa"], ["high", "Cao"]];
-  const CHANNELS = [["call", "Gọi"], ["zalo", "Zalo"], ["meet", "Gặp"], ["email", "Email"], ["other", "Khác"]];
-  const RESULTS = [["noans", "Không nghe"], ["later", "Hẹn lại"], ["talked", "Đã nói chuyện"], ["interested", "Quan tâm"], ["sent", "Đã gửi tài liệu"], ["refused", "Từ chối"]];
+  const CHANNELS = [["call", "Gọi"], ["zalo", "Zalo"], ["meet", "Gặp"], ["email", "Email"], ["search", "Tìm thông tin"], ["other", "Khác"]];
+  const RESULTS = [["noans", "Không nghe"], ["later", "Hẹn lại"], ["talked", "Đã nói chuyện"], ["interested", "Quan tâm"], ["sent", "Đã gửi tài liệu"], ["refused", "Từ chối"], ["unreach", "Không liên hệ được"], ["wrong", "Sai số, sai người"], ["nofind", "Chưa tìm được liên hệ"]];
+  const NOREACH = ["noans", "unreach", "wrong", "nofind"];
+  // trạng thái liên hệ của lead, theo kết quả lần chạm gần nhất
+  const CONTACT_STATES = [["none", "Chưa liên hệ"], ["noans", "Không nghe máy"], ["unreach", "Không liên hệ được"], ["wrong", "Sai số, sai người"], ["nofind", "Chưa tìm được liên hệ"], ["reached", "Đã liên hệ được"], ["refused", "Từ chối"]];
+  const contactState = l => { const r = l && l.last_result; return !r ? "none" : (NOREACH.includes(r) || r === "refused") ? r : "reached"; };
   const NEEDS = [["msvt", "MSVT"], ["csdg", "CSĐG"], ["txng", "Truy xuất"], ["qr", "Tem QR"], ["kt", "Kỹ thuật"], ["khac", "Khác"]];
   const LOST = ["Giá", "Chưa cần", "Đã có đơn vị khác", "Không liên lạc được", "Khác"];
   const NEXT = [["call", "Gọi lại"], ["quote", "Gửi báo giá"], ["meet", "Hẹn gặp"], ["send", "Gửi tài liệu"], ["other", "Khác"]];
@@ -59,8 +63,8 @@
   function applyAct(lead, act) {
     let st = act.stage_after != null ? act.stage_after : lead.stage;
     if (act.result === "refused") st = 7;
-    else if (st <= 1 && act.result && act.result !== "noans") st = 2;
-    const p = { stage: st, temp: act.temp_after || lead.temp, fit: act.fit_after || lead.fit, touch_count: (lead.touch_count || 0) + 1, last_touch_at: act.at || new Date().toISOString() };
+    else if (st <= 1 && act.result && !NOREACH.includes(act.result)) st = 2;
+    const p = { stage: st, temp: act.temp_after || lead.temp, fit: act.fit_after || lead.fit, touch_count: (lead.touch_count || 0) + 1, last_touch_at: act.at || new Date().toISOString(), last_result: act.result || lead.last_result || null };
     if (act.needs_after) p.needs = act.needs_after;
     if (act.next_at || act.next_type) { p.next_at = act.next_at || null; p.next_type = act.next_type || null; p.next_note = act.next_note || null; }
     return p;
@@ -108,6 +112,6 @@
   }
 
   const SC = { STAGES, TEMPS, FITS, CHANNELS, RESULTS, NEEDS, LOST, NEXT, HOT_DAYS, WARM_DAYS, FRESH_HOURS, CALL_GOAL,
-    normPhones, vnToday, addDays, nextPreset, buckets, applyAct, callMinutes, ago, telHref, zaloHref, distM, norm, lab, contactOf, provKey, CONTACT_F, contactMatch, PRIOS, PRIO_CLS, prioOf };
+    normPhones, vnToday, addDays, nextPreset, buckets, applyAct, callMinutes, ago, telHref, zaloHref, distM, norm, lab, contactOf, provKey, CONTACT_F, contactMatch, PRIOS, PRIO_CLS, prioOf, CONTACT_STATES, contactState, NOREACH };
   if (typeof module !== "undefined" && module.exports) module.exports = SC; else root.SC = SC;
 })(typeof window !== "undefined" ? window : this);
