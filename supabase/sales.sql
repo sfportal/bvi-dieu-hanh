@@ -57,7 +57,7 @@ create table if not exists public.sales_acts (
   lead_id uuid not null references public.sales_leads(id) on delete cascade,
   by uuid not null default auth.uid(),
   at timestamptz not null default now(),
-  kind text not null default 'act' check (kind in ('act','assign','claim')),
+  kind text not null default 'act' check (kind in ('act','assign','claim','note')),
   channel text check (channel in ('call','zalo','meet','email','other')),
   result text check (result in ('noans','later','talked','interested','sent','refused')),
   minutes int, note text,
@@ -168,7 +168,7 @@ create policy sa_read on public.sales_acts for select to authenticated
 drop policy if exists sa_ins on public.sales_acts;
 create policy sa_ins on public.sales_acts for insert to authenticated
   with check (by = (select auth.uid()) and ((select sales_staff())
-         or ((select my_role()) = 'ctv' and kind = 'act' and exists (select 1 from public.sales_leads l where l.id = lead_id and l.owner_id = (select auth.uid())))));
+         or ((select my_role()) = 'ctv' and kind in ('act','note') and exists (select 1 from public.sales_leads l where l.id = lead_id and l.owner_id = (select auth.uid())))));
 drop policy if exists sa_upd on public.sales_acts;
 create policy sa_upd on public.sales_acts for update to authenticated
   using ((select sales_mgr()) or (by = (select auth.uid()) and at > now() - interval '24 hours'))

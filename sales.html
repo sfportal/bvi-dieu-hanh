@@ -331,12 +331,18 @@ async function vDetail(id){
   +'<div class="card"><div class="kv">'+kv.map(([k,v])=>'<div>'+k+'</div><div>'+esc(v)+'</div>').join("")+'</div>'
   +(l.source_url?'<div style="margin-top:6px"><a class="sub" href="'+esc(l.source_url)+'" target="_blank" rel="noopener">Nguồn thông tin ›</a></div>':'')
   +(mine||isStaff()?'<button class="btn" id="bEdit" style="margin-top:8px">✎ Sửa lead</button><div id="edit"></div>':'')+'</div>'
+  +'<h2>Ghi chú chung</h2><div class="card"><textarea class="in" id="ntTxt" placeholder="Ghi chú cho cả đội: khách nói gì, cần lưu ý gì, ai đã hỏi gì"></textarea><div class="row2" style="margin-top:6px"><button class="btn pri" id="ntAdd" disabled>Thêm ghi chú</button><span class="sub" id="ntMsg"></span></div><div id="notes" style="margin-top:8px"><div class="sub">Đang tải…</div></div></div>'
   +'<h2>Dòng thời gian</h2><div class="tl" id="tl"><div class="sub">Đang tải…</div></div>';
  if(p0){ $("#bCall").addEventListener("click",()=>{ CALL={lead:l.id,ch:"call",left:null}; }); $("#bZalo").addEventListener("click",()=>{ CALL={lead:l.id,ch:"zalo",left:null}; }); }
  $$('[aria-disabled=true]').forEach(a=>a.addEventListener("click",e=>{ e.preventDefault(); toast(a.id==="bCall"||a.id==="bZalo"?"Lead chưa có số điện thoại":a.id==="bMail"?"Lead chưa có email":"Lead chưa có địa chỉ"); }));
  $("#bLog").onclick=()=>openSheet(l.id); $("#bCheck").onclick=()=>openSheet(l.id,{ch:"meet",checkin:true});
  if($("#bTake")) $("#bTake").onclick=async()=>{ const {error}=await SB.from("sales_leads").update({owner_id:ME.id}).eq("id",l.id).is("owner_id",null); if(error){ toast("Chưa nhận được, thử lại"); return; } await refreshLead(l.id); toast("Đã nhận lead"); route(); };
  if($("#bEdit")) $("#bEdit").onclick=()=>editForm(l);
+ $("#ntTxt").oninput=()=>{ $("#ntAdd").disabled=!$("#ntTxt").value.trim(); };
+ $("#ntAdd").onclick=async()=>{ const t=$("#ntTxt").value.trim(); if(!t) return; $("#ntAdd").disabled=true; $("#ntMsg").textContent="Đang lưu…";
+  const {error}=await SB.from("sales_acts").insert({lead_id:l.id,kind:"note",note:t.slice(0,4000)});
+  if(error){ $("#ntAdd").disabled=false; $("#ntMsg").textContent=/kind_check|check constraint/i.test(error.message||"")?"Máy chủ chưa bật ghi chú. Báo quản lý.":"Chưa lưu được, thử lại. Ghi chú vẫn còn."; return; }
+  $("#ntTxt").value=""; $("#ntMsg").textContent=""; toast("Đã thêm ghi chú"); drawTimeline(l); };
  drawTimeline(l);
 }
 function editForm(l){
@@ -363,10 +369,16 @@ async function drawTimeline(l){
  const {data,error}=await SB.from("sales_acts").select("*").eq("lead_id",l.id).order("at",{ascending:false});
  if(!$("#tl")) return;
  if(error){ $("#tl").innerHTML='<div class="sub">Chưa tải được lịch sử.</div>'; return; }
- $("#tl").innerHTML=(data||[]).length?data.map(a=>actHtml(a,l)).join(""):'<div class="empty">Chưa có tương tác nào.</div>';
+ const notes=(data||[]).filter(a=>a.kind==="note"), acts=(data||[]).filter(a=>a.kind!=="note");
+ if($("#notes")) $("#notes").innerHTML=notes.length?notes.map(noteHtml).join(""):'<div class="empty">Chưa có ghi chú.</div>';
+ $("#tl").innerHTML=acts.length?acts.map(a=>actHtml(a,l)).join(""):'<div class="empty">Chưa có tương tác nào.</div>';
  const boxes=$$("#tl .ph[data-photos]"), paths=boxes.flatMap(b=>b.dataset.photos.split("|"));
  if(paths.length){ const {data:u}=await SB.storage.from("sales").createSignedUrls(paths,3600); const m={}; (u||[]).forEach(x=>m[x.path]=x.signedUrl);
   boxes.forEach(b=>b.innerHTML=b.dataset.photos.split("|").map(p=>m[p]?'<a href="'+esc(m[p])+'" target="_blank" rel="noopener"><img src="'+esc(m[p])+'" alt="Ảnh check-in" loading="lazy"></a>':'').join("")); }
+}
+function noteHtml(a){
+ const when=new Date(Date.parse(a.at)+7*36e5).toISOString();
+ return '<div class="note" style="border-top:1px solid var(--line);padding:8px 0 4px;overflow-wrap:anywhere"><div class="when sub">'+when.slice(8,10)+"/"+when.slice(5,7)+" "+when.slice(11,16)+' · <b>'+esc(pname(a.by)||(a.by===ME.id?(ME.name||"Tôi"):"Người khác"))+'</b></div><div style="white-space:pre-wrap">'+esc(a.note||"")+'</div></div>';
 }
 function actHtml(a,l){
  const when=new Date(Date.parse(a.at)+7*36e5).toISOString(), w=when.slice(8,10)+"/"+when.slice(5,7)+" "+when.slice(11,16);
