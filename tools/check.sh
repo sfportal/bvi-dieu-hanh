@@ -12,3 +12,12 @@ PY
 node --check /tmp/bvi_main_check.js && echo "OK: cú pháp JavaScript hợp lệ"
 # logic trang sales
 node sales-core.test.js
+# trang báo giá, hợp đồng
+node quote-core.test.js
+node --check ../quote-core.js
+python3 - <<'PY'
+import re
+s=open('../bao-gia.html').read()
+open('/tmp/bvi_quote_check.js','w').write(max(re.findall(r'<script>([\s\S]*?)</script>',s),key=len))
+PY
+node --check /tmp/bvi_quote_check.js && echo "OK: bao-gia.html hợp lệ"

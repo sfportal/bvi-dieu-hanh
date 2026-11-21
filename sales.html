@@ -115,12 +115,13 @@ textarea.in{min-height:64px;resize:vertical}
 </style>
 </head>
 <body>
-<header class="top" id="top" style="display:none"><b>BVI Sales</b><nav class="topnav"><a href="#hom-nay" data-r="hom-nay">Hôm nay</a><a href="#lead" data-r="lead">Lead</a><a href="#them" data-r="them">Thêm lead</a></nav><span class="sp"></span><span class="goal" id="goal"></span><span class="me" id="meBtn"></span><button class="out" id="bLogout" type="button">Đăng xuất</button></header>
+<header class="top" id="top" style="display:none"><b>BVI Sales</b><nav class="topnav"><a href="#hom-nay" data-r="hom-nay">Hôm nay</a><a href="#lead" data-r="lead">Lead</a><a href="#them" data-r="them">Thêm lead</a><a href="bao-gia.html">Báo giá</a></nav><span class="sp"></span><span class="goal" id="goal"></span><span class="me" id="meBtn"></span><button class="out" id="bLogout" type="button">Đăng xuất</button></header>
 <main id="app"><div class="sub" style="padding:30px;text-align:center">Đang tải…</div></main>
 <nav class="bot" id="bot" style="display:none">
  <a href="#hom-nay" data-r="hom-nay"><span>☀</span>Hôm nay</a>
  <a href="#lead" data-r="lead"><span>☰</span>Lead</a>
  <a href="#them" data-r="them"><span>＋</span>Thêm</a>
+ <a href="bao-gia.html"><span>📄</span>Báo giá</a>
 </nav>
 <div id="sheet" role="dialog" aria-modal="true" aria-label="Ghi tương tác"></div><div class="sheet-bg" id="sheetBg"></div>
 <div id="toast"></div>
@@ -332,6 +333,7 @@ async function vDetail(id){
   +'<div class="acts">'+btn("bCall","✆","Gọi",p0?SC.telHref(p0):"")+btn("bZalo","💬","Zalo",p0?SC.zaloHref(p0):"",1)+btn("bMail","✉","Email",email?"mailto:"+email:"")+btn("bDir","➤","Chỉ đường",dir,1)+'</div>'
   +(!l.owner_id&&isStaff()?'<button class="btn full" id="bTake" style="margin-bottom:8px">Nhận lead này</button>':'')
   +'<div class="row2"><button class="btn pri" id="bLog" style="flex:1">Ghi tương tác</button><button class="btn" id="bCheck" style="flex:1">📷 Check-in</button></div>'
+  +(ME.role!=="viewer"&&(mine||["owner","manager"].includes(ME.role))?'<a class="btn full" id="bQuote" href="bao-gia.html#moi/'+encodeURIComponent(l.id)+'" style="margin-top:8px;text-decoration:none;text-align:center">📄 Tạo báo giá, hợp đồng</a>':'')
   +(mine||(["owner","manager"].includes(ME.role)&&l.owner_id)?'<button class="btn full" id="bMove" style="margin-top:8px">↪ Chuyển lead cho người khác</button>':'')
   +'<div class="card next'+(od?" od":"")+'">'+(l.next_at||l.next_type?'<b>Bước tiếp: '+esc(SC.lab(SC.NEXT,l.next_type)||"Liên hệ lại")+(l.next_at?' · '+dmy(l.next_at)+(od?' (quá hạn)':l.next_at===td?' (hôm nay)':''):'')+'</b>'+(l.next_note?'<div class="sub">'+esc(l.next_note)+'</div>':''):'<span class="sub">Chưa có bước tiếp. Ghi tương tác để hẹn lần sau.</span>')+'</div>'
   +(l.stage===0?'<div class="msg warn">Lead này chưa có cách liên hệ. Tìm được số hoặc email thì bấm Sửa lead. Chưa tìm được thì bấm Ghi tương tác, chọn Tìm thông tin để lưu lại đã tìm.</div>':'')
