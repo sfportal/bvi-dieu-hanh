@@ -86,4 +86,14 @@ assert.strictEqual(QC.canEdit({ status: "draft", created_by: "x" }, { id: "u", r
 assert.strictEqual(QC.canEdit({ status: "approved", created_by: "x" }, { id: "m", role: "manager" }), true);
 assert.strictEqual(QC.canSend({ status: "approved" }), true);
 assert.strictEqual(QC.canSend({ status: "pending" }), false);
+// Word: XML cân thẻ, có nội dung, biến đã điền, chữ đặc biệt được thoát
+{ const co = { name: "Công ty Cổ phần BVI", short_name: "BVI", rep_name: "Trương Công Tài", rep_title: "Giám đốc", banks: [{ number: "3721077979", bank: "Vietcombank" }] };
+  const d = { kind: "quote", status: "approved", number: "BG-2026-007", customer: { name: "HTX A & B <x>" }, body: { title: "Báo giá", blocks: [{ t: "text", h: "1. Mục", html: "<p>Xin <b>chào</b> {{khach_hang}}</p><ul><li>Một</li><li>Hai</li></ul>" }, { t: "items", h: "Giá", rows: [{ name: "Gói", unit: "vùng", qty: 2, price: 5000000 }], vat: 8 }, { t: "bank" }, { t: "sign" }] } };
+  const F = QC.docxFiles(d, co, { name: "Huy" }), x = F["word/document.xml"];
+  assert.ok(Object.keys(F).length === 5);
+  const tags = []; x.replace(/<(\/?)(w:[a-zA-Z]+)[^>]*?(\/?)>/g, (m, c, t, sc) => { if (sc) return; if (c) { assert.strictEqual(tags.pop(), t); } else tags.push(t); });
+  assert.strictEqual(tags.length, 0);
+  assert.ok(x.includes("HTX A &amp; B &lt;x&gt;") && x.includes("10.800.000") && x.includes("3721077979") && x.includes("BG-2026-007") && x.includes("•") && !x.includes("{{") && !x.includes("BẢN NHÁP"));
+  assert.ok(QC.docxFiles(Object.assign({}, d, { status: "draft" }), co, {})["word/document.xml"].includes("BẢN NHÁP"));
+  assert.strictEqual(QC.fileName(d, "docx"), "BG-2026-007_HTX_A_B_x.docx"); }
 console.log("OK");

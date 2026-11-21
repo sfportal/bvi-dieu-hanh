@@ -128,10 +128,110 @@
     return '<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>' + esc((doc.number ? doc.number + " " : "") + (doc.title || "")) + '</title>'
       + '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700&display=swap"><style>@page{size:A4;margin:16mm 15mm}body{margin:0}' + CSS + '</style></head><body>' + render(doc, co, creator) + '</body></html>';
   }
+  // ---------- Xuất Word (.docx): chuyển HTML của render() sang WordprocessingML, không cần thư viện ----------
+  const VOID = new Set(["br", "hr"]);
+  function parse(html) {
+    const root = { tag: "#root", attrs: {}, kids: [] }, st = [root], re = /<(\/?)([a-zA-Z][a-zA-Z0-9]*)([^<>]*)>|([^<]+)/g;
+    const dec = s => s.replace(/&(amp|lt|gt|quot|#39|nbsp);/g, (m, k) => ({ amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'", nbsp: " " }[k]));
+    let m;
+    while ((m = re.exec(html))) {
+      const top = st[st.length - 1];
+      if (m[4] != null) { top.kids.push({ text: dec(m[4]) }); continue; }
+      const t = m[2].toLowerCase();
+      if (m[1]) { for (let i = st.length - 1; i > 0; i--) if (st[i].tag === t) { st.length = i; break; } continue; }
+      const attrs = {}, ra = /([a-z-]+)\s*=\s*"([^"]*)"/gi; let a; while ((a = ra.exec(m[3]))) attrs[a[1].toLowerCase()] = a[2];
+      const n = { tag: t, attrs, kids: [] }; top.kids.push(n); if (!VOID.has(t) && !/\/\s*$/.test(m[3])) st.push(n);
+    }
+    return root;
+  }
+  const xe = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "");
+  const has = (n, c) => (" " + ((n.attrs || {}).class || "") + " ").includes(" " + c + " ");
+  const INL = new Set(["b", "strong", "i", "em", "u", "s", "span", "sup", "sub", "br", "#text"]);
+  const isInl = n => n.text != null || INL.has(n.tag);
+  const GREEN = "1F5B3C";
+  function runs(n, f) {
+    if (n.text != null) { const t = f.upper ? n.text.toUpperCase() : n.text; if (!t) return "";
+      const p = (f.b ? "<w:b/>" : "") + (f.i ? "<w:i/>" : "") + (f.u ? '<w:u w:val="single"/>' : "") + (f.s ? "<w:strike/>" : "") + (f.color ? '<w:color w:val="' + f.color + '"/>' : "") + (f.sz ? '<w:sz w:val="' + f.sz + '"/><w:szCs w:val="' + f.sz + '"/>' : "") + (f.va ? '<w:vertAlign w:val="' + f.va + '"/>' : "");
+      return "<w:r>" + (p ? "<w:rPr>" + p + "</w:rPr>" : "") + '<w:t xml:space="preserve">' + xe(t.replace(/\s+/g, " ")) + "</w:t></w:r>"; }
+    if (n.tag === "br") return "<w:r><w:br/></w:r>";
+    const g = Object.assign({}, f);
+    if (n.tag === "b" || n.tag === "strong" || n.tag === "th") g.b = true; if (n.tag === "i" || n.tag === "em") g.i = true; if (n.tag === "u") g.u = true; if (n.tag === "s") g.s = true;
+    if (n.tag === "sup") g.va = "superscript"; if (n.tag === "sub") g.va = "subscript";
+    return n.kids.map(k => runs(k, g)).join("");
+  }
+  function para(r, o) {
+    o = o || {}; if (!r && !o.keep) return "";
+    const p = (o.jc ? '<w:jc w:val="' + o.jc + '"/>' : "") + (o.before != null || o.after != null ? '<w:spacing' + (o.before != null ? ' w:before="' + o.before + '"' : "") + (o.after != null ? ' w:after="' + o.after + '"' : "") + "/>" : "")
+      + (o.ind ? '<w:ind w:left="' + o.ind + '" w:hanging="' + (o.hang || 0) + '"/>' : "") + (o.border ? '<w:pBdr><w:bottom w:val="single" w:sz="12" w:space="4" w:color="' + GREEN + '"/></w:pBdr>' : "") + (o.keepNext ? "<w:keepNext/>" : "");
+    return "<w:p>" + (p ? "<w:pPr>" + p + "</w:pPr>" : "") + r + "</w:p>";
+  }
+  // gom các nút liền nhau: chữ, thẻ định dạng thành một đoạn; thẻ khối xử lý riêng
+  function blocks(kids, f, o) {
+    let out = "", buf = [];
+    const flush = () => { if (buf.length) { const r = buf.map(k => runs(k, f)).join(""); if (r.replace(/<[^>]+>/g, "").trim() || /<w:br\/>/.test(r)) out += para(r, o); buf = []; } };
+    kids.forEach(k => { if (isInl(k)) buf.push(k); else { flush(); out += block(k, f, o); } }); flush(); return out;
+  }
+  function block(n, f, o) {
+    f = f || {}; o = o || {}; const t = n.tag;
+    if (t === "div" && has(n, "qd-wm")) return para(runs({ text: "BẢN NHÁP · CHƯA DUYỆT" }, { b: true, color: "B83A2E" }), { jc: "right" });
+    if (t === "div" && has(n, "qd-nat")) return blocks(n.kids, f, { jc: "center", after: 200 });
+    if (t === "div" && has(n, "qd-top")) return blocks(n.kids, Object.assign({}, f, { color: GREEN, sz: 20 }), { border: true, after: 200 });
+    if (t === "h1") return para(runs(n, Object.assign({}, f, { b: true, sz: 32, color: GREEN, upper: true })), { jc: "center", before: 120, after: 40 });
+    if (t === "div" && has(n, "qd-st")) return blocks(n.kids, f, { jc: "center", after: 160 });
+    if (t === "h3") return para(runs(n, Object.assign({}, f, { b: true, color: GREEN })), { before: 220, after: 80, keepNext: true });
+    if (t === "h4") return para(runs(n, Object.assign({}, f, { b: true })), { before: 160, after: 60, keepNext: true });
+    if (t === "p") return blocks(n.kids, has(n, "w") ? Object.assign({}, f, { i: true }) : f, o);
+    if (t === "hr") return para("", { keep: true, border: true });
+    if (t === "ul" || t === "ol") return n.kids.filter(k => k.tag === "li").map((li, i) => {
+      const lead = runs({ text: (t === "ol" ? (i + 1) + "." : "•") + "\t" }, f);
+      const inl = li.kids.filter(isInl), rest = li.kids.filter(k => !isInl(k));
+      return para(lead + inl.map(k => runs(k, f)).join(""), { ind: 360 * ((o.lvl || 0) + 1), hang: 360, keep: true }) + rest.map(k => block(k, f, Object.assign({}, o, { lvl: (o.lvl || 0) + 1 }))).join("");
+    }).join("");
+    if (t === "blockquote") return blocks(n.kids, Object.assign({}, f, { i: true }), Object.assign({}, o, { ind: 567 }));
+    if (t === "div" && has(n, "qd-sign")) {
+      const cells = n.kids.filter(k => k.tag === "div").map(d => '<w:tc><w:tcPr><w:tcW w:w="2500" w:type="pct"/></w:tcPr>'
+        + (d.kids.map(k => isInl(k) ? para(runs(k, f), { jc: "center", after: 0 }) : has(k, "n") ? para(runs(k, Object.assign({}, f, { b: true })), { jc: "center", before: 1500, keep: true }) : blocks(k.kids, f, { jc: "center", after: 0 })).join("") || "<w:p/>") + "</w:tc>");
+      return '<w:tbl><w:tblPr><w:tblW w:w="5000" w:type="pct"/><w:tblBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="4819"/><w:gridCol w:w="4819"/></w:tblGrid><w:tr>' + cells.join("") + "</w:tr></w:tbl>" + para("", { keep: true, after: 0 });
+    }
+    if (t === "table") return table(n, f);
+    return blocks(n.kids, f, o); // div, span khối, thead...
+  }
+  function table(n, f) {
+    const rows = []; const walk = x => x.kids.forEach(k => { if (k.tag === "tr") rows.push(k); else if (["thead", "tbody", "tfoot"].includes(k.tag)) walk(k); }); walk(n);
+    const span = c => Math.max(1, Math.min(20, parseInt(c.attrs.colspan, 10) || 1));
+    const cols = Math.max(1, ...rows.map(r => r.kids.filter(c => c.tag === "td" || c.tag === "th").reduce((s, c) => s + span(c), 0)));
+    const W = 9638, wt = cols === 6 ? [7, 37, 12, 8, 17, 19] : cols === 2 ? (has(n, "qd-meta") ? [22, 78] : [26, 74]) : (() => { const L = Array(cols).fill(7), tx = c => (c.text != null ? c.text : (c.kids || []).map(tx).join("")); rows.forEach(r => { let i = 0; r.kids.filter(c => c.tag === "td" || c.tag === "th").forEach(c => { const sp = span(c); if (sp === 1 && i < cols) L[i] = Math.max(L[i], Math.min(40, tx(c).trim().length)); i += sp; }); }); return L; })(), sum = wt.reduce((a, b) => a + b, 0), cw = wt.map(x => Math.round(W * x / sum));
+    const bd = '<w:tblBorders>' + ["top", "left", "bottom", "right", "insideH", "insideV"].map(s => '<w:' + s + ' w:val="single" w:sz="4" w:space="0" w:color="C9D2C9"/>').join("") + "</w:tblBorders>";
+    let x = '<w:tbl><w:tblPr><w:tblW w:w="5000" w:type="pct"/>' + bd + '<w:tblCellMar><w:top w:w="40" w:type="dxa"/><w:left w:w="90" w:type="dxa"/><w:bottom w:w="40" w:type="dxa"/><w:right w:w="90" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>' + cw.map(w => '<w:gridCol w:w="' + w + '"/>').join("") + "</w:tblGrid>";
+    rows.forEach((r, ri) => {
+      const tt = has(r, "tt"), cells = r.kids.filter(c => c.tag === "td" || c.tag === "th"), head = cells.length && cells.every(c => c.tag === "th"); let ci = 0;
+      x += "<w:tr>" + (head && ri === 0 && cols > 2 ? "<w:trPr><w:tblHeader/><w:cantSplit/></w:trPr>" : "<w:trPr><w:cantSplit/></w:trPr>") + cells.map(c => {
+        const s = span(c), w = cw.slice(ci, ci + s).reduce((a, b) => a + b, 0); ci += s;
+        const g = Object.assign({}, f, (c.tag === "th" || tt) ? { b: true } : {}), jc = has(c, "r") ? "right" : has(c, "c") ? "center" : "";
+        const body = blocks(c.kids, g, { jc, after: 0 }) || "<w:p/>";
+        return '<w:tc><w:tcPr><w:tcW w:w="' + w + '" w:type="dxa"/>' + (s > 1 ? '<w:gridSpan w:val="' + s + '"/>' : "") + (c.tag === "th" || tt ? '<w:shd w:val="clear" w:color="auto" w:fill="' + (tt ? "F6F8F5" : "EEF3EE") + '"/>' : "") + "</w:tcPr>" + body + "</w:tc>";
+      }).join("") + "</w:tr>";
+    });
+    return x + "</w:tbl>" + para("", { keep: true, after: 60 });
+  }
+  function docxFiles(doc, co, creator) {
+    const tree = parse(render(doc, co, creator)), qd = tree.kids.find(k => k.tag === "div") || tree;
+    const body = blocks(qd.kids, {}, {});
+    const W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main", X = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+    return {
+      "[Content_Types].xml": X + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>',
+      "_rels/.rels": X + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>',
+      "word/_rels/document.xml.rels": X + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
+      "word/styles.xml": X + '<w:styles xmlns:w="' + W + '"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:eastAsia="Times New Roman" w:cs="Times New Roman"/><w:sz w:val="26"/><w:szCs w:val="26"/><w:lang w:val="vi-VN"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="80" w:line="276" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style></w:styles>',
+      "word/document.xml": X + '<w:document xmlns:w="' + W + '"><w:body>' + body + '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134" w:header="567" w:footer="567" w:gutter="0"/></w:sectPr></w:body></w:document>'
+    };
+  }
+  const fileName = (doc, ext) => ((doc.number || lab(KINDS, doc.kind)) + " " + ((doc.customer || {}).name || "")).normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").replace(/[^A-Za-z0-9-]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 80) + "." + ext;
+
   const isMgr = me => !!me && ["owner", "manager"].includes(me.role);
   const canEdit = (d, me) => !!d && !!me && (isMgr(me) ? d.status !== "cancelled" : d.created_by === me.id && ["draft", "rejected"].includes(d.status));
   const canSend = d => !!d && ["approved", "sent"].includes(d.status);
 
-  const QC = { esc, lab, STATUS, KINDS, VIA, VARS, money, num, words, calc, docTotal, clean, vars, fill, fromTemplate, render, printHtml, CSS, isMgr, canEdit, canSend, ddmmyyyy, clone };
+  const QC = { esc, lab, STATUS, KINDS, VIA, VARS, money, num, words, calc, docTotal, clean, vars, fill, fromTemplate, render, printHtml, docxFiles, fileName, CSS, isMgr, canEdit, canSend, ddmmyyyy, clone };
   if (typeof module !== "undefined" && module.exports) module.exports = QC; else root.QC = QC;
 })(typeof window !== "undefined" ? window : this);

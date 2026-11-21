@@ -108,6 +108,9 @@ const esc=QC.esc, lab=QC.lab;
 const isMgr=()=>QC.isMgr(ME), isViewer=()=>ME&&ME.role==="viewer";
 const pname=id=>id?(PEOPLE[id]||(ME&&id===ME.id?ME.name:"")||"Người khác"):"";
 const dt=iso=>{ if(!iso) return ""; const s=new Date(Date.parse(iso)+7*36e5).toISOString(); return s.slice(8,10)+"/"+s.slice(5,7)+" "+s.slice(11,16); };
+const JSZIP_URL="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js", H2P_URL="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js";
+function loadJs(src){ loadJs.c=loadJs.c||{}; return loadJs.c[src]=loadJs.c[src]||new Promise((ok,no)=>{ const s=document.createElement("script"); s.src=src; s.onload=ok; s.onerror=()=>{ delete loadJs.c[src]; no(new Error("Không tải được thư viện, kiểm tra mạng")); }; document.head.appendChild(s); }); }
+function saveBlob(b,name){ const a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1500); }
 function toast(t){ const e=$("#toast"); e.textContent=t; e.style.display="block"; clearTimeout(toast.t); toast.t=setTimeout(()=>e.style.display="none",2400); }
 function shell(on){ $("#top").style.display=on?"":"none"; $("#bot").style.display=on?"":"none"; }
 const errText=e=>{ const m=(e&&e.message)||String(e||""); return /locked/.test(m)?"Bản này đang chờ duyệt hoặc đã duyệt, không sửa được. Bấm Sửa lại để mở.":/not_owner/.test(m)?"Bạn không phải người lập bản này.":/not_manager/.test(m)?"Chỉ quản lý được duyệt.":/not_approved/.test(m)?"Bản này chưa được duyệt.":/bad_status/.test(m)?"Trạng thái đã thay đổi, tải lại trang.":/relation .* does not exist|schema cache|sales_doc/.test(m)?"Máy chủ chưa bật tính năng báo giá. Báo quản lý chạy file sales_quotes.sql.":/fetch|network/i.test(m)?"Mất kết nối, thử lại.":m; };
@@ -304,7 +307,7 @@ function drawDoc(){
  if(mg&&["pending","draft"].includes(d.status)) A.push('<button class="btn pri" id="aOk">Duyệt</button>');
  if(mg&&d.status==="pending") A.push('<button class="btn bad" id="aNo">Trả lại sửa</button>');
  if(QC.canSend(d)&&(own||mg)) A.push('<button class="btn pri" id="aSent">'+(d.status==="sent"?"Ghi nhận gửi lại":"Đánh dấu đã gửi khách")+'</button>');
- A.push('<button class="btn" id="aPrint">'+(QC.canSend(d)?"In, lưu PDF":"In bản nháp để xem")+'</button>');
+ A.push('<button class="btn" id="aPdf">Tải PDF</button><button class="btn" id="aDocx">Tải Word</button><button class="btn" id="aPrint">In</button>');
  if((own||mg)&&["pending","approved","sent"].includes(d.status)) A.push('<button class="btn" id="aReopen">Sửa lại</button>');
  if(!isViewer()) A.push('<button class="btn" id="aCopy">Nhân bản</button>');
  if(mg) A.push('<button class="btn" id="aTpl">Lưu thành mẫu</button>');
@@ -355,6 +358,12 @@ function bindDoc(){
    rpc("sales_doc_sent",{p_id:d.id,p_via:via},"Đã ghi nhận gửi khách"); }; };
  if($("#aPrint")) $("#aPrint").onclick=async()=>{ await saveNow(); const w=window.open("","_blank"); if(!w){ toast("Trình duyệt chặn cửa sổ mới. Cho phép bật cửa sổ rồi thử lại."); return; }
   w.document.open(); w.document.write(QC.printHtml(CUR,curCo(),creator())); w.document.close(); setTimeout(()=>{ try{ w.focus(); w.print(); }catch(e){} },700); };
+ const busy=async(b,t,fn)=>{ const o=b.textContent; b.disabled=true; b.textContent=t; try{ await saveNow(); await fn(); }catch(e){ box.innerHTML='<div class="msg bad">Chưa tạo được file: '+esc(e.message||String(e))+'. Thử lại hoặc bấm In rồi chọn Lưu thành PDF.</div>'; } b.disabled=false; b.textContent=o; };
+ if($("#aDocx")) $("#aDocx").onclick=e=>busy(e.currentTarget,"Đang tạo…",async()=>{ await loadJs(JSZIP_URL); const z=new JSZip(), F=QC.docxFiles(CUR,curCo(),creator()); Object.keys(F).forEach(k=>z.file(k,F[k]));
+   saveBlob(await z.generateAsync({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"}),QC.fileName(CUR,"docx")); toast("Đã tải file Word"); });
+ if($("#aPdf")) $("#aPdf").onclick=e=>busy(e.currentTarget,"Đang tạo…",async()=>{ await loadJs(H2P_URL); const w=document.createElement("div"); w.style.cssText="position:fixed;left:-10000px;top:0;width:794px;background:#fff";
+   w.innerHTML='<style>'+QC.CSS+'.qd{max-width:none}</style>'+QC.render(CUR,curCo(),creator()); document.body.appendChild(w);
+   try{ await html2pdf().set({margin:[10,8,12,8],filename:QC.fileName(CUR,"pdf"),image:{type:"jpeg",quality:0.95},html2canvas:{scale:2,backgroundColor:"#ffffff"},jsPDF:{unit:"mm",format:"a4",orientation:"portrait"},pagebreak:{mode:["css","legacy"],avoid:["tr","h3",".qd-sign",".qd-meta","li"]}}).from(w.querySelector(".qd")).save(); toast("Đã tải PDF"); } finally{ w.remove(); } });
  if($("#aReopen")) $("#aReopen").onclick=()=>{ box.innerHTML='<div class="card"><div class="sub">Mở lại để sửa: bản này quay về Nháp và phải duyệt lại trước khi gửi khách. Số đã cấp được giữ.</div><div class="row" style="margin-top:8px"><button class="btn pri" id="roGo">Mở lại để sửa</button><button class="btn" id="roX">Thôi</button></div></div>';
   $("#roX").onclick=()=>box.innerHTML=""; $("#roGo").onclick=()=>rpc("sales_doc_reopen",{p_id:d.id},"Đã mở lại, sửa xong gửi duyệt lại"); };
  if($("#aCopy")) $("#aCopy").onclick=async()=>{ await saveNow(); const row={kind:d.kind,template_id:d.template_id,company_id:d.company_id,bank:d.bank||0,lead_id:d.lead_id,customer:d.customer,body:d.body,total:QC.docTotal(d.body),title:(d.title||"")+" (bản sao)",created_by:ME.id};
