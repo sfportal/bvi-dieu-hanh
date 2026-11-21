@@ -220,7 +220,7 @@ function ciHtml(l){ const c=SC.contactOf(l); return '<span class="ci">'+[["ph","
 // ---------- Hôm nay ----------
 function vToday(){
  const B=SC.buckets(LEADS,ME.id,new Date(Date.now()));
- const mine=LEADS.filter(l=>l.owner_id===ME.id), open=mine.filter(l=>l.stage>=1&&l.stage<=5).length;
+ const mine=LEADS.filter(l=>l.owner_id===ME.id), open=mine.filter(l=>SC.isOpen(l.stage)).length;
  const G=[["overdue","Quá hạn","bad"],["today","Đến hạn hôm nay",""],["hot","Ưu tiên cao lâu chưa chạm",""],["fresh","Lead mới giao",""],["nonext","Chưa có bước tiếp",""]];
  let h='<button class="btn full" id="bCheckToday" style="margin-bottom:10px">📷 Check-in gặp khách</button><div class="stats"><div class="card"><b>'+MYACTS.length+'</b><span class="sub">Tương tác hôm nay</span></div><div class="card"><b>'+(B.overdue.length+B.today.length)+'</b><span class="sub">Việc cần làm</span></div><div class="card"><b>'+open+'</b><span class="sub">Lead đang theo</span></div></div>';
  G.forEach(([k,t,c])=>{ const arr=B[k]; if(k==="nonext"&&!arr.length) return;
@@ -441,7 +441,7 @@ function openSheet(leadId,preset){
   +'<div class="grp"><div>Độ ưu tiên</div>'+chips("pr",SC.PRIOS,SH.pr)+'</div>'
   +'<div class="grp"><div>Tiềm năng</div>'+chips("ft",SC.FITS,SH.ft)+'</div>'
   +'<div class="grp"><div>Nhu cầu</div>'+chips("nd",SC.NEEDS,SH.nd)+'</div>'
-  +'<div class="grp"><div>Chuyển giai đoạn (nếu có)</div>'+chips("st",SC.STAGES.filter(s=>s[0]>=3&&s[0]<=6),null)+'</div>'
+  +'<div class="grp"><div>Chuyển giai đoạn (nếu có)</div>'+chips("st",SC.STAGES.filter(s=>[3,4,5,8,6,9].includes(s[0])),null)+'</div>'
   +'<div class="grp"><div>Ghi chú</div><textarea class="in" id="lgNote" placeholder="Khách nói gì, cần gì"></textarea></div>'
   +'<div class="grp"><div>Bước tiếp</div>'+chips("nt",SC.NEXT,null)+'<div class="row2" style="margin-top:6px">'+chips("nx",[["1d","Mai"],["3d","3 ngày"],["1w","1 tuần"]],null)+'<input class="in" type="date" id="lgDate" style="width:auto;flex:1" aria-label="Ngày hẹn"></div></div>'
   +'<div class="grp row2"><div style="margin:0">Thời gian (phút)</div><input class="in" id="lgMin" type="number" min="0" max="600" inputmode="numeric" style="width:90px" value="'+(preset.min!=null?preset.min:"")+'"></div>'

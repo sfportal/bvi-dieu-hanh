@@ -1,6 +1,8 @@
 // Logic dùng chung cho trang sales (sales.html) và dashboard Sales (index.html). Không phụ thuộc DOM.
 (function (root) {
-  const STAGES = [[0, "Cần tìm liên hệ"], [1, "Mới"], [2, "Đã liên hệ"], [3, "Đang tư vấn"], [4, "Đã báo giá"], [5, "Thương lượng"], [6, "Đã ký"], [7, "Không theo"]];
+  const STAGES = [[0, "Cần tìm liên hệ"], [1, "Mới"], [2, "Đã liên hệ"], [3, "Đang tư vấn"], [4, "Đã báo giá"], [5, "Thương lượng"], [8, "Đã gửi hợp đồng"], [6, "Đã ký hợp đồng"], [9, "Chưa có nhu cầu"], [7, "Không theo"]];
+  const OPEN_STAGES = [1, 2, 3, 4, 5, 8]; // đang theo: tính hẹn, quá hạn, nhắc việc
+  const isOpen = s => OPEN_STAGES.includes(Number(s));
   const TEMPS = [["cold", "Lạnh"], ["warm", "Ấm"], ["hot", "Nóng"]];
   // độ ưu tiên: lưu A/B/C trong cột priority, hiện High/Normal/Low
   const PRIOS = [["A", "High"], ["B", "Normal"], ["C", "Low"]];
@@ -18,7 +20,7 @@
   const contactState = l => { const r = l && l.last_result; return !r ? "none" : (NOREACH.includes(r) || r === "refused") ? r : "reached"; };
   const NEEDS = [["msvt", "MSVT"], ["csdg", "CSĐG"], ["txng", "Truy xuất"], ["qr", "Tem QR"], ["kt", "Kỹ thuật"], ["khac", "Khác"]];
   const LOST = ["Giá", "Chưa cần", "Đã có đơn vị khác", "Không liên lạc được", "Khác"];
-  const NEXT = [["call", "Gọi lại"], ["quote", "Gửi báo giá"], ["meet", "Hẹn gặp"], ["send", "Gửi tài liệu"], ["other", "Khác"]];
+  const NEXT = [["call", "Gọi lại"], ["quote", "Gửi báo giá"], ["meet", "Hẹn gặp"], ["send", "Gửi tài liệu"], ["contract", "Gửi hợp đồng"], ["other", "Khác"]];
   const HOT_DAYS = 2, WARM_DAYS = 7, FRESH_HOURS = 24, CALL_GOAL = 20;
   const D = 864e5;
 
@@ -38,7 +40,7 @@
   }
   function addDays(ymd, n) { const t = new Date(ymd + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); }
   function nextPreset(k, today) { return addDays(today, { "1d": 1, "3d": 3, "1w": 7 }[k] || 0); }
-  const open = l => l.stage >= 1 && l.stage <= 5;
+  const open = l => isOpen(l.stage);
   const since = (ts, now) => ts ? (+now - Date.parse(ts)) : Infinity;
 
   // Nhóm việc cho màn Hôm nay. uid=null: xem mọi lead (quản lý, nhân viên xem toàn đội).
@@ -125,7 +127,7 @@
     const L = leads || [], W = (acts || []).filter(a => a.at >= t0), A = W.filter(a => a.kind === "act"), T = W.filter(a => a.kind === "assign" && / chuyển cho /.test(a.note || "")); // chỉ đếm lead tự chuyển giao, không đếm quản lý giao
     const lid = Object.fromEntries(L.map(l => [l.id, l])), touched = new Set(A.map(a => a.lead_id));
     const OKR = ["talked", "interested", "sent", "later"], BAD = ["noans", "unreach", "wrong", "nofind"];
-    const open = l => l.stage >= 1 && l.stage <= 5, chs = xs => CHANNELS.map(([k, t]) => [xs.filter(a => a.channel === k).length, t.toLowerCase()]).filter(x => x[0]).map(x => x.join(" ")).join(", ");
+    const open = l => isOpen(l.stage), chs = xs => CHANNELS.map(([k, t]) => [xs.filter(a => a.channel === k).length, t.toLowerCase()]).filter(x => x[0]).map(x => x.join(" ")).join(", ");
     const uniq = xs => new Set(xs.map(a => a.lead_id)).size;
     const out = ["BÁO CÁO SALES TUẦN " + dm(from) + "–" + dm(td)];
     out.push("Toàn đội: " + A.length + " tương tác" + (A.length ? " (" + chs(A) + ")" : "") + ", liên hệ được " + uniq(A.filter(a => OKR.includes(a.result))) + " lead, " + uniq(A.filter(a => a.result === "interested")) + " lead quan tâm, " + uniq(T) + " lead được chuyển giao.");
@@ -154,6 +156,6 @@
   }
 
   const SC = { STAGES, TEMPS, FITS, CHANNELS, RESULTS, NEEDS, LOST, NEXT, HOT_DAYS, WARM_DAYS, FRESH_HOURS, CALL_GOAL,
-    normPhones, vnToday, addDays, nextPreset, buckets, applyAct, callMinutes, ago, telHref, zaloHref, distM, norm, lab, contactOf, provKey, CONTACT_F, contactMatch, srcOptions, srcMatch, weekReport, PRIOS, PRIO_CLS, prioOf, CONTACT_STATES, contactState, NOREACH };
+    normPhones, vnToday, addDays, nextPreset, buckets, applyAct, callMinutes, ago, telHref, zaloHref, distM, norm, lab, contactOf, provKey, CONTACT_F, contactMatch, srcOptions, srcMatch, weekReport, PRIOS, PRIO_CLS, prioOf, CONTACT_STATES, contactState, NOREACH, OPEN_STAGES, isOpen };
   if (typeof module !== "undefined" && module.exports) module.exports = SC; else root.SC = SC;
 })(typeof window !== "undefined" ? window : this);

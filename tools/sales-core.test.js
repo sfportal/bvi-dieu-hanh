@@ -44,6 +44,11 @@ eq(ids("nonext"), ["fresh_new", "nonext"]);
 assert.strictEqual(new Set(Object.values(B).flat().map(x => x.id)).size, Object.values(B).flat().length);
 // mine=false (nhân viên xem toàn bộ): lead của người khác cũng tính
 assert.ok(SC.buckets(L, null, now).overdue.some(x => x.id === "other"));
+// giai đoạn mới: Đã gửi hợp đồng (8) vẫn đang theo, Chưa có nhu cầu (9) thì không nhắc
+{ const L2 = [{ id: "hd", stage: 8, owner_id: uid, next_at: "2026-11-01" }, { id: "nn", stage: 9, owner_id: uid, next_at: "2026-11-01" }];
+  eq(SC.buckets(L2, uid, now).overdue.map(x => x.id), ["hd"]);
+  assert.strictEqual(SC.lab(SC.STAGES, 6), "Đã ký hợp đồng"); assert.strictEqual(SC.lab(SC.STAGES, 8), "Đã gửi hợp đồng"); assert.strictEqual(SC.lab(SC.STAGES, 9), "Chưa có nhu cầu");
+  assert.deepStrictEqual(SC.STAGES.map(x => x[0]), [0, 1, 2, 3, 4, 5, 8, 6, 9, 7]); }
 
 // applyAct
 assert.strictEqual(SC.applyAct({ stage: 1 }, { result: "talked" }).stage, 2);
@@ -77,8 +82,8 @@ assert.ok(d > 110 && d < 130, "distM " + d);
 // norm (tìm không dấu)
 assert.strictEqual(SC.norm("Công ty Dũng Thái Sơn"), "cong ty dung thai son");
 
-assert.strictEqual(SC.STAGES.length, 8);
-assert.strictEqual(SC.STAGES[7][1], "Không theo");
+assert.strictEqual(SC.STAGES.length, 10);
+assert.strictEqual(SC.STAGES[9][1], "Không theo");
 
 // contactOf: có SĐT, email, địa chỉ hay chưa
 eq(SC.contactOf({ phones: ["0901694999"], contact_email: "", org_email_web: "www.abc.vn", address: " " }), { ph: true, em: false, ad: false });
