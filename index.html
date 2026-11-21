@@ -1237,9 +1237,10 @@ async function loadSales(){
     const since=new Date(SC.addDays(SC.vnToday(),-7)+"T00:00:00+07:00").toISOString();
     const [a,c,p]=await Promise.all([SB.from("sales_acts").select("*").gte("at",since).order("at",{ascending:false}).limit(5000),
       SB.from("sales_claims").select("*").eq("status","pending").order("at"), SB.rpc("sales_people")]);
+    const rm=await SB.from("sales_settings").select("value").eq("key","remind").maybeSingle();
     if(a.error) throw a.error;
     const people={}, roles={}; (p.data||[]).forEach(x=>{ people[x.id]=x.name; roles[x.id]=x.role; });
-    SD={st:"ok",leads,acts:a.data||[],claims:c.data||[],people,roles,at:Date.now(),week:SD.week};
+    SD={st:"ok",leads,acts:a.data||[],claims:c.data||[],people,roles,at:Date.now(),week:SD.week,rmOpen:SD.rmOpen,remind:rm.error?null:((rm.data||{}).value||{}),rmErr:!!rm.error};
   }catch(e){ SD={st:"err",err:e.message||String(e)}; }
   if(ui.view==="nhu-cau") softRender();
 }
@@ -1261,9 +1262,14 @@ function vSales(){
   if(SD.st==="err") return '<div class="panel"><div class="alert bad">Chưa tải được dữ liệu sales: '+esc(SD.err)+'</div><button class="btn" id="sdReload">Thử lại</button></div>';
   const X=sdStats(), L=SD.leads, mg=sdMgr();
   let h='<div class="row between" style="gap:8px;align-items:flex-end;flex-wrap:wrap"><div style="min-width:0"><h1>Sales</h1><div class="sub">Lead, cuộc gọi và tương tác của đội sales. Sales làm việc ở trang riêng, không thấy trang quản trị.</div></div>'
-   +'<div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn" id="sdWeek">Báo cáo tuần</button><button class="btn" id="sdReload">Tải lại</button>'+(PROFILE&&PROFILE.role==="owner"?'<button class="btn" id="sdXlsx">Xuất Excel</button>':'')+'<a class="btn" href="bao-gia.html" target="_blank" rel="noopener">Báo giá, HĐ</a><a class="btn pri" href="sales.html" target="_blank" rel="noopener">Mở trang sales</a></div></div>';
+   +'<div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn" id="sdWeek">Báo cáo tuần</button><button class="btn" id="sdReload">Tải lại</button>'+(PROFILE&&PROFILE.role==="owner"?'<button class="btn" id="sdXlsx">Xuất Excel</button><button class="btn" id="sdRm">Nhắc gọi lại</button>':'')+'<a class="btn" href="bao-gia.html" target="_blank" rel="noopener">Báo giá, HĐ</a><a class="btn pri" href="sales.html" target="_blank" rel="noopener">Mở trang sales</a></div></div>';
   if(SD.week) h+='<div class="panel" id="sdWeekBox" style="margin-top:12px"><div class="row between" style="gap:6px;flex-wrap:wrap"><h3 style="margin:0">Báo cáo tuần</h3><span class="row" style="gap:6px"><button class="btn pri sm" id="sdWeekCopy">Chép gửi Zalo</button><button class="btn sm" id="sdWeekX">Đóng</button></span></div>'
    +'<div class="sub" style="margin:4px 0 6px">7 ngày gần nhất, không có số điện thoại hay nội dung ghi chú. Sửa thêm trước khi gửi nếu cần.</div><textarea id="sdWeekTxt" rows="14" style="width:100%;box-sizing:border-box;font:inherit">'+esc(SC.weekReport(L,SD.acts,SD.people,new Date()))+'</textarea></div>';
+  if(SD.rmOpen&&isOwner()){ const R0=SD.remind||{};
+    h+='<div class="panel" style="margin-top:12px"><div class="row between" style="gap:6px;flex-wrap:wrap"><h3 style="margin:0">Thiết lập nhắc gọi lại</h3><span class="row" style="gap:6px"><button class="btn pri sm" id="sdRmSave"'+(SD.rmErr?" disabled":"")+'>Lưu</button><button class="btn sm" id="sdRmX">Đóng</button></span></div>'
+     +'<div class="sub" style="margin:4px 0 8px">Số ngày sau tương tác thì trang sales tự đặt hẹn gọi lại. Ghi 0 để không nhắc. Khách từ chối, chuyển Không theo hoặc đã ký thì không nhắc.</div>'
+     +(SD.rmErr?'<div class="alert warn">Máy chủ chưa có bảng thiết lập. Chạy file sales_letters_remind.sql trong Supabase rồi tải lại.</div>':'')
+     +'<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;align-items:end">'+Object.entries(SC.REMIND_KEYS).map(([k,t])=>'<label class="f" style="margin:0"><span class="sub">'+esc(t)+'</span><input type="number" min="0" max="365" inputmode="numeric" data-rm="'+k+'" value="'+esc(String(R0[k]!=null&&R0[k]!==""?R0[k]:SC.REMIND_DEF[k]))+'" style="width:100%;box-sizing:border-box"></label>').join("")+'</div><div class="sub" id="sdRmMsg" style="margin-top:6px"></div></div>'; }
   const tile=(k,v,l,cls)=>'<div class="tile '+(cls||"")+'" data-kpi="'+k+'"><span class="v">'+v+'</span><span class="l">'+l+'</span></div>';
   const open=L.filter(l=>SC.isOpen(l.stage)).length;
   h+='<div class="grid kpis" style="margin-top:12px">'+tile("calls",X.calls,"Cuộc gọi hôm nay")+tile("acts",X.today.length,"Tương tác hôm nay")+tile("open",open,"Lead đang theo")
@@ -1328,6 +1334,12 @@ function bindSales(A){
   $("#sdReload")?.addEventListener("click",()=>{ SD={st:null}; render(); });
   $("#sdWeek")?.addEventListener("click",()=>{ SD.week=!SD.week; render(); if(SD.week) $("#sdWeekBox")?.scrollIntoView({block:"nearest"}); });
   $("#sdWeekX")?.addEventListener("click",()=>{ SD.week=false; render(); });
+  $("#sdRm")?.addEventListener("click",()=>{ SD.rmOpen=!SD.rmOpen; render(); });
+  $("#sdRmX")?.addEventListener("click",()=>{ SD.rmOpen=false; render(); });
+  $("#sdRmSave")?.addEventListener("click",async e=>{ if(!isOwner()) return; const v={...SC.REMIND_DEF,...(SD.remind||{})};
+    A.querySelectorAll("[data-rm]").forEach(i=>{ const n=parseInt(i.value,10); v[i.dataset.rm]=Number.isFinite(n)?Math.min(365,Math.max(0,n)):SC.REMIND_DEF[i.dataset.rm]; });
+    const b=e.currentTarget; b.disabled=true; const {error}=await SB.from("sales_settings").upsert({key:"remind",value:v,updated_at:new Date().toISOString(),updated_by:PROFILE.id});
+    if(error){ $("#sdRmMsg").textContent="Chưa lưu được: "+error.message; b.disabled=false; return; } SD.remind=v; toast("Đã lưu thiết lập nhắc gọi lại"); logEv("sales","sửa thiết lập nhắc gọi lại"); render(); });
   $("#sdWeekCopy")?.addEventListener("click",()=>{ const t=$("#sdWeekTxt").value; navigator.clipboard?.writeText(t).then(()=>toast("Đã chép báo cáo, dán vào Zalo"),()=>{ $("#sdWeekTxt").select(); toast("Không chép được, bôi đen rồi chép tay"); }); });
   if(SD.st!=="ok") return;
   const ph=[...A.querySelectorAll("[data-sdph]")];

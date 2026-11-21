@@ -44,9 +44,13 @@ eq(ids("nonext"), ["fresh_new", "nonext"]);
 assert.strictEqual(new Set(Object.values(B).flat().map(x => x.id)).size, Object.values(B).flat().length);
 // mine=false (nhân viên xem toàn bộ): lead của người khác cũng tính
 assert.ok(SC.buckets(L, null, now).overdue.some(x => x.id === "other"));
-// giai đoạn mới: Đã gửi hợp đồng (8) vẫn đang theo, Chưa có nhu cầu (9) thì không nhắc
-{ const L2 = [{ id: "hd", stage: 8, owner_id: uid, next_at: "2026-11-01" }, { id: "nn", stage: 9, owner_id: uid, next_at: "2026-11-01" }];
-  eq(SC.buckets(L2, uid, now).overdue.map(x => x.id), ["hd"]);
+// giai đoạn mới: Đã gửi hợp đồng (8) vẫn đang theo; Chưa có nhu cầu (9) chỉ hiện khi tới hẹn hâm nóng lại, không vào nhóm khác
+{ const L2 = [{ id: "hd", stage: 8, owner_id: uid, next_at: "2026-11-01" }, { id: "nn", stage: 9, owner_id: uid, next_at: "2026-11-01" },
+    { id: "nn2", stage: 9, owner_id: uid, next_at: "2026-12-20" }, { id: "nn3", stage: 9, owner_id: uid, next_at: null, priority: "A", last_touch_at: iso(30 * D) },
+    { id: "nt", stage: 7, owner_id: uid, next_at: "2026-11-01" }];
+  const B2 = SC.buckets(L2, uid, now);
+  eq(B2.overdue.map(x => x.id), ["hd", "nn"]);
+  eq([...B2.today, ...B2.hot, ...B2.fresh, ...B2.nonext].map(x => x.id), []);
   assert.strictEqual(SC.lab(SC.STAGES, 6), "Đã ký hợp đồng"); assert.strictEqual(SC.lab(SC.STAGES, 8), "Đã gửi hợp đồng"); assert.strictEqual(SC.lab(SC.STAGES, 9), "Chưa có nhu cầu");
   assert.deepStrictEqual(SC.STAGES.map(x => x[0]), [0, 1, 2, 3, 4, 5, 8, 6, 9, 7]); }
 
@@ -168,5 +172,22 @@ assert.strictEqual(SC.srcMatch({}, ""), true);
   assert.ok(r.includes("ưu tiên High chưa chạm 1"), r); // Kho Krông Pắc
   assert.ok(!/0905111222/.test(r), "không lộ số điện thoại");
   assert.ok(!r.includes("Người khác"), "quản lý giao lead không tính là chuyển giao");
+}
+// Nhắc gọi lại: owner thiết lập số ngày, mặc định 5 ngày sau khi liên hệ hoặc gửi báo giá
+{
+  eq(SC.remindDays(null, { result: "talked" }), 5);
+  eq(SC.remindDays(null, { kind: "quote" }), 5);
+  eq(SC.remindDays({ talked: 7 }, { result: "talked" }), 7);
+  eq(SC.remindDays({ talked: 7 }, { result: "interested" }), 5, "thiếu khóa thì dùng mặc định");
+  eq(SC.remindDays(null, { result: "refused" }), 0, "khách từ chối: không nhắc");
+  eq(SC.remindDays(null, { result: "talked", stage: 7 }), 0, "không theo nữa: không nhắc");
+  eq(SC.remindDays({ interested: 3 }, { result: "interested", stage: 6 }), 0, "đã ký: không nhắc");
+  eq(SC.remindDays(null, { result: "talked", stage: 9 }), 30, "chưa có nhu cầu: nhắc thưa");
+  eq(SC.remindDays(null, { result: "wrong" }), 0);
+  eq(SC.remindDays({ noans: "x" }, { result: "noans" }), 2, "giá trị hỏng thì dùng mặc định");
+  eq(SC.remindDays(null, {}), 0);
+  eq(SC.remindAt(null, { result: "talked" }, "2026-11-21"), "2026-11-26");
+  eq(SC.remindAt(null, { result: "refused" }, "2026-11-21"), null);
+  eq(Object.keys(SC.REMIND_KEYS).includes("letter"), true);
 }
 console.log("OK");

@@ -129,7 +129,7 @@ textarea.in{min-height:64px;resize:vertical}
 <script src="sales-core.js"></script>
 <script>
 const SB_URL="https://pkckduidwfcncipwzdxa.supabase.co", SB_KEY="sb_publishable_ZHvz0flMvyIsxmT-tKS_Hw_q_Vz_7RF";
-let SB, ME=null, LEADS=[], MYACTS=[], PEOPLE={}, PROLE={}, TAB="mine", Q="", STF="", F={prov:"",pri:"",seg:"",ct:"",own:"",cs:"",src:"",sort:"next"}, LIMIT=150, CALL=null, SH=null;
+let SB, ME=null, LEADS=[], MYACTS=[], PEOPLE={}, PROLE={}, TAB="mine", Q="", STF="", F={prov:"",pri:"",seg:"",ct:"",own:"",cs:"",src:"",sort:"next"}, LIMIT=150, CALL=null, SH=null, REMIND=null;
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const isStaff=()=>ME&&["owner","manager","staff"].includes(ME.role);
@@ -183,6 +183,7 @@ async function loadAll(){
  LEADS=all;
  const st=new Date(tday()+"T00:00:00+07:00").toISOString();
  const a=await SB.from("sales_acts").select("id,lead_id,channel,result,kind,at").eq("by",ME.id).gte("at",st); MYACTS=(a.data||[]).filter(x=>x.kind==="act");
+ const rm=await SB.from("sales_settings").select("value").eq("key","remind").maybeSingle(); REMIND=rm&&rm.data?rm.data.value:null;
  const p=await SB.rpc("sales_people"); PEOPLE={}; PROLE={}; (p.data||[]).forEach(x=>{ PEOPLE[x.id]=x.name; PROLE[x.id]=x.role; });
  return true;
 }
@@ -441,9 +442,9 @@ function openSheet(leadId,preset){
   +'<div class="grp"><div>Độ ưu tiên</div>'+chips("pr",SC.PRIOS,SH.pr)+'</div>'
   +'<div class="grp"><div>Tiềm năng</div>'+chips("ft",SC.FITS,SH.ft)+'</div>'
   +'<div class="grp"><div>Nhu cầu</div>'+chips("nd",SC.NEEDS,SH.nd)+'</div>'
-  +'<div class="grp"><div>Chuyển giai đoạn (nếu có)</div>'+chips("st",SC.STAGES.filter(s=>[3,4,5,8,6,9].includes(s[0])),null)+'</div>'
+  +'<div class="grp"><div>Chuyển giai đoạn (nếu có)</div>'+chips("st",SC.STAGES.filter(s=>[3,4,5,8,6,9,7].includes(s[0])),null)+'</div>'
   +'<div class="grp"><div>Ghi chú</div><textarea class="in" id="lgNote" placeholder="Khách nói gì, cần gì"></textarea></div>'
-  +'<div class="grp"><div>Bước tiếp</div>'+chips("nt",SC.NEXT,null)+'<div class="row2" style="margin-top:6px">'+chips("nx",[["1d","Mai"],["3d","3 ngày"],["1w","1 tuần"]],null)+'<input class="in" type="date" id="lgDate" style="width:auto;flex:1" aria-label="Ngày hẹn"></div></div>'
+  +'<div class="grp"><div>Bước tiếp</div>'+chips("nt",SC.NEXT,null)+'<div class="row2" style="margin-top:6px">'+chips("nx",[["1d","Mai"],["3d","3 ngày"],["1w","1 tuần"]],null)+'<input class="in" type="date" id="lgDate" style="width:auto;flex:1" aria-label="Ngày hẹn"></div><div class="sub" id="lgAuto" style="margin-top:4px"></div></div>'
   +'<div class="grp row2"><div style="margin:0">Thời gian (phút)</div><input class="in" id="lgMin" type="number" min="0" max="600" inputmode="numeric" style="width:90px" value="'+(preset.min!=null?preset.min:"")+'"></div>'
   +'<div id="lgMsg"></div><button class="btn pri full" id="lgSave">Lưu</button>';
  sheet.classList.add("open"); $("#sheetBg").classList.add("on");
@@ -452,16 +453,23 @@ function openSheet(leadId,preset){
   $("#ciFile").onchange=e=>{ const fs=[...e.target.files]; const room=3-me.files.length; me.files.push(...fs.slice(0,Math.max(0,room)));
    $("#ciMsg").textContent=fs.length>room?"Tối đa 3 ảnh, đã lấy "+me.files.length+" ảnh đầu.":"";
    $("#ciThumbs").innerHTML=me.files.map(f=>'<img alt="" src="'+URL.createObjectURL(f)+'">').join(""); e.target.value=""; }; }
- const upd=()=>{ $("#lgSave").disabled=!(SH.ch&&SH.rs); $("#gLost").style.display=SH.rs==="refused"?"":"none"; };
+ const upd=()=>{ $("#lgSave").disabled=!(SH.ch&&SH.rs); $("#gLost").style.display=SH.rs==="refused"||SH.st==="7"?"":"none"; };
+ const onNt=()=>sheet.querySelectorAll("[data-nt]").forEach(x=>x.classList.toggle("on",x.dataset.nt===SH.nt));
+ const auto=()=>{ if(SH.manual) return; const n=SC.remindDays(REMIND,{result:SH.rs,stage:SH.st!=null?+SH.st:l.stage}), h=$("#lgAuto");
+  if(n>0){ $("#lgDate").value=SC.addDays(tday(),n); SH.autoDate=true; if(!SH.nt){ SH.nt="call"; SH.autoNt=true; onNt(); } h.textContent="Tự nhắc gọi lại sau "+n+" ngày. Đổi ngày nếu cần."; }
+  else { if(SH.autoDate){ $("#lgDate").value=""; SH.autoDate=false; } if(SH.autoNt){ SH.nt=null; SH.autoNt=false; onNt(); } h.textContent=SH.rs?"Không đặt nhắc gọi lại.":""; } };
  sheet.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{
   const g=Object.keys(b.dataset)[0], v=b.dataset[g];
   if(g==="nd"){ SH.nd=SH.nd.includes(v)?SH.nd.filter(x=>x!==v):[...SH.nd,v]; b.classList.toggle("on"); return; }
   const req=g==="ch"||g==="rs", cur=SH[g];
   SH[g]=(cur===v&&!req)?null:v;
   sheet.querySelectorAll('[data-'+g+']').forEach(x=>x.classList.toggle("on",x.dataset[g]===SH[g]));
-  if(g==="nx"){ $("#lgDate").value=SH.nx?SC.nextPreset(SH.nx,tday()):""; }
+  if(g==="nx"){ $("#lgDate").value=SH.nx?SC.nextPreset(SH.nx,tday()):""; SH.manual=true; $("#lgAuto").textContent=""; }
+  if(g==="nt") SH.autoNt=false;
+  if(g==="rs"||g==="st") auto();
   upd(); });
- $("#lgDate").onchange=()=>{ SH.nx=null; sheet.querySelectorAll("[data-nx]").forEach(x=>x.classList.remove("on")); };
+ $("#lgDate").onchange=()=>{ SH.nx=null; SH.manual=true; $("#lgAuto").textContent=""; sheet.querySelectorAll("[data-nx]").forEach(x=>x.classList.remove("on")); };
+ if(SH.rs) auto();
  $("#lgX").onclick=closeSheet; $("#sheetBg").onclick=closeSheet;
  $("#lgSave").onclick=async()=>{
   const note=$("#lgNote").value.trim(), m=$("#lgMin").value;

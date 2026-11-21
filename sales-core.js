@@ -40,6 +40,19 @@
   }
   function addDays(ymd, n) { const t = new Date(ymd + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); }
   function nextPreset(k, today) { return addDays(today, { "1d": 1, "3d": 3, "1w": 7 }[k] || 0); }
+  // Nhắc gọi lại: số ngày theo kết quả tương tác hoặc loại văn bản đã gửi. Owner sửa trong sales_settings (key 'remind'); 0 = không nhắc.
+  const REMIND_KEYS = { talked: "Đã nói chuyện", interested: "Quan tâm", later: "Hẹn lại", sent: "Đã gửi tài liệu", noans: "Không nghe máy", unreach: "Không liên hệ được",
+    quote: "Sau khi gửi báo giá", contract: "Sau khi gửi hợp đồng", letter: "Sau khi gửi văn bản cho xã", stage9: "Khách chưa có nhu cầu", nofind: "Chưa tìm được liên hệ", wrong: "Sai số, sai người" };
+  const REMIND_DEF = { talked: 5, interested: 5, later: 5, sent: 5, noans: 2, unreach: 3, nofind: 0, wrong: 0, refused: 0, quote: 5, contract: 5, letter: 5, stage9: 30 };
+  function remindDays(rules, c) {
+    c = c || {}; const st = c.stage == null ? null : Number(c.stage);
+    if (c.result === "refused" || st === 7 || st === 6) return 0;
+    const g = k => { const v = rules && rules[k]; return Number.isFinite(Number(v)) && v !== "" && v !== null ? Math.max(0, Math.round(Number(v))) : (REMIND_DEF[k] || 0); };
+    if (st === 9) return g("stage9");
+    if (c.kind) return g(c.kind);
+    return c.result ? g(c.result) : 0;
+  }
+  function remindAt(rules, c, today) { const n = remindDays(rules, c); return n > 0 ? addDays(today, n) : null; }
   const open = l => isOpen(l.stage);
   const since = (ts, now) => ts ? (+now - Date.parse(ts)) : Infinity;
 
@@ -48,7 +61,11 @@
     now = now || new Date();
     const td = vnToday(now), B = { overdue: [], today: [], hot: [], fresh: [], nonext: [] };
     (leads || []).forEach(l => {
-      if (!open(l) || (uid && l.owner_id !== uid)) return;
+      if (uid && l.owner_id !== uid) return;
+      if (!open(l)) { // Chưa có nhu cầu: chỉ nhắc khi tới hẹn hâm nóng lại
+        if (Number(l.stage) === 9 && l.next_at && l.next_at <= td) (l.next_at < td ? B.overdue : B.today).push(l);
+        return;
+      }
       if (l.next_at && l.next_at < td) return B.overdue.push(l);
       if (l.next_at === td) return B.today.push(l);
       const idle = since(l.last_touch_at, now);
@@ -156,6 +173,6 @@
   }
 
   const SC = { STAGES, TEMPS, FITS, CHANNELS, RESULTS, NEEDS, LOST, NEXT, HOT_DAYS, WARM_DAYS, FRESH_HOURS, CALL_GOAL,
-    normPhones, vnToday, addDays, nextPreset, buckets, applyAct, callMinutes, ago, telHref, zaloHref, distM, norm, lab, contactOf, provKey, CONTACT_F, contactMatch, srcOptions, srcMatch, weekReport, PRIOS, PRIO_CLS, prioOf, CONTACT_STATES, contactState, NOREACH, OPEN_STAGES, isOpen };
+    normPhones, vnToday, addDays, nextPreset, buckets, applyAct, callMinutes, ago, telHref, zaloHref, distM, norm, lab, contactOf, provKey, CONTACT_F, contactMatch, srcOptions, srcMatch, weekReport, PRIOS, PRIO_CLS, prioOf, CONTACT_STATES, contactState, NOREACH, OPEN_STAGES, isOpen, REMIND_KEYS, REMIND_DEF, remindDays, remindAt };
   if (typeof module !== "undefined" && module.exports) module.exports = SC; else root.SC = SC;
 })(typeof window !== "undefined" ? window : this);
