@@ -810,6 +810,35 @@ let SD={st:null}, SDF={own:"",stage:"",q:"",prov:"",ct:"",pri:"",nx:"",seg:"",sr
 const sdMgr=()=>!!PROFILE&&["owner","manager"].includes(PROFILE.role);
 const sdOk=()=>!!PROFILE&&["owner","manager","viewer"].includes(PROFILE.role)&&typeof SC!=="undefined";
 const sdName=id=>id?((SD.people||{})[id]||"Người khác"):"Kho chung";
+const SD_EF=[["name","Tên khách (tổ chức, hộ)"],["contact_name","Người liên hệ"],["contact_title","Chức vụ"],["contact_phone","Số điện thoại"],["contact_zalo","Zalo (nếu khác)"],["contact_email","Email"],["province","Tỉnh thành"],["address","Địa chỉ"],["segment","Nhóm khách"],["source","Nguồn"],["crops","Cây trồng"],["scale","Quy mô"]];
+function sdEditRow(l,cols){
+  const sel=(id,arr,v,all)=>'<select id="'+id+'"><option value="">'+all+'</option>'+arr.map(([k,t])=>'<option value="'+esc(k)+'"'+(String(v??"")===String(k)?" selected":"")+'>'+esc(t)+'</option>').join("")+'</select>';
+  const f=(lab,inp)=>'<label style="display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--muted)">'+lab+inp+'</label>';
+  return '<tr class="sd-edit"><td colspan="'+cols+'" style="background:var(--soft,#f6f8f6)"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">'
+    +SD_EF.map(([k,t])=>f(t,'<input data-sdef="'+k+'" value="'+esc(l[k]||"")+'">')).join("")
+    +f("Giai đoạn",sel("sdeStage",SC.STAGES,l.stage,"—"))+f("Độ ưu tiên",sel("sdePri",SC.PRIOS,SC.prioOf(l),"Chưa xếp"))
+    +f("Bước tiếp",sel("sdeNt",SC.NEXT,l.next_type,"Chưa có"))+f("Ngày hẹn",'<input type="date" id="sdeNa" value="'+esc(l.next_at||"")+'">')
+    +'</div>'+f("Ghi chú bước tiếp",'<textarea id="sdeNn" rows="2">'+esc(l.next_note||"")+'</textarea>')
+    +'<div class="row" style="gap:6px;margin-top:8px"><button class="btn pri sm" id="sdeSave">Lưu</button><button class="btn sm" id="sdeX">Đóng</button><span class="sub" id="sdeMsg"></span></div></td></tr>'; }
+async function sdExport(){
+  const leads=SD.view||SD.leads, ids=new Set(leads.map(l=>l.id)), nm=id=>id?((SD.people||{})[id]||"Người khác"):"Kho chung";
+  const acts=[]; for(let f=0;;f+=1000){ const {data,error}=await SB.from("sales_acts").select("id,lead_id,by,kind,channel,result,stage_after,note,minutes,at").order("at",{ascending:false}).range(f,f+999); if(error) throw error; acts.push(...data); if(data.length<1000||f>=49000) break; }
+  const A=acts.filter(a=>ids.has(a.lead_id)), lname={}; leads.forEach(l=>lname[l.id]=l.name);
+  const d7=new Date(Date.now()-7*864e5).toISOString(), td=SC.vnToday(), dt=iso=>iso?new Date(Date.parse(iso)+7*36e5).toISOString().slice(0,16).replace("T"," "):"";
+  const lastBy={}; A.forEach(a=>{ if(a.kind==="act"&&!lastBy[a.lead_id]) lastBy[a.lead_id]=a; });
+  const LR=[["Tên lead","Nhóm khách","Nguồn","Tỉnh thành","Địa chỉ","Người liên hệ","Chức vụ","Số điện thoại","Zalo","Email","Giai đoạn","Ưu tiên","Trạng thái liên hệ","Phụ trách","Số lần chạm","Chạm gần nhất","Người chạm gần nhất","Ghi chú lần chạm gần nhất","Bước tiếp","Ngày hẹn","Quá hạn","Ghi chú bước tiếp"]]
+    .concat(leads.map(l=>{ const la=lastBy[l.id]; return [l.name||"",l.segment||"",l.source||"",SC.provKey(l.province)||"",l.address||"",l.contact_name||"",l.contact_title||"",l.contact_phone||l.org_phone||"",l.contact_zalo||"",l.contact_email||"",
+      SC.lab(SC.STAGES,l.stage),SC.lab(SC.PRIOS,SC.prioOf(l))||"",l.last_result?SC.lab(SC.CONTACT_STATES,SC.contactState(l)):"Chưa liên hệ",nm(l.owner_id),Number(l.touch_count||0),dt(l.last_touch_at),la?nm(la.by):"",la&&la.note||"",
+      SC.lab(SC.NEXT,l.next_type)||"",l.next_at||"",l.next_at&&l.next_at<td&&l.stage>=1&&l.stage<=5?"Có":"",l.next_note||""]; }));
+  const AR=[["Thời gian","Nhân sự","Lead","Loại","Kênh","Kết quả","Giai đoạn sau","Phút gọi","Ghi chú"]]
+    .concat(A.map(a=>[dt(a.at),nm(a.by),lname[a.lead_id]||"",a.kind==="act"?"Tương tác":a.kind==="assign"?"Giao lead":a.kind==="claim"?"Xin nhận":"Ghi chú",SC.lab(SC.CHANNELS,a.channel)||"",SC.lab(SC.RESULTS,a.result)||"",a.stage_after!=null?SC.lab(SC.STAGES,a.stage_after):"",a.minutes!=null?Number(a.minutes):"",a.note||""]));
+  const who=[...new Set(leads.map(l=>l.owner_id).filter(Boolean).concat(A.map(a=>a.by).filter(Boolean)))].sort((x,y)=>nm(x).localeCompare(nm(y),"vi"));
+  const PR=[["Nhân sự","Lead đang giữ","Chưa chạm","Đã liên hệ được","Không liên lạc được","Từ chối","Quá hạn hẹn","Ưu tiên cao","Tương tác 7 ngày","Tổng tương tác","Gặp trực tiếp","Đã gửi báo giá, tài liệu","Hoạt động gần nhất"]]
+    .concat(who.map(u=>{ const my=leads.filter(l=>l.owner_id===u), ma=A.filter(a=>a.by===u&&a.kind==="act"), cs=k=>my.filter(l=>SC.contactState(l)===k).length;
+      return [nm(u),my.length,my.filter(l=>!l.last_touch_at).length,cs("reached"),my.filter(l=>SC.NOREACH.includes(SC.contactState(l))).length,cs("refused"),my.filter(l=>l.next_at&&l.next_at<td&&l.stage>=1&&l.stage<=5).length,my.filter(l=>SC.prioOf(l)==="A").length,
+        ma.filter(a=>a.at>=d7).length,ma.length,ma.filter(a=>a.channel==="meet").length,ma.filter(a=>a.result==="sent").length,dt((A.find(a=>a.by===u)||{}).at)]; }));
+  const d=SC.vnToday(); xSave(await xXlsx([{name:"Theo nhân sự",rows:PR,hdr:true},{name:"Lead",rows:LR,hdr:true},{name:"Tương tác",rows:AR,hdr:true}]),"BVI_Sales_"+d.slice(8,10)+"-"+d.slice(5,7)+"-"+d.slice(0,4)+".xlsx");
+  return [leads.length,A.length]; }
 async function loadSales(){
   if(SD.st==="loading") return; SD.st="loading";
   try{
@@ -841,7 +870,7 @@ function vSales(){
   if(SD.st==="err") return '<div class="panel"><div class="alert bad">Chưa tải được dữ liệu sales: '+esc(SD.err)+'</div><button class="btn" id="sdReload">Thử lại</button></div>';
   const X=sdStats(), L=SD.leads, mg=sdMgr();
   let h='<div class="row between" style="gap:8px;align-items:flex-end;flex-wrap:wrap"><div style="min-width:0"><h1>Sales</h1><div class="sub">Lead, cuộc gọi và tương tác của đội sales. Sales làm việc ở trang riêng, không thấy trang quản trị.</div></div>'
-   +'<div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn" id="sdWeek">Báo cáo tuần</button><button class="btn" id="sdReload">Tải lại</button><a class="btn" href="bao-gia.html" target="_blank" rel="noopener">Báo giá, HĐ</a><a class="btn pri" href="sales.html" target="_blank" rel="noopener">Mở trang sales</a></div></div>';
+   +'<div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn" id="sdWeek">Báo cáo tuần</button><button class="btn" id="sdReload">Tải lại</button>'+(PROFILE&&PROFILE.role==="owner"?'<button class="btn" id="sdXlsx">Xuất Excel</button>':'')+'<a class="btn" href="bao-gia.html" target="_blank" rel="noopener">Báo giá, HĐ</a><a class="btn pri" href="sales.html" target="_blank" rel="noopener">Mở trang sales</a></div></div>';
   if(SD.week) h+='<div class="panel" id="sdWeekBox" style="margin-top:12px"><div class="row between" style="gap:6px;flex-wrap:wrap"><h3 style="margin:0">Báo cáo tuần</h3><span class="row" style="gap:6px"><button class="btn pri sm" id="sdWeekCopy">Chép gửi Zalo</button><button class="btn sm" id="sdWeekX">Đóng</button></span></div>'
    +'<div class="sub" style="margin:4px 0 6px">7 ngày gần nhất, không có số điện thoại hay nội dung ghi chú. Sửa thêm trước khi gửi nếu cần.</div><textarea id="sdWeekTxt" rows="14" style="width:100%;box-sizing:border-box;font:inherit">'+esc(SC.weekReport(L,SD.acts,SD.people,new Date()))+'</textarea></div>';
   const tile=(k,v,l,cls)=>'<div class="tile '+(cls||"")+'" data-kpi="'+k+'"><span class="v">'+v+'</span><span class="l">'+l+'</span></div>';
@@ -883,6 +912,7 @@ function vSales(){
   const ctc={}; arr.forEach(l=>{ const c=SC.contactOf(l); SC.CONTACT_F.forEach(([k])=>{ if(SC.contactMatch(c,k)) ctc[k]=(ctc[k]||0)+1; }); });
   if(SDF.pri) arr=arr.filter(l=>SDF.pri==="none"?!SC.prioOf(l):SC.prioOf(l)===SDF.pri);
   if(SDF.ct) arr=arr.filter(l=>SC.contactMatch(SC.contactOf(l),SDF.ct));
+  SD.view=arr;
   const ciB=l=>{ const c=SC.contactOf(l); return [["ph","SĐT"],["em","Email"],["ad","Địa chỉ"]].map(([k,t])=>'<span style="font-size:11px;border-radius:6px;padding:0 5px;white-space:nowrap;'+(c[k]?'border:1px solid var(--ok,#2f7d4f);color:var(--ok,#2f7d4f)':'border:1px dashed var(--line,#ccc);color:var(--muted,#888);text-decoration:line-through')+'" title="'+(c[k]?"Có ":"Chưa có ")+t.toLowerCase()+'">'+t+'</span>').join(" "); };
   const sel=[...SDF.sel].filter(id=>lid[id]), ppl=Object.entries(SD.people).filter(([u])=>["owner","manager","staff","ctv"].includes(SD.roles[u])).sort((a,b)=>a[1].localeCompare(b[1],"vi"));
   h+='<div class="panel" style="margin-top:12px"><h3 style="margin:0 0 8px">Danh sách lead'+(mg?' và giao việc':'')+'</h3><div class="filters"><input id="sdQ" placeholder="Tìm tên, tỉnh, địa chỉ, loại khách" value="'+esc(SDF.q)+'" style="flex:1;min-width:160px">'
@@ -899,7 +929,7 @@ function vSales(){
    +(mg?'<div class="row" style="gap:6px;flex-wrap:wrap;margin:8px 0"><span class="sub">Đã chọn <b id="sdN">'+sel.length+'</b> lead · giao cho</span><select id="sdTo" aria-label="Giao cho"><option value="">Chọn người</option>'+ppl.map(([u,n])=>'<option value="'+esc(u)+'">'+esc(n)+(SD.roles[u]==="ctv"?" (CTV)":"")+'</option>').join("")+'</select><button class="btn pri sm" id="sdAssign">Giao</button><span class="sub">· hoặc</span><select id="sdSetPri" aria-label="Đặt ưu tiên"><option value="">Đặt ưu tiên</option>'+SC.PRIOS.map(([k,t])=>'<option value="'+k+'">'+t+'</option>').join("")+'</select><button class="btn sm" id="sdNoDate">Bỏ ngày hẹn</button><span class="sub" id="sdMsg"></span></div>'
    +'<div class="row" style="gap:6px;flex-wrap:wrap;margin:0 0 8px;align-items:center"><span class="sub">Chia đều lead đã chọn cho:</span>'+ppl.map(([u,n])=>'<label class="pill" style="cursor:pointer;display:inline-flex;gap:4px;align-items:center"><input type="checkbox" data-sdsplit="'+esc(u)+'">'+esc(n)+(SD.roles[u]==="ctv"?" (CTV)":"")+'</label>').join("")+'<button class="btn pri sm" id="sdSplit">Chia đều</button><span class="sub" id="sdSplitMsg"></span></div>':'')
    +'<div class="sub" style="margin:4px 0">'+arr.length+' lead</div><div class="tw"><table><thead><tr>'+(mg?'<th><input type="checkbox" id="sdAll" aria-label="Chọn tất cả đang hiện"></th>':'')+'<th>Lead</th><th>Liên hệ</th><th>Giai đoạn</th><th>Ưu tiên</th><th>Phụ trách</th><th>Hẹn</th><th>Liên hệ gần nhất</th></tr></thead><tbody>'
-   +arr.slice(0,SDF.lim).map(l=>'<tr>'+(mg?'<td><input type="checkbox" data-sdsel="'+esc(l.id)+'"'+(SDF.sel.has(l.id)?" checked":"")+'></td>':'')+'<td style="min-width:160px"><b>'+esc(l.name)+'</b>'+'<div class="sub">'+esc([SC.provKey(l.province),l.segment].filter(Boolean).join(" · "))+'</div></td><td style="white-space:nowrap">'+ciB(l)+'</td><td>'+esc(SC.lab(SC.STAGES,l.stage))+'</td><td>'+(SC.prioOf(l)?'<span class="pill'+(SC.prioOf(l)==="A"?" bad":SC.prioOf(l)==="B"?" warn":"")+'">'+esc(SC.lab(SC.PRIOS,SC.prioOf(l)))+'</span>':'')+'</td><td>'+esc(sdName(l.owner_id))+'</td><td'+(l.next_at&&l.next_at<td&&l.stage>=1&&l.stage<=5?' style="color:var(--bad);font-weight:600"':'')+'>'+(l.next_at?dm(l.next_at):"—")+'</td><td>'+(l.last_result?'<span class="pill'+(SC.contactState(l)==="reached"?"":" bad")+'">'+esc(SC.lab(SC.CONTACT_STATES,SC.contactState(l)))+'</span> ':'')+'<span class="sub">'+esc(SC.ago(l.last_touch_at))+'</span></td></tr>').join("")+'</tbody></table></div>'
+   +arr.slice(0,SDF.lim).map(l=>'<tr>'+(mg?'<td><input type="checkbox" data-sdsel="'+esc(l.id)+'"'+(SDF.sel.has(l.id)?" checked":"")+'></td>':'')+'<td style="min-width:160px"><b>'+esc(l.name)+'</b>'+(mg?' <button class="btn sm" data-sdedit="'+esc(l.id)+'" aria-label="Sửa lead">✎ Sửa</button>':'')+'<div class="sub">'+esc([SC.provKey(l.province),l.segment].filter(Boolean).join(" · "))+'</div></td><td style="white-space:nowrap">'+ciB(l)+'</td><td>'+esc(SC.lab(SC.STAGES,l.stage))+'</td><td>'+(SC.prioOf(l)?'<span class="pill'+(SC.prioOf(l)==="A"?" bad":SC.prioOf(l)==="B"?" warn":"")+'">'+esc(SC.lab(SC.PRIOS,SC.prioOf(l)))+'</span>':'')+'</td><td>'+esc(sdName(l.owner_id))+'</td><td'+(l.next_at&&l.next_at<td&&l.stage>=1&&l.stage<=5?' style="color:var(--bad);font-weight:600"':'')+'>'+(l.next_at?dm(l.next_at):"—")+'</td><td>'+(l.last_result?'<span class="pill'+(SC.contactState(l)==="reached"?"":" bad")+'">'+esc(SC.lab(SC.CONTACT_STATES,SC.contactState(l)))+'</span> ':'')+'<span class="sub">'+esc(SC.ago(l.last_touch_at))+'</span></td></tr>'+(mg&&SDF.edit===l.id?sdEditRow(l,mg?8:7):'')).join("")+'</tbody></table></div>'
    +(arr.length>SDF.lim?'<button class="btn sm" id="sdMore" style="margin-top:6px">Xem thêm</button>':'')+'</div>';
   return h;
 }
@@ -929,6 +959,15 @@ function bindSales(A){
   $("#sdPri")?.addEventListener("change",e=>{ SDF.pri=e.target.value; SDF.lim=100; render(); });
   $("#sdCt")?.addEventListener("change",e=>{ SDF.ct=e.target.value; SDF.lim=100; render(); });
   $("#sdMore")?.addEventListener("click",()=>{ SDF.lim+=200; render(); });
+  $("#sdXlsx")?.addEventListener("click",async e=>{ const b=e.currentTarget; b.disabled=true; b.textContent="Đang tạo file…"; try{ const [n,m]=await sdExport(); toast("Đã xuất "+n+" lead, "+m+" tương tác"); }catch(er){ toast("Chưa xuất được: "+(er.message||er)); } b.disabled=false; b.textContent="Xuất Excel"; });
+  A.querySelectorAll("[data-sdedit]").forEach(b=>b.addEventListener("click",()=>{ SDF.edit=SDF.edit===b.dataset.sdedit?null:b.dataset.sdedit; render(); }));
+  $("#sdeX")?.addEventListener("click",()=>{ SDF.edit=null; render(); });
+  $("#sdeSave")?.addEventListener("click",async()=>{ if(!sdMgr()) return; const l=SD.leads.find(x=>x.id===SDF.edit); if(!l) return; const p={};
+    A.querySelectorAll("[data-sdef]").forEach(i=>{ p[i.dataset.sdef]=i.value.trim()||null; }); if(!p.name){ $("#sdeMsg").textContent="Cần tên khách"; return; }
+    const st=$("#sdeStage").value; if(st!=="") p.stage=+st; p.priority=$("#sdePri").value||null; p.next_type=$("#sdeNt").value||null; p.next_at=$("#sdeNa").value||null; p.next_note=$("#sdeNn").value.trim()||null;
+    if(l.stage===0&&p.stage===0&&(SC.normPhones([p.contact_phone,p.contact_zalo].join(",")).length||p.contact_email)) p.stage=1;
+    $("#sdeSave").disabled=true; const {error}=await SB.from("sales_leads").update(p).eq("id",l.id); $("#sdeSave").disabled=false;
+    if(error){ $("#sdeMsg").textContent="Chưa lưu được: "+error.message; return; } Object.assign(l,p); SDF.edit=null; toast("Đã lưu lead"); render(); });
   A.querySelectorAll("[data-sdsel]").forEach(c=>c.addEventListener("change",()=>{ c.checked?SDF.sel.add(c.dataset.sdsel):SDF.sel.delete(c.dataset.sdsel); const n=$("#sdN"); if(n) n.textContent=SDF.sel.size; }));
   $("#sdAll")?.addEventListener("change",e=>{ A.querySelectorAll("[data-sdsel]").forEach(c=>{ c.checked=e.target.checked; e.target.checked?SDF.sel.add(c.dataset.sdsel):SDF.sel.delete(c.dataset.sdsel); }); const n=$("#sdN"); if(n) n.textContent=SDF.sel.size; });
   A.querySelectorAll("[data-cok],[data-cno]").forEach(b=>b.addEventListener("click",async()=>{ if(!sdMgr()) return; b.disabled=true; const ok=!!b.dataset.cok;
