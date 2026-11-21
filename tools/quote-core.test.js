@@ -55,7 +55,8 @@ assert.strictEqual(d.kind, "quote");
 assert.strictEqual(d.template_id, "t1");
 assert.strictEqual(d.company_id, "c2");
 assert.strictEqual(d.lead_id, "L1");
-eq(d.customer, { name: "HTX Ea Tu", address: "Thôn 2", tax_id: "123", rep: "Anh A", rep_title: "", phone: "0905", email: "" });
+eq(d.customer, { name: "HTX Ea Tu", address: "Thôn 2", province: "", xa: "", tax_id: "123", rep: "Anh A", rep_title: "", phone: "0905", email: "", contact_name: "Anh A", contact_title: "", contact_phone: "0905", note: "" });
+assert.strictEqual(QC.fromTemplate(tpl, { lead: { id: "x", name: "UBND xã Krông Pắc" } }).customer.xa, "xã Krông Pắc");
 assert.strictEqual(d.title, "Báo giá TXNG: HTX Ea Tu");
 assert.strictEqual(d.total, 5400000);
 d.body.blocks[0].html = "đổi";
@@ -96,4 +97,32 @@ assert.strictEqual(QC.canSend({ status: "pending" }), false);
   assert.ok(x.includes("HTX A &amp; B &lt;x&gt;") && x.includes("10.800.000") && x.includes("3721077979") && x.includes("BG-2026-007") && x.includes("•") && !x.includes("{{") && !x.includes("BẢN NHÁP"));
   assert.ok(QC.docxFiles(Object.assign({}, d, { status: "draft" }), co, {})["word/document.xml"].includes("BẢN NHÁP"));
   assert.strictEqual(QC.fileName(d, "docx"), "BG-2026-007_HTX_A_B_x.docx"); }
+// Kiểm tra: đỏ khi thiếu đầu mối, sai tài khoản BVI, cam kết cấp mã; vàng khi giá cũ, ô [ ]
+{ const bvi = { code: "bvi", name: "Công ty Cổ phần BVI", short_name: "BVI", tax_id: "6001653877", rep_name: "Trương Công Tài", banks: [{ number: "3721077979" }] };
+  const base = { kind: "quote", customer: { name: "HTX A", contact_name: "Anh B", contact_title: "GĐ", contact_phone: "0905 111 222" }, body: { blocks: [{ t: "items", rows: [{ name: "Gói", qty: 1, price: 5000000 }], vat: 8 }, { t: "bank" }] } };
+  const lv = (d, co) => QC.check(d, co || bvi);
+  eq(lv(base), []);
+  const noC = QC.clone(base); noC.customer.contact_name = ""; noC.customer.contact_phone = "12";
+  assert.ok(lv(noC).filter(x => x.lvl === "err").length === 2);
+  const badBank = QC.clone(bvi); badBank.banks = [{ number: "0123456789" }];
+  assert.ok(lv(base, badBank).some(x => x.lvl === "err" && /3721077979/.test(x.msg)));
+  const prom = QC.clone(base); prom.body.blocks.unshift({ t: "text", html: "<p>BVI cam kết cấp mã trong 30 ngày, giá 30-40 triệu/mã, liên hệ 0901 403 819 [ngày]</p>" });
+  const r = lv(prom); assert.ok(r.filter(x => x.lvl === "err").length === 2 && r.some(x => /giá cũ/.test(x.msg)) && r.some(x => /chưa điền/.test(x.msg)));
+  const ok2 = QC.clone(base); ok2.body.blocks.unshift({ t: "text", html: "<p>BVI không cam kết cấp mã. 10 ha là khuyến nghị, không bắt buộc.</p>" }); eq(lv(ok2), []);
+  const zero = QC.clone(base); zero.body.blocks[0].rows[0].price = 0; assert.ok(lv(zero).some(x => x.lvl === "err" && /tổng bằng 0/.test(x.msg)));
+  const lt = { kind: "letter", customer: { name: "UBND xã X", contact_name: "Chị C", contact_title: "PCT", contact_phone: "0911423839" }, body: { subtitle: "đề nghị", to: "Kính gửi: Ủy ban nhân dân {{xa}}", blocks: [{ t: "sign" }] } };
+  assert.ok(lv(lt).some(x => x.lvl === "err" && /xã, phường/.test(x.msg)));
+  lt.customer.xa = "xã X"; eq(lv(lt), []);
+  const h = QC.render(Object.assign({ status: "approved", number: "CV-2026-001", created_at: "2026-11-21T03:00:00Z" }, lt), bvi, {});
+  assert.ok(h.includes("CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM") && h.includes("Số: CV-2026-001") && h.includes("V/v đề nghị") && h.includes("Ủy ban nhân dân xã X") && h.includes("ngày 21 tháng 11 năm 2026") && h.includes("Nơi nhận"));
+  const x = QC.docxFiles(Object.assign({ status: "approved", number: "CV-2026-001" }, lt), bvi, {})["word/document.xml"]; assert.ok(x.includes("Ủy ban nhân dân xã X") && x.includes('w:val="nil"')); }
+// guessXa dùng được từ trang; check() nhận người lập để không báo nhầm {{nguoi_lap}}
+eq(QC.guessXa({ name: "UBND xã Ea Kiết" }), "xã Ea Kiết");
+{ const d = { kind: "quote", customer: { name: "A", contact_name: "B", contact_title: "C", contact_phone: "0912345678" }, body: { blocks: [{ t: "text", html: "<p>{{nguoi_lap}}</p>" }, { t: "items", rows: [{ name: "x", unit: "gói", qty: 1, price: 1000 }], vat: 8 }] } };
+  const co = { name: "BVI", code: "bvi", tax_id: "6001653877", rep_name: "T", banks: [{ number: "3721077979" }] };
+  assert.ok(QC.check(d, co).some(x => /nguoi_lap/.test(x.msg)));
+  eq(QC.check(d, co, { name: "Huy" }), []); }
+eq(QC.vars({ customer: {} }, { address: "150 Phan Huy Chú" }, {}).noi_lap, "Đắk Lắk");
+eq(QC.vars({ customer: {} }, { address: "150 Phan Huy Chú, Phường Thành Nhất, tỉnh Đắk Lắk" }, {}).noi_lap, "Đắk Lắk");
+eq(QC.vars({ customer: {} }, { address: "12 Lê Lợi, TP. Hồ Chí Minh" }, {}).noi_lap, "Hồ Chí Minh");
 console.log("OK");

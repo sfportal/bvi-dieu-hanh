@@ -16,7 +16,7 @@ create table if not exists public.sales_companies (
 create table if not exists public.sales_templates (
   id uuid primary key default gen_random_uuid(),
   code text unique,
-  kind text not null default 'quote' check (kind in ('quote','contract')),
+  kind text not null default 'quote' check (kind in ('quote','contract','letter')),
   name text not null, description text,
   company_id uuid references public.sales_companies(id) on delete set null,
   body jsonb not null default '{}'::jsonb,
@@ -25,7 +25,7 @@ create table if not exists public.sales_templates (
 );
 create table if not exists public.sales_docs (
   id uuid primary key default gen_random_uuid(),
-  kind text not null default 'quote' check (kind in ('quote','contract')),
+  kind text not null default 'quote' check (kind in ('quote','contract','letter')),
   number text unique,
   title text,
   template_id uuid references public.sales_templates(id) on delete set null,
@@ -138,7 +138,7 @@ begin
   end if;
   n := d.number;
   if n is null then
-    pre := case when d.kind = 'contract' then 'HĐ' else 'BG' end || '-' || yr || '-';
+    pre := case d.kind when 'contract' then 'HĐ' when 'letter' then 'CV' else 'BG' end || '-' || yr || '-';
     select coalesce(max(substring(number from length(pre) + 1)::int), 0) + 1 into k from sales_docs where number like pre || '%' and substring(number from length(pre) + 1) ~ '^\d+$';
     n := pre || lpad(k::text, 3, '0');
   end if;

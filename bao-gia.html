@@ -35,6 +35,7 @@ h2{font-size:15px;margin:16px 2px 8px}
 .sub{color:var(--muted);font-size:12.5px}
 .pill{display:inline-block;border-radius:999px;padding:1px 8px;font-size:12px;background:var(--chip);color:var(--fg);white-space:nowrap}
 .pill.s-pending{background:var(--warn);color:#fff}.pill.s-approved{background:var(--good);color:#fff}.pill.s-sent{background:var(--info);color:#fff}
+.ck{margin:8px 0;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-size:13px}.ck ul{margin:6px 0 0;padding-left:18px}.ck li{margin:3px 0;overflow-wrap:anywhere}.ck li.e{color:var(--bad);font-weight:600}.ck li.w{color:var(--warn)}
 .pill.s-rejected{background:rgba(184,58,46,.14);color:var(--bad)}.pill.s-cancelled{text-decoration:line-through;color:var(--muted)}
 .tabs{display:flex;gap:6px;margin-bottom:8px;overflow-x:auto;padding-bottom:2px}
 .tabs button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;cursor:pointer;white-space:nowrap}
@@ -100,9 +101,10 @@ details.vars code{background:var(--chip);border-radius:4px;padding:0 4px;font-si
 <div id="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="quote-core.js"></script>
+<script src="sales-core.js"></script>
 <script>
 const SB_URL="https://pkckduidwfcncipwzdxa.supabase.co", SB_KEY="sb_publishable_ZHvz0flMvyIsxmT-tKS_Hw_q_Vz_7RF";
-let SB, ME=null, CO={}, TPL=[], DOCS=[], PEOPLE={}, LEADS=null, LTAB="", LF={kind:"",status:"",q:""}, CUR=null, DIRTY=false, SAVING=null, VT="edit";
+let SB, ME=null, CO={}, TPL=[], DOCS=[], PEOPLE={}, LEADS=null, LTAB="", LF={kind:"",status:"",q:""}, CUR=null, DIRTY=false, SAVING=null, VT="edit", REMIND=null;
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=QC.esc, lab=QC.lab;
 const isMgr=()=>QC.isMgr(ME), isViewer=()=>ME&&ME.role==="viewer";
@@ -113,7 +115,7 @@ function loadJs(src){ loadJs.c=loadJs.c||{}; return loadJs.c[src]=loadJs.c[src]|
 function saveBlob(b,name){ const a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1500); }
 function toast(t){ const e=$("#toast"); e.textContent=t; e.style.display="block"; clearTimeout(toast.t); toast.t=setTimeout(()=>e.style.display="none",2400); }
 function shell(on){ $("#top").style.display=on?"":"none"; $("#bot").style.display=on?"":"none"; }
-const errText=e=>{ const m=(e&&e.message)||String(e||""); return /locked/.test(m)?"Bản này đang chờ duyệt hoặc đã duyệt, không sửa được. Bấm Sửa lại để mở.":/not_owner/.test(m)?"Bạn không phải người lập bản này.":/not_manager/.test(m)?"Chỉ quản lý được duyệt.":/not_approved/.test(m)?"Bản này chưa được duyệt.":/bad_status/.test(m)?"Trạng thái đã thay đổi, tải lại trang.":/relation .* does not exist|schema cache|sales_doc/.test(m)?"Máy chủ chưa bật tính năng báo giá. Báo quản lý chạy file sales_quotes.sql.":/fetch|network/i.test(m)?"Mất kết nối, thử lại.":m; };
+const errText=e=>{ const m=(e&&e.message)||String(e||""); return /locked/.test(m)?"Bản này đang chờ duyệt hoặc đã duyệt, không sửa được. Bấm Sửa lại để mở.":/not_owner/.test(m)?"Bạn không phải người lập bản này.":/not_manager/.test(m)?"Chỉ quản lý được duyệt.":/not_approved/.test(m)?"Bản này chưa được duyệt.":/bad_status/.test(m)?"Trạng thái đã thay đổi, tải lại trang.":/kind_check/.test(m)?"Máy chủ chưa bật văn bản gửi xã. Báo quản lý chạy file sales_letters_remind.sql.":/relation .* does not exist|schema cache|sales_doc/.test(m)?"Máy chủ chưa bật tính năng báo giá. Báo quản lý chạy file sales_quotes.sql.":/fetch|network/i.test(m)?"Mất kết nối, thử lại.":m; };
 
 // ---------- đăng nhập ----------
 function showLogin(msg){
@@ -140,14 +142,15 @@ async function start(){
  route();
 }
 async function loadBase(){
- const [c,t,p]=await Promise.all([SB.from("sales_companies").select("*").order("sort"),SB.from("sales_templates").select("*").order("sort"),SB.rpc("sales_people")]);
+ const [c,t,p,rm]=await Promise.all([SB.from("sales_companies").select("*").order("sort"),SB.from("sales_templates").select("*").order("sort"),SB.rpc("sales_people"),SB.from("sales_settings").select("value").eq("key","remind").maybeSingle()]);
+ REMIND=rm&&rm.data?rm.data.value:null;
  if(c.error) return c.error; if(t.error) return t.error;
  CO={}; (c.data||[]).forEach(x=>CO[x.id]=x); TPL=t.data||[]; PEOPLE={}; (p.data||[]).forEach(x=>PEOPLE[x.id]=x.name);
  return loadDocs();
 }
 async function loadDocs(){ const d=await SB.from("sales_docs").select("id,kind,number,title,company_id,lead_id,customer,total,status,created_by,created_at,updated_at,submitted_at,reviewed_at,sent_at,sent_via").order("updated_at",{ascending:false}).limit(1000);
  if(d.error) return d.error; DOCS=d.data||[]; drawNav(); return null; }
-async function loadLeads(){ if(LEADS) return LEADS; const all=[]; for(let f=0;;f+=1000){ const {data,error}=await SB.from("sales_leads").select("id,name,address,area,province,tax_id,contact_name,contact_title,contact_phone,org_phone,contact_email,owner_id").order("name").range(f,f+999); if(error) break; all.push(...data); if(data.length<1000) break; } LEADS=all; return all; }
+async function loadLeads(){ if(LEADS) return LEADS; const all=[]; for(let f=0;;f+=1000){ const {data,error}=await SB.from("sales_leads").select("id,name,address,area,province,tax_id,contact_name,contact_title,contact_phone,org_phone,contact_email,owner_id,stage").order("name").range(f,f+999); if(error) break; all.push(...data); if(data.length<1000) break; } LEADS=all; return all; }
 
 // ---------- điều hướng ----------
 function navItems(){ const n=DOCS.filter(d=>d.status==="pending").length; const a=[["ds","☰","Danh sách"+(isMgr()&&n?" ("+n+")":"")]]; if(!isViewer()) a.push(["moi","＋","Tạo mới"]); if(isMgr()){ a.push(["mau","▤","Mẫu"]); a.push(["dn","🏢","Doanh nghiệp"]); } return a; }
@@ -204,7 +207,7 @@ async function vNew(leadId){
   const tp=TPL.filter(t=>t.active&&t.kind===st.kind), cos=Object.values(CO).filter(c=>c.active);
   if(st.tpl&&!tp.some(t=>t.id===st.tpl)) st.tpl=null;
   const tpl=TPL.find(t=>t.id===st.tpl);
-  let h='<h1>Tạo báo giá, hợp đồng</h1><div class="tabs">'+QC.KINDS.map(([k,t])=>'<button data-k="'+k+'" class="'+(st.kind===k?"on":"")+'">'+t+'</button>').join("")+'</div>'
+  let h='<h1>Tạo báo giá, hợp đồng, văn bản</h1><div class="tabs">'+QC.KINDS.map(([k,t])=>'<button data-k="'+k+'" class="'+(st.kind===k?"on":"")+'">'+t+'</button>').join("")+'</div>'
    +'<h2>1. Chọn mẫu</h2>'+(tp.length?tp.map(t=>'<button type="button" class="tpl'+(st.tpl===t.id?" on":"")+'" data-t="'+esc(t.id)+'"><b>'+esc(t.name)+'</b>'+(t.description?'<div class="sub">'+esc(t.description)+'</div>':'')+'</button>').join(""):'<div class="card sub">Chưa có mẫu '+esc(lab(QC.KINDS,st.kind).toLowerCase())+'.'+(isMgr()?' Vào <a href="#mau">Mẫu</a> để tạo.':' Nhờ quản lý tạo mẫu.')+'</div>');
   if(tpl){
    if(!st.company) st.company=tpl.company_id&&CO[tpl.company_id]?tpl.company_id:(cos[0]||{}).id||"";
@@ -225,7 +228,7 @@ async function vNew(leadId){
     $$("#nSug [data-l]").forEach(b=>b.onclick=()=>{ st.lead=LEADS.find(l=>l.id===b.dataset.l); draw(); }); };
    $("#nLq").oninput=()=>{ clearTimeout(sug.t); sug.t=setTimeout(sug,200); }; }
   if($("#nGo")) $("#nGo").onclick=async()=>{ const b=$("#nGo"); b.disabled=true; $("#nMsg").textContent="Đang tạo…";
-   const d=QC.fromTemplate(tpl,{company_id:st.company,lead:st.lead}); if(!st.lead&&st.name.trim()){ d.customer.name=st.name.trim(); d.title=tpl.name+": "+st.name.trim(); }
+   const d=QC.fromTemplate(tpl,{company_id:st.company,lead:st.lead}); if(!st.lead&&st.name.trim()){ d.customer.name=st.name.trim(); d.title=tpl.name+": "+st.name.trim(); if(!d.customer.xa) d.customer.xa=QC.guessXa({name:d.customer.name})||""; }
    const {data,error}=await SB.from("sales_docs").insert({...d,created_by:ME.id}).select().single();
    if(error){ b.disabled=false; $("#nMsg").textContent=errText(error); return; }
    DOCS.unshift(data); location.hash="#doc/"+data.id; };
@@ -276,6 +279,24 @@ function bindBlocks(root,body,changed,redraw){
 }
 
 // ---------- một báo giá, hợp đồng ----------
+// Tiêu đề, dòng phụ; với văn bản gửi xã thêm kiểu trình bày và phần Kính gửi
+function headHtml(body,kind,px){ const L=kind==="letter";
+ return '<div class="card"><div class="f"><label>'+(L?"Tiêu đề văn bản (trích yếu)":"Tiêu đề tài liệu")+'</label><input class="in" id="'+px+'Bt" value="'+esc(body.title||"")+'"></div><div class="f"><label>'+(L?"Dòng V/v (về việc)":"Dòng phụ dưới tiêu đề")+'</label><input class="in" id="'+px+'Bs" value="'+esc(body.subtitle||"")+'"></div>'
+  +(L?'<div class="f"><label>Kiểu trình bày</label><select class="in" id="'+px+'Lay"><option value="cv"'+(body.layout!=="doc"?" selected":"")+'>Công văn (quốc hiệu, số, Kính gửi, nơi nhận)</option><option value="doc"'+(body.layout==="doc"?" selected":"")+'>Tài liệu hướng dẫn</option></select></div>'
+   +(body.layout!=="doc"?'<div class="f"><label>Kính gửi</label>'+rte(px+"To",body.to||"")+'</div>':''):'')+'</div>'; }
+function bindHead(body,changed,px,redraw){
+ $("#"+px+"Bt").oninput=e=>{ body.title=e.target.value; changed(); }; $("#"+px+"Bs").oninput=e=>{ body.subtitle=e.target.value; changed(); };
+ const ly=$("#"+px+"Lay"); if(ly) ly.onchange=e=>{ body.layout=e.target.value; changed(); redraw(); };
+ const to=$("#"+px+"To"); if(to){ to.oninput=()=>{ body.to=QC.clean(to.innerHTML); changed(); };
+  to.onpaste=ev=>{ ev.preventDefault(); document.execCommand("insertText",false,(ev.clipboardData||window.clipboardData).getData("text/plain")); };
+  to.parentNode.querySelectorAll(".tb button").forEach(b=>b.onmousedown=ev=>{ ev.preventDefault(); to.focus(); document.execCommand(b.dataset.cmd,false,null); to.oninput(); }); }
+}
+const CU_F={letter:[["name","Cơ quan nhận (vd: UBND xã Ea Kiết) *"],["xa","Xã, phường *"],["province","Tỉnh"],["address","Địa chỉ"],["email","Email cơ quan"]],
+ other:[["name","Tên khách hàng *"],["address","Địa chỉ"],["tax_id","Mã số thuế"],["rep","Người đại diện"],["rep_title","Chức vụ"],["phone","Điện thoại"],["email","Email"],["province","Tỉnh"]]};
+const CU_C=[["contact_name","Người đầu mối *"],["contact_title","Chức vụ đầu mối"],["contact_phone","Điện thoại đầu mối *"]];
+function infoCard(d){ const c=d.customer||{}, who=[c.contact_name,c.contact_title,c.contact_phone].filter(x=>String(x||"").trim());
+ return '<div class="card" style="margin:8px 0"><b>Đầu mối liên hệ</b><div>'+(who.length?esc(who.join(" · ")):'<span style="color:var(--bad)">Chưa ghi đầu mối</span>')+'</div>'
+  +(String(c.note||"").trim()?'<div class="sub" style="margin-top:4px">Ghi chú của người lập: '+esc(c.note)+'</div>':'')+(d.lead_id?'<a class="sub" href="sales.html#lead/'+esc(d.lead_id)+'" target="_blank" rel="noopener">mở lead ›</a>':'')+'</div>'; }
 async function vDoc(id){
  $("#app").innerHTML='<div class="sub" style="padding:30px;text-align:center">Đang mở…</div>';
  const {data,error}=await SB.from("sales_docs").select("*").eq("id",id).single();
@@ -284,12 +305,38 @@ async function vDoc(id){
 }
 const curCo=()=>CUR&&["approved","sent"].includes(CUR.status)&&CUR.company_snap?CUR.company_snap:(CO[CUR&&CUR.company_id]||{});
 const creator=()=>({name:pname(CUR.created_by)});
-function drawPreview(){ const p=$("#pv"); if(p) p.innerHTML=QC.render(CUR,curCo(),creator()); }
+function drawPreview(){ const p=$("#pv"); if(p) p.innerHTML=QC.render(CUR,curCo(),creator()); drawCheck(); }
+function drawCheck(){ const b=$("#ckBox"); if(!b||!CUR) return; const P=QC.check(CUR,curCo(),creator()), E=P.filter(x=>x.lvl==="err"), W=P.filter(x=>x.lvl==="warn");
+ const ab=$("#aBox"); if(ab&&!E.length&&/lỗi màu đỏ/.test(ab.textContent)) ab.innerHTML="";
+ b.innerHTML=!P.length?'<div class="msg ok">Kiểm tra: chưa thấy chỗ bất hợp lý.</div>'
+  :'<div class="ck"><b>Kiểm tra trước khi gửi</b>'+(E.length?' <span class="pill s-rejected">'+E.length+' lỗi phải sửa</span>':'')+(W.length?' <span class="pill s-pending">'+W.length+' cần xem lại</span>':'')
+   +'<ul>'+E.map(x=>'<li class="e">'+esc(x.msg)+'</li>').join("")+W.map(x=>'<li class="w">'+esc(x.msg)+'</li>').join("")+'</ul></div>'; }
+// Ghi đầu mối liên hệ vào lead (tạo lead nếu chưa có). Làm hết sức, lỗi không chặn gửi duyệt.
+async function syncLead(d){
+ try{
+  const c=d.customer||{}, ph=String(c.contact_phone||"").trim(), dg=ph.replace(/\D/g,""), nk=x=>String(x||"").toLowerCase().replace(/\s+/g," ").trim();
+  const L=await loadLeads();
+  if(!d.lead_id&&nk(c.name)){
+   let l=L.find(x=>nk(x.name)===nk(c.name))||(dg.length>=9?L.find(x=>[x.contact_phone,x.org_phone].some(p=>String(p||"").replace(/\D/g,"").includes(dg))):null);
+   if(!l){ const du=await SB.rpc("sales_dup",{p_phone:ph,p_tax:c.tax_id||"",p_name:c.name});
+    if(!du.error&&du.data==="none"){ const {data}=await SB.from("sales_leads").insert({name:String(c.name).trim(),province:c.province||null,address:c.address||null,tax_id:c.tax_id||null,
+      contact_name:c.contact_name||null,contact_title:c.contact_title||null,contact_phone:ph||null,contact_email:c.email||null,stage:2,owner_id:ME.id,source:"Báo giá, văn bản"}).select().single();
+     if(data){ l=data; L.push(data); } } }
+   if(l){ d.lead_id=l.id; DIRTY=true; await saveNow(); }
+  }
+  if(!d.lead_id) return;
+  const l=L.find(x=>x.id===d.lead_id)||{}, p={};
+  [["contact_name","contact_name"],["contact_title","contact_title"],["contact_phone","contact_phone"],["email","contact_email"]].forEach(([a,b])=>{ const v=String(c[a]||"").trim(); if(v&&!String(l[b]||"").trim()) p[b]=v; });
+  if(Object.keys(p).length){ const {error}=await SB.from("sales_leads").update(p).eq("id",d.lead_id); if(!error) Object.assign(l,p); }
+  const who=[c.contact_name,c.contact_title,ph].map(x=>String(x||"").trim()).filter(Boolean).join(", ");
+  if(who||String(c.note||"").trim()) await SB.from("sales_acts").insert({lead_id:d.lead_id,kind:"note",note:"Gửi duyệt "+lab(QC.KINDS,d.kind).toLowerCase()+' "'+(d.title||"")+'"'+(who?". Đầu mối: "+who:"")+(String(c.note||"").trim()?". Ghi chú: "+String(c.note).trim():"")});
+ }catch(e){}
+}
 function docChanged(){ DIRTY=true; CUR.total=QC.docTotal(CUR.body); const s=$("#svState"); if(s) s.textContent="Chưa lưu"; clearTimeout(docChanged.t); docChanged.t=setTimeout(()=>{ drawPreview(); },250); clearTimeout(docChanged.s); docChanged.s=setTimeout(saveNow,2000); }
 async function saveNow(){
  if(!CUR||!DIRTY) return true; if(SAVING) return SAVING;
  const s=$("#svState"); if(s) s.textContent="Đang lưu…";
- const d=CUR, row={title:d.title,company_id:d.company_id,bank:d.bank||0,customer:d.customer,body:d.body,total:QC.docTotal(d.body)};
+ const d=CUR, row={title:d.title,company_id:d.company_id,bank:d.bank||0,lead_id:d.lead_id||null,customer:d.customer,body:d.body,total:QC.docTotal(d.body)};
  SAVING=SB.from("sales_docs").update(row).eq("id",d.id).then(({error})=>{ SAVING=null;
   if(error){ if(s) s.textContent="Chưa lưu được: "+errText(error); return false; }
   DIRTY=false; if($("#svState")&&CUR===d) $("#svState").textContent="Đã lưu "+dt(new Date().toISOString()).slice(6);
@@ -317,16 +364,19 @@ function drawDoc(){
   +(d.status==="rejected"&&d.review_note?'<div class="msg warn">Quản lý trả lại: '+esc(d.review_note)+'</div>':'')
   +(d.status==="pending"&&!mg?'<div class="msg warn">Đang chờ quản lý duyệt. Duyệt xong mới gửi khách được.</div>':'')
   +(d.status==="approved"?'<div class="msg ok">Đã duyệt. In, lưu PDF rồi gửi khách, sau đó bấm Đánh dấu đã gửi khách.</div>':'')
-  +'<div class="acts">'+A.join("")+'</div><div id="aBox"></div>';
+  +(!ed||mg?infoCard(d):'')
+  +'<div class="acts">'+A.join("")+'</div><div id="aBox"></div><div id="ckBox"></div>';
  if(ed){
   h+='<div class="vtabs"><button class="btn sm'+(VT==="edit"?" pri":"")+'" data-vt="edit">Sửa</button><button class="btn sm'+(VT==="view"?" pri":"")+'" data-vt="view">Xem trước</button></div>'
    +'<div class="split"><div class="ed'+(VT==="edit"?"":" hide")+'" id="edCol"'+(VT==="edit"?"":' style="display:none"')+'>'
    +'<div class="card"><div class="f"><label>Tên gọi nội bộ</label><input class="in" id="dTitle" value="'+esc(d.title||"")+'"></div>'
    +'<div class="g2"><div class="f"><label>Đơn vị cung cấp</label><select class="in" id="dCo">'+cos.map(c=>'<option value="'+esc(c.id)+'"'+(d.company_id===c.id?" selected":"")+'>'+esc(c.name)+'</option>').join("")+'</select></div>'
    +'<div class="f"><label>Tài khoản nhận tiền</label><select class="in" id="dBank">'+((co.banks||[]).length?(co.banks||[]).map((b,i)=>'<option value="'+i+'"'+((d.bank||0)===i?" selected":"")+'>'+esc(b.number+" · "+(b.bank||""))+'</option>').join(""):'<option value="0">Chưa có tài khoản</option>')+'</select></div></div></div>'
-   +'<div class="card"><b>Khách hàng</b>'+(d.lead_id?' <a class="sub" href="sales.html#lead/'+esc(d.lead_id)+'" target="_blank" rel="noopener">mở lead ›</a>':'')
-   +'<div class="g2" style="margin-top:6px">'+[["name","Tên khách hàng"],["address","Địa chỉ"],["tax_id","Mã số thuế"],["rep","Người đại diện"],["rep_title","Chức vụ"],["phone","Điện thoại"],["email","Email"]].map(([k,t])=>'<div class="f"><label>'+t+'</label><input class="in" data-cu="'+k+'" value="'+esc((d.customer||{})[k]||"")+'"></div>').join("")+'</div></div>'
-   +'<div class="card"><div class="f"><label>Tiêu đề tài liệu</label><input class="in" id="dBt" value="'+esc(d.body.title||"")+'"></div><div class="f"><label>Dòng phụ dưới tiêu đề</label><input class="in" id="dBs" value="'+esc(d.body.subtitle||"")+'"></div></div>'
+   +'<div class="card"><b>'+(d.kind==="letter"?"Nơi nhận văn bản":"Khách hàng")+'</b>'+(d.lead_id?' <a class="sub" href="sales.html#lead/'+esc(d.lead_id)+'" target="_blank" rel="noopener">mở lead ›</a>':'')
+   +'<div class="g2" style="margin-top:6px">'+(CU_F[d.kind]||CU_F.other).map(([k,t])=>'<div class="f"><label>'+t+'</label><input class="in" data-cu="'+k+'" value="'+esc((d.customer||{})[k]||"")+'"></div>').join("")+'</div>'
+   +'<div class="sub" style="margin-top:4px"><b>Đầu mối đã liên hệ</b> (tự ghi vào lead khi gửi duyệt)</div><div class="g2">'+CU_C.map(([k,t])=>'<div class="f"><label>'+t+'</label><input class="in" data-cu="'+k+'"'+(k==="contact_phone"?' inputmode="tel"':'')+' value="'+esc((d.customer||{})[k]||"")+'"></div>').join("")+'</div>'
+   +'<div class="f"><label>Ghi chú cho người duyệt (nội bộ, không in ra)</label><textarea class="in" data-cu="note" rows="2" placeholder="Ví dụ: Phó chủ tịch xã hẹn trả lời trong tuần, xã muốn tổ chức đầu tháng 12">'+esc((d.customer||{}).note||"")+'</textarea></div></div>'
+   +headHtml(d.body,d.kind,"d")
    +'<div id="blkBox">'+blocksHtml(d.body)+'</div></div>'
    +'<div class="pv'+(VT==="view"?"":" hide")+'" id="pv"'+(VT==="view"?"":' style="display:none"')+'></div></div>';
  } else h+='<div class="pv" id="pv"></div>';
@@ -340,13 +390,16 @@ function bindDoc(){
   $("#dCo").onchange=e=>{ d.company_id=e.target.value; d.bank=0; docChanged(); drawDoc(); };
   $("#dBank").onchange=e=>{ d.bank=+e.target.value; docChanged(); };
   $$("[data-cu]").forEach(e=>e.oninput=()=>{ d.customer=d.customer||{}; d.customer[e.dataset.cu]=e.value; docChanged(); });
-  $("#dBt").oninput=e=>{ d.body.title=e.target.value; docChanged(); }; $("#dBs").oninput=e=>{ d.body.subtitle=e.target.value; docChanged(); };
+  const xn=$('[data-cu="name"]'), xx=$('[data-cu="xa"]'); if(xn&&xx) xn.onchange=()=>{ if(!xx.value.trim()){ const g=QC.guessXa({name:xn.value}); if(g){ xx.value=g; d.customer.xa=g; docChanged(); } } };
+  bindHead(d.body,docChanged,"d",()=>{ const y=window.scrollY; drawDoc(); window.scrollTo(0,y); });
   const redraw=()=>{ const y=window.scrollY; $("#blkBox").innerHTML=blocksHtml(d.body); bindBlocks($("#blkBox"),d.body,docChanged,redraw); drawPreview(); window.scrollTo(0,y); };
   bindBlocks($("#blkBox"),d.body,docChanged,redraw);
  }
  const box=$("#aBox"), rpc=async(fn,args,okMsg)=>{ if(!(await saveNow())) { toast("Chưa lưu được, thử lại."); return false; } const {data,error}=await SB.rpc(fn,args); if(error){ box.innerHTML='<div class="msg bad">'+esc(errText(error))+'</div>'; return false; } if(okMsg) toast(okMsg); await loadDocs(); await vDoc(d.id); return data||true; };
- if($("#aSubmit")) $("#aSubmit").onclick=()=>rpc("sales_doc_submit",{p_id:d.id},"Đã gửi quản lý duyệt");
- if($("#aOk")) $("#aOk").onclick=()=>{ box.innerHTML='<div class="card"><div class="f"><label>Ghi chú khi duyệt (không bắt buộc)</label><input class="in" id="rvNote"></div><div class="row"><button class="btn pri" id="rvGo">Duyệt và cấp số</button><button class="btn" id="rvX">Thôi</button></div></div>';
+ if($("#aSubmit")) $("#aSubmit").onclick=async()=>{ const ne=QC.check(d,curCo(),creator()).filter(x=>x.lvl==="err").length;
+  if(ne){ drawCheck(); box.innerHTML='<div class="msg bad">Còn '+ne+' lỗi màu đỏ, sửa xong mới gửi duyệt được.</div>'; const c=$("#ckBox"); if(c&&c.scrollIntoView) c.scrollIntoView({block:"center"}); return; }
+  const b=$("#aSubmit"); b.disabled=true; b.textContent="Đang gửi…"; await saveNow(); await syncLead(d); if(!(await rpc("sales_doc_submit",{p_id:d.id},"Đã gửi quản lý duyệt"))){ b.disabled=false; b.textContent="Gửi duyệt"; } };
+ if($("#aOk")) $("#aOk").onclick=()=>{ const ne=QC.check(d,curCo(),creator()).filter(x=>x.lvl==="err").length; box.innerHTML='<div class="card">'+(ne?'<div class="msg bad">Bản này còn '+ne+' lỗi màu đỏ (xem mục Kiểm tra). Chỉ duyệt khi đã chắc.</div>':'')+'<div class="f"><label>Ghi chú khi duyệt (không bắt buộc)</label><input class="in" id="rvNote"></div><div class="row"><button class="btn pri" id="rvGo">Duyệt và cấp số</button><button class="btn" id="rvX">Thôi</button></div></div>';
   $("#rvX").onclick=()=>box.innerHTML=""; $("#rvGo").onclick=()=>rpc("sales_doc_review",{p_id:d.id,p_ok:true,p_note:$("#rvNote").value.trim()||null},"Đã duyệt"); };
  if($("#aNo")) $("#aNo").onclick=()=>{ box.innerHTML='<div class="card"><div class="f"><label>Cần sửa gì</label><textarea class="in" id="rvNote" placeholder="Ví dụ: đổi đơn giá dòng 2, thêm điều khoản thanh toán"></textarea></div><div class="row"><button class="btn bad" id="rvGo">Trả lại</button><button class="btn" id="rvX">Thôi</button></div><div class="sub" id="rvMsg"></div></div>';
   $("#rvX").onclick=()=>box.innerHTML=""; $("#rvGo").onclick=()=>{ const n=$("#rvNote").value.trim(); if(!n){ $("#rvMsg").textContent="Ghi rõ cần sửa gì để người lập biết."; return; } rpc("sales_doc_review",{p_id:d.id,p_ok:false,p_note:n},"Đã trả lại"); }; };
@@ -354,7 +407,12 @@ function bindDoc(){
   $$("[data-via]").forEach(b=>b.onclick=()=>{ via=b.dataset.via; $$("[data-via]").forEach(x=>x.classList.toggle("on",x===b)); $("#svGo").disabled=false; });
   $("#svX").onclick=()=>box.innerHTML="";
   $("#svGo").onclick=async()=>{ $("#svGo").disabled=true; const num=d.number;
-   if(d.lead_id){ const ch=via==="other"?"other":via; await SB.from("sales_acts").insert({lead_id:d.lead_id,kind:"act",channel:ch,result:"sent",note:"Đã gửi "+lab(QC.KINDS,d.kind).toLowerCase()+" "+(num||"")+" ("+QC.money(d.total)+" đ)"}); }
+   if(d.lead_id){ const ch=via==="other"?"other":via, L=await loadLeads(), ld=L.find(x=>x.id===d.lead_id)||{}, cs=ld.stage==null?null:+ld.stage;
+    const up=d.kind==="quote"?4:d.kind==="contract"?8:null, sa=up!=null&&cs!=null&&[0,1,2,3].concat(up===8?[4,5]:[]).includes(cs)?up:null, st=sa!=null?sa:cs;
+    const na=SC.remindAt(REMIND,{kind:d.kind,stage:st},SC.vnToday()), n=SC.remindDays(REMIND,{kind:d.kind,stage:st});
+    const act={lead_id:d.lead_id,kind:"act",channel:ch,result:"sent",note:"Đã gửi "+lab(QC.KINDS,d.kind).toLowerCase()+" "+(num||"")+(d.kind==="letter"?"":" ("+QC.money(d.total)+" đ)")};
+    if(sa!=null) act.stage_after=sa; if(na){ act.next_type="call"; act.next_at=na; act.next_note="Gọi lại sau khi gửi "+lab(QC.KINDS,d.kind).toLowerCase()+" ("+n+" ngày)"; }
+    await SB.from("sales_acts").insert(act); if(sa!=null) ld.stage=sa; }
    rpc("sales_doc_sent",{p_id:d.id,p_via:via},"Đã ghi nhận gửi khách"); }; };
  if($("#aPrint")) $("#aPrint").onclick=async()=>{ await saveNow(); const w=window.open("","_blank"); if(!w){ toast("Trình duyệt chặn cửa sổ mới. Cho phép bật cửa sổ rồi thử lại."); return; }
   w.document.open(); w.document.write(QC.printHtml(CUR,curCo(),creator())); w.document.close(); setTimeout(()=>{ try{ w.focus(); w.print(); }catch(e){} },700); };
@@ -386,7 +444,7 @@ function vTpls(){
 function vTpl(id){
  const t=TPL.find(x=>x.id===id); if(!t){ $("#app").innerHTML='<div class="msg bad">Không thấy mẫu.</div><a class="btn" href="#mau">← Mẫu</a>'; return; }
  const T=QC.clone(t); if(!T.body.blocks) T.body.blocks=[];
- const sample={kind:T.kind,status:"draft",customer:{name:"[Tên khách hàng]",address:"[Địa chỉ]",rep:"[Người đại diện]",rep_title:"[Chức vụ]"},body:T.body};
+ const sample={kind:T.kind,status:"draft",customer:{name:"[Tên khách hàng]",address:"[Địa chỉ]",rep:"[Người đại diện]",rep_title:"[Chức vụ]",xa:"[xã, phường]",province:"[tỉnh]",contact_name:"[đầu mối]",contact_phone:"[điện thoại đầu mối]"},body:T.body};
  const pv=()=>{ sample.kind=T.kind; $("#pv").innerHTML=QC.render(sample,CO[T.company_id]||{},{name:ME.name}); };
  let dirty=false; const changed=()=>{ dirty=true; $("#tMsg").textContent="Chưa lưu"; clearTimeout(changed.t); changed.t=setTimeout(pv,250); };
  const draw=()=>{
@@ -397,15 +455,15 @@ function vTpl(id){
    +'<div class="f"><label>Đơn vị mặc định</label><select class="in" id="tCo"><option value="">Chưa chọn</option>'+Object.values(CO).map(c=>'<option value="'+esc(c.id)+'"'+(T.company_id===c.id?" selected":"")+'>'+esc(c.name)+'</option>').join("")+'</select></div></div>'
    +'<div class="f"><label>Mô tả cho nhân sự (khi nào dùng)</label><input class="in" id="tDesc" value="'+esc(T.description||"")+'"></div>'
    +'<label class="row"><input type="checkbox" id="tAct"'+(T.active?" checked":"")+'> Bật cho nhân sự dùng</label></div>'
-   +'<div class="card"><div class="f"><label>Tiêu đề tài liệu</label><input class="in" id="tBt" value="'+esc(T.body.title||"")+'"></div><div class="f"><label>Dòng phụ</label><input class="in" id="tBs" value="'+esc(T.body.subtitle||"")+'"></div></div>'
+   +headHtml(T.body,T.kind,"t")
    +'<div id="blkBox">'+blocksHtml(T.body)+'</div></div><div class="pv" id="pv"></div></div>';
   pv();
   const redraw=()=>{ const y=window.scrollY; $("#blkBox").innerHTML=blocksHtml(T.body); bindBlocks($("#blkBox"),T.body,changed,redraw); pv(); window.scrollTo(0,y); };
   bindBlocks($("#blkBox"),T.body,changed,redraw);
-  $("#tName").oninput=e=>{ T.name=e.target.value; changed(); }; $("#tKind").onchange=e=>{ T.kind=e.target.value; changed(); };
+  $("#tName").oninput=e=>{ T.name=e.target.value; changed(); }; $("#tKind").onchange=e=>{ T.kind=e.target.value; changed(); const y=window.scrollY; draw(); window.scrollTo(0,y); };
+  bindHead(T.body,changed,"t",()=>{ const y=window.scrollY; draw(); window.scrollTo(0,y); });
   $("#tCo").onchange=e=>{ T.company_id=e.target.value||null; changed(); }; $("#tDesc").oninput=e=>{ T.description=e.target.value; changed(); };
   $("#tAct").onchange=e=>{ T.active=e.target.checked; changed(); };
-  $("#tBt").oninput=e=>{ T.body.title=e.target.value; changed(); }; $("#tBs").oninput=e=>{ T.body.subtitle=e.target.value; changed(); };
   $("#tSave").onclick=async()=>{ const row={name:T.name,kind:T.kind,company_id:T.company_id,description:T.description,active:T.active,body:T.body,updated_at:new Date().toISOString(),updated_by:ME.id};
    const {error}=await SB.from("sales_templates").update(row).eq("id",T.id); if(error){ $("#tMsg").textContent=errText(error); return; } Object.assign(t,QC.clone(row)); dirty=false; $("#tMsg").textContent="Đã lưu"; toast("Đã lưu mẫu"); };
   $("#tDel").onclick=()=>{ $("#tBox").innerHTML='<div class="card"><div class="sub">Xóa mẫu này? Các bản đã tạo từ mẫu vẫn giữ nguyên. Muốn tạm ẩn thì bỏ chọn "Bật cho nhân sự dùng".</div><div class="row" style="margin-top:8px"><button class="btn bad" id="tdGo">Xóa mẫu</button><button class="btn" id="tdX">Thôi</button></div></div>';
