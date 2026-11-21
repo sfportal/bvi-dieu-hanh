@@ -117,6 +117,34 @@
     return items.sort((a, b) => b.n - a.n || a.rows[0][0].localeCompare(b.rows[0][0], "vi")).flatMap(i => i.rows);
   }
   const srcMatch = (l, v) => !v ? true : v.endsWith("*") ? ((s, p) => s === p || s.startsWith(p + "-"))(String(l.source || ""), v.slice(0, -1)) : l.source === v;
+  // Báo cáo tuần (7 ngày gần nhất, giờ VN) để quản lý chép gửi Zalo. Không đưa số điện thoại hay nội dung ghi chú.
+  function weekReport(leads, acts, people, now) {
+    now = now || new Date();
+    const td = vnToday(now), from = addDays(td, -6), t0 = new Date(from + "T00:00:00+07:00").toISOString();
+    const dm = d => d.slice(8, 10) + "/" + d.slice(5, 7), nm = u => (people || {})[u] || "Người khác";
+    const L = leads || [], W = (acts || []).filter(a => a.at >= t0), A = W.filter(a => a.kind === "act"), T = W.filter(a => a.kind === "assign" && / chuyển cho /.test(a.note || "")); // chỉ đếm lead tự chuyển giao, không đếm quản lý giao
+    const lid = Object.fromEntries(L.map(l => [l.id, l])), touched = new Set(A.map(a => a.lead_id));
+    const OKR = ["talked", "interested", "sent", "later"], BAD = ["noans", "unreach", "wrong", "nofind"];
+    const open = l => l.stage >= 1 && l.stage <= 5, chs = xs => CHANNELS.map(([k, t]) => [xs.filter(a => a.channel === k).length, t.toLowerCase()]).filter(x => x[0]).map(x => x.join(" ")).join(", ");
+    const uniq = xs => new Set(xs.map(a => a.lead_id)).size;
+    const out = ["BÁO CÁO SALES TUẦN " + dm(from) + "–" + dm(td)];
+    out.push("Toàn đội: " + A.length + " tương tác" + (A.length ? " (" + chs(A) + ")" : "") + ", liên hệ được " + uniq(A.filter(a => OKR.includes(a.result))) + " lead, " + uniq(A.filter(a => a.result === "interested")) + " lead quan tâm, " + uniq(T) + " lead được chuyển giao.");
+    const us = new Set([...L.filter(l => l.owner_id && open(l)).map(l => l.owner_id), ...A.map(a => a.by), ...T.map(a => a.by)]);
+    const rows = [...us].map(u => {
+      const mine = L.filter(l => l.owner_id === u && open(l)), ma = A.filter(a => a.by === u);
+      const meet = [...new Map(ma.filter(a => a.channel === "meet").map(a => [a.lead_id, a])).values()];
+      return { u, n: ma.length, line: "• " + nm(u) + ": giữ " + mine.length + " lead đang theo; tuần này " + ma.length + " tương tác" + (ma.length ? " (" + chs(ma) + ")" : "")
+        + ", liên hệ được " + uniq(ma.filter(a => OKR.includes(a.result))) + ", chưa liên hệ được " + uniq(ma.filter(a => BAD.includes(a.result)))
+        + "; quá hẹn " + mine.filter(l => l.next_at && l.next_at < td).length + "; ưu tiên High chưa chạm " + mine.filter(l => prioOf(l) === "A" && !l.last_touch_at && !touched.has(l.id)).length
+        + "; hẹn 7 ngày tới " + mine.filter(l => l.next_at && l.next_at >= td && l.next_at <= addDays(td, 7)).length,
+        sub: [meet.length ? "  - họp, gặp: " + meet.slice(0, 8).map(a => ((lid[a.lead_id] || {}).name || "(lead)") + (a.result ? " (" + lab(RESULTS, a.result) + ")" : "")).join("; ") : "",
+              T.some(a => a.by === u) ? "  - chuyển giao " + uniq(T.filter(a => a.by === u)) + " lead" : ""].filter(Boolean) };
+    }).sort((a, b) => b.n - a.n || nm(a.u).localeCompare(nm(b.u), "vi"));
+    rows.forEach(r => { out.push(r.line); r.sub.forEach(x => out.push(x)); });
+    const late3 = L.filter(l => open(l) && l.next_at && l.next_at <= addDays(td, -3)).length;
+    if (late3) out.push("Cần nhắc: " + late3 + " lead quá hẹn từ 3 ngày.");
+    return out.join("\n");
+  }
   function provKey(s) {
     let v = String(s || "").trim();
     if (!v) return "Chưa rõ";
@@ -126,6 +154,6 @@
   }
 
   const SC = { STAGES, TEMPS, FITS, CHANNELS, RESULTS, NEEDS, LOST, NEXT, HOT_DAYS, WARM_DAYS, FRESH_HOURS, CALL_GOAL,
-    normPhones, vnToday, addDays, nextPreset, buckets, applyAct, callMinutes, ago, telHref, zaloHref, distM, norm, lab, contactOf, provKey, CONTACT_F, contactMatch, srcOptions, srcMatch, PRIOS, PRIO_CLS, prioOf, CONTACT_STATES, contactState, NOREACH };
+    normPhones, vnToday, addDays, nextPreset, buckets, applyAct, callMinutes, ago, telHref, zaloHref, distM, norm, lab, contactOf, provKey, CONTACT_F, contactMatch, srcOptions, srcMatch, weekReport, PRIOS, PRIO_CLS, prioOf, CONTACT_STATES, contactState, NOREACH };
   if (typeof module !== "undefined" && module.exports) module.exports = SC; else root.SC = SC;
 })(typeof window !== "undefined" ? window : this);

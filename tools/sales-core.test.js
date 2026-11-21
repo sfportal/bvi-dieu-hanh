@@ -132,4 +132,36 @@ assert.strictEqual(SC.srcMatch({ source: "agrimap-dl" }, "agrimap-dl*"), true);
 assert.strictEqual(SC.srcMatch({ source: "agrimap-dlx" }, "agrimap-dl*"), false);
 assert.strictEqual(SC.srcMatch({ source: "Danh bạ" }, "Danh bạ"), true);
 assert.strictEqual(SC.srcMatch({}, ""), true);
+// báo cáo tuần
+{
+  const wn = new Date("2026-11-21T08:00:00Z"); // thứ Bảy 21/11 15h VN
+  const ppl = { m: "Anh Minh", n: "Chị Ngọc" };
+  const WL = [
+    { id: "a", name: "HTX Ea Tu", owner_id: "m", stage: 2, priority: "A", next_at: "2026-11-24" },
+    { id: "b", name: "Liên minh HTX Đắk Lắk", owner_id: "n", stage: 3, priority: "A", next_at: "2026-11-18" },
+    { id: "c", name: "Kho Krông Pắc", owner_id: "m", stage: 1, priority: "A" },
+    { id: "d", name: "Đã ký", owner_id: "m", stage: 6 },
+  ];
+  const WA = [
+    { lead_id: "a", by: "m", kind: "act", channel: "call", result: "talked", at: "2026-11-20T02:00:00Z", note: "0905111222 gọi lại" },
+    { lead_id: "a", by: "m", kind: "act", channel: "call", result: "noans", at: "2026-11-19T02:00:00Z" },
+    { lead_id: "b", by: "n", kind: "act", channel: "meet", result: "interested", at: "2026-11-20T03:00:00Z" },
+    { lead_id: "b", by: "n", kind: "assign", note: "Chị Ngọc chuyển cho Anh Minh: gom HTX", at: "2026-11-20T04:00:00Z" },
+    { lead_id: "b", by: "n", kind: "note", note: "ghi chú", at: "2026-11-20T05:00:00Z" },
+    { lead_id: "c", by: "o", kind: "assign", note: "Giao cho Anh Minh", at: "2026-11-20T05:00:00Z" },
+    { lead_id: "a", by: "m", kind: "act", channel: "call", result: "talked", at: "2026-11-10T02:00:00Z" },
+  ];
+  const r = SC.weekReport(WL, WA, ppl, wn);
+  assert.ok(r.startsWith("BÁO CÁO SALES TUẦN 15/11–21/11"), r.split("\n")[0]);
+  assert.ok(r.includes("Toàn đội: 3 tương tác (2 gọi, 1 gặp)"), r);
+  assert.ok(r.includes("Anh Minh: giữ 2 lead đang theo"), r);
+  assert.ok(r.includes("2 tương tác (2 gọi), liên hệ được 1"), r);
+  assert.ok(r.includes("Chị Ngọc: giữ 1 lead đang theo"), r);
+  assert.ok(r.includes("họp, gặp: Liên minh HTX Đắk Lắk (Quan tâm)"), r);
+  assert.ok(r.includes("chuyển giao 1 lead"), r);
+  assert.ok(r.includes("quá hẹn 1"), r);
+  assert.ok(r.includes("ưu tiên High chưa chạm 1"), r); // Kho Krông Pắc
+  assert.ok(!/0905111222/.test(r), "không lộ số điện thoại");
+  assert.ok(!r.includes("Người khác"), "quản lý giao lead không tính là chuyển giao");
+}
 console.log("OK");

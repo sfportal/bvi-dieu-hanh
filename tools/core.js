@@ -819,7 +819,7 @@ async function loadSales(){
       SB.from("sales_claims").select("*").eq("status","pending").order("at"), SB.rpc("sales_people")]);
     if(a.error) throw a.error;
     const people={}, roles={}; (p.data||[]).forEach(x=>{ people[x.id]=x.name; roles[x.id]=x.role; });
-    SD={st:"ok",leads,acts:a.data||[],claims:c.data||[],people,roles,at:Date.now()};
+    SD={st:"ok",leads,acts:a.data||[],claims:c.data||[],people,roles,at:Date.now(),week:SD.week};
   }catch(e){ SD={st:"err",err:e.message||String(e)}; }
   if(ui.view==="nhu-cau") softRender();
 }
@@ -841,7 +841,9 @@ function vSales(){
   if(SD.st==="err") return '<div class="panel"><div class="alert bad">Chưa tải được dữ liệu sales: '+esc(SD.err)+'</div><button class="btn" id="sdReload">Thử lại</button></div>';
   const X=sdStats(), L=SD.leads, mg=sdMgr();
   let h='<div class="row between" style="gap:8px;align-items:flex-end;flex-wrap:wrap"><div style="min-width:0"><h1>Sales</h1><div class="sub">Lead, cuộc gọi và tương tác của đội sales. Sales làm việc ở trang riêng, không thấy trang quản trị.</div></div>'
-   +'<div class="row" style="gap:6px"><button class="btn" id="sdReload">Tải lại</button><a class="btn pri" href="sales.html" target="_blank" rel="noopener">Mở trang sales</a></div></div>';
+   +'<div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn" id="sdWeek">Báo cáo tuần</button><button class="btn" id="sdReload">Tải lại</button><a class="btn pri" href="sales.html" target="_blank" rel="noopener">Mở trang sales</a></div></div>';
+  if(SD.week) h+='<div class="panel" id="sdWeekBox" style="margin-top:12px"><div class="row between" style="gap:6px;flex-wrap:wrap"><h3 style="margin:0">Báo cáo tuần</h3><span class="row" style="gap:6px"><button class="btn pri sm" id="sdWeekCopy">Chép gửi Zalo</button><button class="btn sm" id="sdWeekX">Đóng</button></span></div>'
+   +'<div class="sub" style="margin:4px 0 6px">7 ngày gần nhất, không có số điện thoại hay nội dung ghi chú. Sửa thêm trước khi gửi nếu cần.</div><textarea id="sdWeekTxt" rows="14" style="width:100%;box-sizing:border-box;font:inherit">'+esc(SC.weekReport(L,SD.acts,SD.people,new Date()))+'</textarea></div>';
   const tile=(k,v,l,cls)=>'<div class="tile '+(cls||"")+'" data-kpi="'+k+'"><span class="v">'+v+'</span><span class="l">'+l+'</span></div>';
   const open=L.filter(l=>l.stage>=1&&l.stage<=5).length;
   h+='<div class="grid kpis" style="margin-top:12px">'+tile("calls",X.calls,"Cuộc gọi hôm nay")+tile("acts",X.today.length,"Tương tác hôm nay")+tile("open",open,"Lead đang theo")
@@ -903,6 +905,9 @@ function vSales(){
 }
 function bindSales(A){
   $("#sdReload")?.addEventListener("click",()=>{ SD={st:null}; render(); });
+  $("#sdWeek")?.addEventListener("click",()=>{ SD.week=!SD.week; render(); if(SD.week) $("#sdWeekBox")?.scrollIntoView({block:"nearest"}); });
+  $("#sdWeekX")?.addEventListener("click",()=>{ SD.week=false; render(); });
+  $("#sdWeekCopy")?.addEventListener("click",()=>{ const t=$("#sdWeekTxt").value; navigator.clipboard?.writeText(t).then(()=>toast("Đã chép báo cáo, dán vào Zalo"),()=>{ $("#sdWeekTxt").select(); toast("Không chép được, bôi đen rồi chép tay"); }); });
   if(SD.st!=="ok") return;
   const ph=[...A.querySelectorAll("[data-sdph]")];
   if(ph.length) SB.storage.from("sales").createSignedUrls(ph.map(e=>e.dataset.sdph),3600).then(({data})=>{ const m={}; (data||[]).forEach(x=>m[x.path]=x.signedUrl);
