@@ -659,7 +659,8 @@ function bindLog(A){
 }
 /* ---------- API cho đối tác (chỉ owner) ---------- */
 const API_BASE=SB_URL+"/functions/v1/api/v1";
-const API_RES={zones:"Vùng trồng",tasks:"Công việc",events:"Lịch công tác",leaves:"Lịch nghỉ",daily:"Báo cáo ngày",units:"Công ty, khách hàng",people:"Nhân sự",faqs:"Hỏi đáp",supports:"Yêu cầu hỗ trợ",contracts:"Hợp đồng (không có số tiền)",leads:"Nhu cầu khách hàng (che SĐT, email)",leads_write:"Gửi nhu cầu khách hàng (chỉ ghi)"};
+const API_RES={zones:"Vùng trồng",tasks:"Công việc",events:"Lịch công tác",leaves:"Lịch nghỉ",daily:"Báo cáo ngày",units:"Công ty, khách hàng",people:"Nhân sự",faqs:"Hỏi đáp",supports:"Yêu cầu hỗ trợ",contracts:"Hợp đồng (không có số tiền)",leads:"Nhu cầu khách hàng (che SĐT, email)",leads_write:"Gửi nhu cầu khách hàng (chỉ ghi)",farmbase_sync:"Đồng bộ FarmBase từ extension (chỉ ghi)"};
+const API_W=["leads_write","farmbase_sync"];
 let APIK=null, APIERR="";
 async function callApiAdmin(body){
   try{ const {data}=await SB.auth.getSession(); const res=await fetch(SB_URL+"/functions/v1/api/admin",{method:"POST",headers:{"Content-Type":"application/json",apikey:SB_KEY,Authorization:"Bearer "+(data.session?.access_token||"")},body:JSON.stringify(body)});
@@ -685,22 +686,23 @@ function vApi(){
    +'<div class="sub">Gửi khóa trong header <code>X-API-Key</code> (hoặc <code>Authorization: Bearer &lt;khóa&gt;</code>). Chỉ dùng GET.</div>'
    +'<div class="tw" style="margin-top:8px"><table><thead><tr><th>Đường dẫn</th><th>Dữ liệu</th></tr></thead><tbody>'
    +'<tr><td class="mono">GET /v1</td><td>Thông tin khóa và các loại dữ liệu được đọc</td></tr>'
-   +Object.entries(API_RES).filter(([k])=>k!=="leads_write").map(([k,l])=>'<tr><td class="mono">GET /v1/'+k+'</td><td>'+esc(l)+'</td></tr>').join("")
+   +Object.entries(API_RES).filter(([k])=>!API_W.includes(k)).map(([k,l])=>'<tr><td class="mono">GET /v1/'+k+'</td><td>'+esc(l)+'</td></tr>').join("")
    +'<tr><td class="mono">POST /v1/leads</td><td>Gửi nhu cầu khách hàng từ form, hệ thống khác (quyền "Gửi nhu cầu khách hàng")</td></tr>'
+   +'<tr><td class="mono">POST /v1/farmbase-sync</td><td>Extension FarmBase gửi kết quả kiểm tra hồ sơ vùng (quyền "Đồng bộ FarmBase")</td></tr>'
    +'<tr><td class="mono">GET /v1/&lt;loại&gt;/&lt;id&gt;</td><td>Một bản ghi</td></tr></tbody></table></div>'
    +'<div class="sub" style="margin-top:8px">Tham số: <code>limit</code> (1 đến 1000, mặc định 500), <code>offset</code>, <code>updated_since</code> (ISO 8601, chỉ lấy bản ghi sửa từ thời điểm đó). Kết quả có <code>total</code> và <code>next_offset</code> để lấy trang tiếp. Tối đa 120 lượt mỗi phút cho mỗi khóa.</div>'
    +'<textarea id="apiEx" readonly rows="6" class="mono" style="width:100%;margin-top:8px">curl -H "X-API-Key: bvi_..." "'+esc(ex)+'"\n\n// JavaScript\nconst r = await fetch("'+esc(ex)+'", { headers: { "X-API-Key": "bvi_..." } });\nconst { data, total, next_offset } = await r.json();</textarea>'
    +'<div class="row" style="margin-top:6px"><button class="btn sm" id="apiCpEx">Sao chép ví dụ</button></div>'
    +'<div class="sub" style="margin-top:8px">Mã lỗi: 401 thiếu khóa, khóa sai, đã thu hồi hoặc hết hạn; 403 khóa không được đọc loại dữ liệu đó; 404 không có; 429 gọi quá nhanh.</div></div>';
-  return h;
+  return fbsPanel()+h;
 }
-const API_PRESET=[["leads","Chỉ thu nhu cầu khách",["leads_write"]],["rep","Xem tiến độ vùng",["zones","tasks","events"]],["none","Bỏ chọn hết",[]]];
+const API_PRESET=[["leads","Chỉ thu nhu cầu khách",["leads_write"]],["fb","Extension FarmBase",["farmbase_sync"]],["rep","Xem tiến độ vùng",["zones","tasks","events"]],["none","Bỏ chọn hết",[]]];
 function apiScopeBoxes(sel){ const box=(k,l)=>'<label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-apis="'+k+'"'+(sel.includes(k)?" checked":"")+'> '+esc(l)+'</label>';
   return '<div class="row" style="flex-wrap:wrap;gap:6px;margin:6px 0">'+API_PRESET.map(([k,l])=>'<button type="button" class="btn sm" data-apip="'+k+'">'+l+'</button>').join("")+'</div>'
-   +'<div class="sub" style="margin-top:6px">Ghi vào hệ thống</div><div class="row" style="flex-wrap:wrap;gap:6px 14px;margin-top:4px">'+box("leads_write","Gửi nhu cầu khách hàng (form, website, hệ thống khác thêm nhu cầu mới; không đọc được gì)")+'</div>'
-   +'<div class="sub" style="margin-top:8px">Đọc dữ liệu</div><div class="row" style="flex-wrap:wrap;gap:6px 14px;margin-top:4px">'+Object.entries(API_RES).filter(([k])=>k!=="leads_write").map(([k,l])=>box(k,l)).join("")+'</div>'
+   +'<div class="sub" style="margin-top:6px">Ghi vào hệ thống</div><div class="row" style="flex-wrap:wrap;gap:6px 14px;margin-top:4px">'+box("leads_write","Gửi nhu cầu khách hàng (form, website, hệ thống khác thêm nhu cầu mới; không đọc được gì)")+box("farmbase_sync","Đồng bộ FarmBase từ extension (chỉ ghi khối FarmBase của vùng; không đọc được gì)")+'</div>'
+   +'<div class="sub" style="margin-top:8px">Đọc dữ liệu</div><div class="row" style="flex-wrap:wrap;gap:6px 14px;margin-top:4px">'+Object.entries(API_RES).filter(([k])=>!API_W.includes(k)).map(([k,l])=>box(k,l)).join("")+'</div>'
    +'<div class="sub" id="apiSum" style="margin-top:6px"></div>'; }
-function apiBindScopes(){ const L=$("#layer"); const sum=()=>{ const p=apiPicked(), r=p.filter(x=>x!=="leads_write"); const e=$("#apiSum"); if(e) e.textContent=!p.length?"Chưa chọn quyền nào.":(p.includes("leads_write")?"Được gửi nhu cầu khách hàng. ":"")+(r.length?"Được đọc "+r.length+" loại dữ liệu.":"Không đọc được dữ liệu nào."); };
+function apiBindScopes(){ const L=$("#layer"); const sum=()=>{ const p=apiPicked(), r=p.filter(x=>!API_W.includes(x)); const e=$("#apiSum"); if(e) e.textContent=!p.length?"Chưa chọn quyền nào.":(p.includes("leads_write")?"Được gửi nhu cầu khách hàng. ":"")+(p.includes("farmbase_sync")?"Được đồng bộ FarmBase. ":"")+(r.length?"Được đọc "+r.length+" loại dữ liệu.":"Không đọc được dữ liệu nào."); };
   L.querySelectorAll("[data-apip]").forEach(b=>b.addEventListener("click",()=>{ const want=API_PRESET.find(x=>x[0]===b.dataset.apip)[2]; L.querySelectorAll("[data-apis]").forEach(x=>x.checked=want.includes(x.dataset.apis)); sum(); }));
   L.querySelectorAll("[data-apis]").forEach(x=>x.addEventListener("change",sum)); sum(); }
 function apiPicked(){ return [...$("#layer").querySelectorAll("[data-apis]")].filter(x=>x.checked).map(x=>x.dataset.apis); }
@@ -734,7 +736,7 @@ function openApiEdit(id){ const k=(APIK||[]).find(x=>x.id===id); if(!k) return;
     $("#apiMsg").textContent="Đang lưu…"; const r=await callApiAdmin({action:"update",id,name:$("#apiN").value.trim(),scopes}); if(r.error){ $("#apiMsg").textContent=r.error; return; }
     closeDrawer(); toast("Đã lưu"); loadApiKeys(); });
 }
-function bindApi(A){
+function bindApi(A){ bindFbs(A);
   $("#apiAdd")?.addEventListener("click",openApiNew);
   $("#apiRe")?.addEventListener("click",()=>{ APIK=null; render(); });
   const cp=t=>navigator.clipboard?.writeText(t).then(()=>toast("Đã sao chép"),()=>toast("Chọn và sao chép thủ công"));
@@ -969,6 +971,7 @@ const RC_T={
   daily_zone:["daily","Báo cáo nhắc vùng, việc chưa cập nhật","warn"],
   zone_hard:["zone","Bước vùng đi trước hồ sơ cứng","bad"],
   zone_doc:["zone","Đã nộp, hồ sơ chưa lên Drive, FarmBase","warn"],
+  zone_fb:["zone","Ô F lệch với FarmBase (extension)","warn"],
   zone_idle:["zone","Vùng không còn việc mở","warn"],
   zone_stale:["zone","Vùng lâu không cập nhật","warn"]};
 function rcAck(rec,type,sig){ const a=rec?.rc?.[type]; return a&&a.sig===sig?a:null; }
@@ -1010,6 +1013,8 @@ function rcIssues(){
       add("zone_hard",{id:"zh:"+zid,col:"zones",rid:zid,who:own,date:"",sig,ack:rcAck(z,"zone_hard",sig),text:zShort(z.name)+": bước "+z.step+" ("+STEPS[z.step].name+") nhưng hồ sơ cứng mới "+s.hard+"/"+s.n,sub:"Sau bước 4 (ký hồ sơ) cần đủ bản cứng. Kiểm tra lại bước hoặc ghi nhận hồ sơ.",open:["hs",zid]}); }
     if(z.step>=6&&s.ok<s.n&&!(z.step>=5&&s.hard<s.n)){ const sig=z.step+"|"+s.ok;
       add("zone_doc",{id:"zd:"+zid,col:"zones",rid:zid,who:own,date:"",sig,ack:rcAck(z,"zone_doc",sig),text:zShort(z.name)+": đã ở bước "+z.step+", hồ sơ hoàn tất "+s.ok+"/"+s.n,sub:"Drive "+s.drive+"/"+s.n+" · FarmBase "+s.fb+"/"+s.n,open:["hs",zid]}); }
+    const fd=fbsDiff(z); if(fd.length){ const sig=fd.map(x=>x.join(":")).join(",")+"|"+(z.fbs?.ranAt||""); const nm=k=>(HS.find(x=>x[0]===k)||[,k,k])[2];
+      add("zone_fb",{id:"zf:"+zid,col:"zones",rid:zid,who:own,date:"",sig,ack:rcAck(z,"zone_fb",sig),text:zShort(z.name)+": ô F lệch với FarmBase",sub:fd.map(([k,t])=>nm(k)+(t==="tick"?": app ghi đã nhập, FarmBase còn thiếu":": FarmBase đã đủ, app chưa tick F")).join(" · ")+" · đồng bộ "+fbWhen(z.fbs?.syncedAt),open:["hs",zid]}); }
     if(z.step<8&&zt.length&&!op.length){ const sig=z.step+"|"+zt.length;
       add("zone_idle",{id:"zi:"+zid,col:"zones",rid:zid,who:own,date:"",sig,ack:rcAck(z,"zone_idle",sig),text:zShort(z.name)+": bước "+z.step+", mọi việc đã xong",sub:"Tăng bước nếu đã đạt, hoặc giao việc cho bước tiếp theo.",open:["zone",zid]}); }
     if(z.step<6&&op.length){ const last=[z.updatedAt||"",...zt.map(([,x])=>x.updatedAt||"")].sort().pop()||""; if(last&&last.slice(0,10)<addDays(t,-14)){ const sig=last.slice(0,10);
@@ -1029,7 +1034,7 @@ function rcWeekStats(){ const w0=rcWeek(), w1=addDays(w0,6), t=todayStr(), past=
 function rcBar(a,b){ const p=b?Math.round(a/b*100):0; return '<div style="height:6px;background:var(--line);border-radius:3px;margin-top:6px;overflow:hidden"><div style="height:100%;width:'+p+'%;background:'+(p>=80?"var(--good)":p>=50?"var(--warn)":"var(--bad)")+'"></div></div>'; }
 // Hồ sơ từng vùng: bấm ô để đổi bản cứng (Chưa có → Đủ → Thiếu), ghi chú hồ sơ của vùng
 function rcHsBlock(zid){ const z=S.zones[zid]; if(!z) return ""; const s=hsStat(z);
-  return '<div style="margin-top:8px"><div class="row between" style="gap:6px"><span class="sub">Hồ sơ: bản cứng '+s.hard+'/'+s.n+' · Drive '+s.drive+'/'+s.n+' · FarmBase '+s.fb+'/'+s.n+'</span><button class="btn sm" data-rchd="'+zid+'">Chi tiết hồ sơ</button></div>'
+  return '<div style="margin-top:8px"><div class="row between" style="gap:6px"><span class="sub">Hồ sơ: bản cứng '+s.hard+'/'+s.n+' · Drive '+s.drive+'/'+s.n+' · FarmBase '+s.fb+'/'+s.n+'</span><button class="btn sm" data-rchd="'+zid+'">Chi tiết hồ sơ</button></div>'+fbsLine(z)
    +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:6px;margin-top:6px">'+HS.map(([k,l,sh])=>{ const x=hsItem(z,k), h=x.hard||"";
      const on={c:h==="ok"||h==="na",d:!!x.drive||h==="na",f:!!x.fb||h==="na"}, part=h==="part";
      const bt=(f,lab,tip)=>'<button type="button" data-rchc="'+zid+'|'+k+'|'+f+'" aria-label="'+esc(sh+": "+tip)+'" title="'+esc(tip)+'" style="width:32px;height:30px;border-radius:6px;border:1px solid '+(on[f]?"var(--good)":f==="c"&&part?"var(--warn)":"var(--line)")+';background:'+(on[f]?"var(--good)":f==="c"&&part?"var(--warn)":"var(--surface)")+';color:'+(on[f]||(f==="c"&&part)?"#fff":"var(--muted)")+';font:700 13px/1 ui-monospace,monospace;cursor:pointer;padding:0">'+lab+'</button>';
@@ -1394,6 +1399,51 @@ function bindSales(A){
     if(err){ b.disabled=false; $("#sdMsg").textContent="Chưa giao được: "+err.message; return; }
     toast("Đã giao "+ids.length+" lead cho "+sdName(to)); logEv("sales","giao "+ids.length+" lead"); SDF.sel=new Set(); SD={st:null}; render(); });
 }
+/* ---------- Đồng bộ một chiều từ extension FarmBase (chỉ owner): extension gửi 12 tiêu chí hồ sơ vùng, app lưu ở z.fbId, z.fbs ---------- */
+const FB12=["Thiếu địa chỉ","Thiếu thị trường","Thiếu tiêu chuẩn áp dụng","Chưa chọn nông dân đại diện","Thiếu ảnh bảng tên vùng trồng","Thiếu ảnh flycam","Thiếu ảnh kho thuốc","Thiếu ảnh quy trình thu hoạch","Thiếu ảnh bẫy côn trùng","DN thiếu CCCD mặt trước","DN thiếu CCCD mặt sau","DN thiếu giấy phép kinh doanh"];
+// loại hồ sơ của app (ô F) ứng với tiêu chí FarmBase nào
+const FB_HS={fly:[5],kho:[6,8]};
+const FBS_OLD=14; // ngày
+let FBS=null, FBSERR="";
+function fbDays(iso){ return iso?Math.floor((Date.now()-new Date(iso))/864e5):null; }
+function fbWhen(iso){ if(!iso) return "—"; const d=new Date(iso), p=n=>String(n).padStart(2,"0"); return p(d.getDate())+"/"+p(d.getMonth()+1)+" "+p(d.getHours())+":"+p(d.getMinutes()); }
+// trạng thái đồng bộ của một vùng: none (chưa ghép), old (quá 14 ngày), ok
+function fbsState(z){ const f=z?.fbs; if(!z?.fbId||!f) return "none"; return fbDays(f.syncedAt)>FBS_OLD?"old":"ok"; }
+function fbsLine(z){ const f=z?.fbs, st=fbsState(z);
+  if(st==="none") return '<div class="sub" style="margin-top:4px">FarmBase (extension): <span class="pill">Chưa ghép</span></div>';
+  const miss=(f.flags||[]).map((x,i)=>x===1?FB12[i]:"").filter(Boolean), unk=(f.flags||[]).filter(x=>x===-1).length;
+  return '<div class="sub" style="margin-top:4px">FarmBase (extension): <span class="pill '+(st==="old"||miss.length?"warn":"good")+'">'+(st==="old"?"Cũ, ":"")+(miss.length?"thiếu "+miss.length+"/12":"đủ 12 mục")+'</span>'
+   +(unk?' · '+unk+' mục chưa kiểm tra':'')+' · KT hồ sơ '+(f.checkedAt?dm(f.checkedAt.slice(0,10)):"chưa")+' · đồng bộ '+fbWhen(f.syncedAt)
+   +(miss.length?'<div style="margin-top:2px">'+esc(miss.join(", "))+'</div>':'')+'</div>'; }
+// ô F của app lệch với FarmBase: [mã hồ sơ, "tick" (app tick nhưng FarmBase thiếu) | "untick" (FarmBase đủ nhưng app chưa tick)]
+function fbsDiff(z){ const f=z?.fbs; if(!f||fbsState(z)==="none") return []; const out=[];
+  Object.entries(FB_HS).forEach(([k,ix])=>{ const v=ix.map(i=>f.flags?.[i]); if(v.some(x=>x!==0&&x!==1)) return; const x=hsItem(z,k); if(x.hard==="na") return;
+    const fbOk=v.every(y=>y===0); if(x.fb&&!fbOk) out.push([k,"tick"]); else if(!x.fb&&fbOk) out.push([k,"untick"]); });
+  return out; }
+async function loadFbs(){ const r=await callApiAdmin({action:"fb_status"}); if(r.error){ FBSERR=String(r.error); FBS={}; } else { FBSERR=""; FBS=r.last||{}; } if(ui.view==="api") render(); }
+function fbsPanel(){ if(!isOwner()) return "";
+  if(FBS===null){ loadFbs(); return '<div class="panel" style="margin-bottom:12px"><h2>Đồng bộ FarmBase từ extension</h2><div class="sub">Đang tải…</div></div>'; }
+  const zs=Object.values(S.zones).filter(z=>z.active!==false), n=zs.length, paired=zs.filter(z=>z.fbId).length, old=zs.filter(z=>fbsState(z)==="old").length;
+  const zk=new Set(Object.values(S.zones).filter(z=>!z.fbId).map(z=>zkey(z.name))), c=FBS.counts||{};
+  const L=(FBS.unmatched||[]).slice().sort((a,b)=>(zk.has(zkey(b.name))-zk.has(zkey(a.name)))||String(a.name||"").localeCompare(String(b.name||""),"vi")); // vùng trùng tên với app lên đầu
+  let h='<div class="panel" style="margin-bottom:12px"><h2>Đồng bộ FarmBase từ extension</h2><div class="sub">Chỉ đi một chiều: extension đọc admin.farmbase.vn, owner bấm "Đồng bộ lên BVI" trên trang quản lý của extension. App chỉ lưu 12 tiêu chí đủ/thiếu cho từng vùng, không sửa bước, hồ sơ cứng hay ô F. Tạo khóa bằng "Tạo khóa mới", chọn mẫu "Extension FarmBase".</div>';
+  if(FBSERR) h+='<div class="alert bad" style="margin-top:8px">'+esc(FBSERR)+'</div>';
+  h+='<div class="row" style="gap:6px 16px;flex-wrap:wrap;margin-top:8px"><span>Lần gần nhất: <b>'+(FBS.syncedAt?fbWhen(FBS.syncedAt):"chưa có")+'</b>'+(FBS.ranAt?' <span class="sub">(dữ liệu lấy lúc '+fbWhen(FBS.ranAt)+')</span>':'')+'</span>'
+   +(FBS.sent?'<span>Gửi '+FBS.sent+' vùng: cập nhật '+(c.updated||0)+', giữ nguyên '+(c.same||0)+', chưa ghép '+(c.unmatched||0)+(c.old?', bỏ qua bản cũ '+c.old:'')+'</span>':'')
+   +'<span>Vùng trên app đã ghép: <b>'+paired+'/'+n+'</b>'+(old?' · <span style="color:var(--warn)">'+old+' vùng quá '+FBS_OLD+' ngày chưa đồng bộ</span>':'')+'</span><button class="btn sm" id="fbsRe">Tải lại</button></div>';
+  if(L.length){ const zopts=Object.entries(S.zones).filter(([,z])=>z.active!==false&&!z.fbId).sort((a,b)=>(a[1].name||"").localeCompare(b[1].name||"","vi"));
+    h+='<details style="margin-top:8px"'+(ui.fbsOpen?" open":"")+' id="fbsDet"><summary style="cursor:pointer"><b>'+L.length+' vùng FarmBase chưa ghép</b> <span class="sub">chọn vùng tương ứng trên app, lần đồng bộ sau tự khớp</span></summary><div style="display:grid;gap:6px;margin-top:6px">'
+     +L.slice(0,300).map(r=>'<div style="border:1px solid var(--line);border-radius:8px;padding:6px 8px;min-width:0"><div style="overflow-wrap:anywhere"><b>'+esc(r.name||r.id)+'</b> <span class="sub">'+esc([r.code,r.ward,r.province,r.vendor].filter(Boolean).join(" · "))+' · thiếu '+(r.missing||0)+'/12</span></div>'
+       +'<div class="row" style="gap:6px;flex-wrap:nowrap;margin-top:4px"><select data-fbsz="'+esc(r.id)+'" style="flex:1;min-width:0"><option value="">Chọn vùng trên app…</option>'+zopts.map(([k,z])=>'<option value="'+esc(k)+'"'+(zkey(z.name)===zkey(r.name)?" selected":"")+'>'+esc(z.name)+(z.ward?' · '+esc(z.ward):'')+'</option>').join("")+'</select><button class="btn sm" data-fbsp="'+esc(r.id)+'">Ghép</button></div></div>').join("")
+     +(L.length>300?'<div class="sub">Còn '+(L.length-300)+' vùng, ghép xong đợt này rồi tải lại.</div>':'')+'</div></details>'; }
+  return h+'</div>'; }
+function bindFbs(A){
+  $("#fbsRe")?.addEventListener("click",()=>{ FBS=null; render(); });
+  $("#fbsDet")?.addEventListener("toggle",e=>{ ui.fbsOpen=e.target.open; });
+  A.querySelectorAll("[data-fbsp]").forEach(b=>b.addEventListener("click",async()=>{ const id=b.dataset.fbsp, sel=A.querySelector('[data-fbsz="'+CSS.escape(id)+'"]'), zone=sel?.value;
+    if(!zone){ toast("Chọn vùng trên app trước"); return; } b.disabled=true;
+    const r=await callApiAdmin({action:"fb_pair",fbId:id,zone}); if(r.error){ b.disabled=false; toast(r.error); return; }
+    toast("Đã ghép với "+(S.zones[zone]?.name||zone)); FBS=null; render(); })); }
 
 const stamp=()=>({updatedAt:new Date().toISOString(),updatedBy:me||""});
 
@@ -1590,7 +1640,7 @@ function drawHs(id,focus){ const z=S.zones[id]; if(!z){ closeDrawer(); return; }
   // tóm tắt: 3 thanh và việc còn thiếu
   const bar=(l,v,dim)=>'<div class="hsMb"><span class="sub">'+l+'</span><span class="hbar"><i style="width:'+(v/s.n*100)+'%;background:'+(v===s.n?'var(--good)':'var(--info)')+'"></i></span><b>'+v+'/'+s.n+'</b></div>';
   const miss=HS.filter(([k])=>!hsDone(hsItem(z,k)));
-  h+='<div class="panel hsSum">'+bar("Bản cứng",s.hard)+bar("Lên Drive",s.drive)+bar("FarmBase",s.fb)
+  h+='<div class="panel hsSum">'+bar("Bản cứng",s.hard)+bar("Lên Drive",s.drive)+bar("FarmBase",s.fb)+fbsLine(z)
     +(miss.length?'<div class="sub" style="margin-top:4px">Còn thiếu, bấm để tới:</div><div class="row" style="gap:4px;flex-wrap:wrap">'+miss.map(([k,,sh])=>{ const x=hsItem(z,k); return '<button type="button" class="hk '+hsCls(x)+'" data-hsjump="'+k+'" style="width:auto;padding:4px 8px"><span class="t">'+esc(sh)+'</span>'+hsDots(x)+'</button>'; }).join("")+'</div>':'<div style="color:var(--good);font-weight:600;margin-top:4px">Đã đủ cả '+s.n+' loại hồ sơ.</div>')+'</div>';
   if(!z.drv) h+='<div class="f"><label>Thư mục Google Drive của vùng</label><div class="row" style="flex-wrap:nowrap"><input id="hsdrive" value="'+esc(z.drive||"")+'" placeholder="https://drive.google.com/drive/folders/…" style="flex:1;min-width:0">'+(z.drive?'<a class="btn sm" href="'+esc(z.drive)+'" target="_blank" rel="noopener">Mở Drive</a>':'')+'</div>'+(z.driveScan||z.driveSodo?'<div class="row" style="gap:6px;margin-top:6px">'+(z.driveCode?'<span class="pill">'+esc(z.driveCode)+'</span>':'')+(z.driveScan?'<a class="cp" href="'+esc(z.driveScan)+'" target="_blank" rel="noopener">01 Hồ sơ scan</a>':'')+(z.driveSodo?'<a class="cp" href="'+esc(z.driveSodo)+'" target="_blank" rel="noopener">02 Hồ sơ sổ đỏ</a>':'')+'</div>':'')+'</div>';
   if(z.drv) h+='<div class="sub">Vùng đã nối kho Drive: mục Drive tự xanh khi thư mục có file. Bấm Tải file lên ở từng loại.</div><div data-dup="'+id+'">'+drvProg(id)+'</div>';

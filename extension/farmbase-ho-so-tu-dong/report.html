@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Báo cáo hồ sơ vùng trồng - FarmBase</title>
+<link rel="icon" href="icon48.png">
+<style>
+  :root { --g: #15803d; --r: #dc2626; --mut: #6b7280; --bd: #e5e7eb; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; color: #111827; background: #f9fafb; }
+  header { background: var(--g); color: #fff; padding: 14px 24px; display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 18px; }
+  main { padding: 16px 24px; }
+  .kpis { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .kpi { background: #fff; border: 1px solid var(--bd); border-radius: 8px; padding: 8px 12px; min-width: 130px; cursor: pointer; }
+  .kpi b { display: block; font-size: 20px; }
+  .kpi span { color: var(--mut); font-size: 12px; }
+  .kpi.active { outline: 2px solid var(--g); }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; align-items: center; }
+  input, select, button { font: inherit; padding: 6px 8px; border: 1px solid var(--bd); border-radius: 6px; background: #fff; }
+  button { cursor: pointer; }
+  button.primary { background: var(--g); color: #fff; border-color: var(--g); }
+  .wrap { overflow: auto; background: #fff; border: 1px solid var(--bd); border-radius: 8px; max-height: calc(100vh - 260px); }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border-bottom: 1px solid var(--bd); padding: 6px 8px; text-align: left; white-space: nowrap; }
+  th { position: sticky; top: 0; background: #f3f4f6; font-weight: 600; z-index: 1; }
+  th.c { writing-mode: vertical-rl; transform: rotate(180deg); text-align: left; font-size: 11px; padding: 8px 4px; vertical-align: bottom; }
+  td.c { text-align: center; padding: 6px 2px; }
+  td.name { white-space: normal; min-width: 240px; }
+  .f1 { color: #fff; background: var(--r); border-radius: 4px; padding: 1px 5px; font-size: 11px; }
+  .f0 { color: var(--g); }
+  .fn { color: var(--mut); font-size: 11px; }
+  .miss { font-weight: 700; text-align: center; }
+  .muted { color: var(--mut); }
+  h2 { font-size: 14px; margin: 18px 0 8px; }
+  #hist td, #hist th, #shist td, #shist th { font-size: 12px; }
+  .bvi { background: #fff; border: 1px solid var(--bd); border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; }
+  .bvi .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .bvi [hidden] { display: none; }
+  .bvi .err { color: var(--r); }
+  .bvi .ok { color: var(--g); }
+  .b { border-radius: 4px; padding: 1px 6px; font-size: 11px; white-space: nowrap; }
+  .b-none { background: #f3f4f6; color: var(--mut); } .b-chg { background: #fef3c7; color: #92400e; }
+  .b-ok { background: #dcfce7; color: var(--g); } .b-um { background: #ffedd5; color: #9a3412; } .b-err { background: #fee2e2; color: var(--r); }
+  td.bv { white-space: normal; min-width: 150px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Báo cáo hồ sơ vùng trồng</h1>
+  <span id="ran"></span>
+</header>
+<main>
+  <div class="kpis" id="kpis"></div>
+  <section class="bvi" id="bvi">
+    <div class="row">
+      <b>Đồng bộ sang BVI Điều hành</b>
+      <span class="muted">Một chiều: chỉ gửi kết quả kiểm tra hồ sơ (đủ/thiếu) sang app BVI, không sửa gì trên FarmBase. Chỉ owner có khóa.</span>
+    </div>
+    <div class="row" id="bviNoKey" style="margin-top:8px">
+      <input id="bviKey" type="password" autocomplete="off" placeholder="Dán khóa API bvi_… (owner tạo ở trang API, mẫu Extension FarmBase)" style="min-width:340px;flex:1">
+      <button id="bviSave">Lưu khóa</button>
+    </div>
+    <div class="row" id="bviHasKey" style="margin-top:8px" hidden>
+      <span class="muted">Đã lưu khóa <span id="bviPfx"></span></span><button id="bviDel">Xóa khóa</button>
+      <span style="flex:1"></span>
+      <button id="bviPick">Chọn vùng cần gửi</button><button id="bviNone">Bỏ chọn</button>
+      <button class="primary" id="bviGo">Đồng bộ lên BVI</button>
+    </div>
+    <div id="bviMsg" style="margin-top:6px"></div>
+  </section>
+  <div class="filters">
+    <input id="q" placeholder="Tìm tên vùng, mã, doanh nghiệp…" style="min-width:260px">
+    <select id="fProv"><option value="">Tất cả tỉnh</option></select>
+    <select id="fVendor"><option value="">Tất cả doanh nghiệp</option></select>
+    <select id="fCrit"><option value="">Mọi tiêu chí</option></select>
+    <select id="fBvi"><option value="">Mọi trạng thái BVI</option></select>
+    <select id="fState">
+      <option value="">Mọi trạng thái</option>
+      <option value="missing">Còn thiếu</option>
+      <option value="complete">Đủ 12 mục</option>
+      <option value="unchecked">Chưa kiểm tra hồ sơ</option>
+    </select>
+    <span class="muted" id="count"></span>
+    <span style="flex:1"></span>
+    <button id="run">Chạy lại ngay</button>
+    <button class="primary" id="csv">Tải CSV (theo bộ lọc)</button>
+  </div>
+  <div class="wrap"><table id="tbl"></table></div>
+  <h2>Lịch sử đồng bộ sang BVI</h2>
+  <div class="wrap" style="max-height:220px"><table id="shist"></table></div>
+  <h2>Lịch sử các lần tổng hợp</h2>
+  <div class="wrap" style="max-height:300px"><table id="hist"></table></div>
+  <p class="muted">"Chưa kiểm tra" = vùng trồng chưa từng bấm kiểm tra hồ sơ trên FarmBase nên không biết tình trạng 5 loại ảnh vùng trồng. Với vùng đã kiểm tra, kết quả lấy theo lần kiểm tra hồ sơ gần nhất (cột "Ngày KT").</p>
+</main>
+<script src="lib.js"></script>
+<script src="report.js"></script>
+</body>
+</html>
