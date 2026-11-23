@@ -1,6 +1,7 @@
 // BVI Điều hành: API cho bên thứ 3. Chủ yếu chỉ đọc; riêng nhu cầu khách hàng có thể gửi vào (quyền leads_write).
 // Dữ liệu: GET /functions/v1/api/v1/<resource>[/<id>]  header  X-API-Key: bvi_...
 // Gửi nhu cầu khách hàng: POST /functions/v1/api/v1/leads  (một bản ghi, hoặc {"leads":[...]} tối đa 100)
+// Đồng bộ một chiều từ extension FarmBase: POST /functions/v1/api/v1/farmbase-sync  (quyền farmbase_sync, chỉ ghi khối FarmBase của vùng)
 // Quản lý khóa: POST /functions/v1/api/admin  (JWT của owner)
 // Khóa chỉ lưu dạng SHA-256 trong bảng app_secrets (chỉ service role đọc được).
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -23,7 +24,7 @@ export const RESOURCES: Record<string, string> = {
   supports: "Yêu cầu hỗ trợ", contracts: "Hợp đồng (không có số tiền)", leads: "Lead khách hàng, pipeline sales (che SĐT, email, MST)",
 };
 // quyền ghi: không phải loại dữ liệu đọc được
-export const WRITES: Record<string, string> = { leads_write: "Gửi nhu cầu khách hàng (chỉ ghi)" };
+export const WRITES: Record<string, string> = { leads_write: "Gửi nhu cầu khách hàng (chỉ ghi)", farmbase_sync: "Đồng bộ hồ sơ vùng từ extension FarmBase (chỉ ghi)" };
 // lead khách hàng nằm ở bảng sales_leads (trang sales.html); docs loại contacts type "lead" là dữ liệu cũ, không trả nữa
 const COL_OF: Record<string, string> = {};
 const colOf = (res: string) => COL_OF[res] || res;
@@ -48,7 +49,7 @@ function scrub(v: unknown, depth = 0): unknown {
 }
 export function clean(col: string, d: Record<string, unknown>): Record<string, unknown> {
   const x = { ...d };
-  if (col === "zones") { delete x.drv; delete x.ownerNote; }
+  if (col === "zones") { delete x.drv; delete x.ownerNote; if (x.fbs && typeof x.fbs === "object") { const { by: _by, ...f } = x.fbs as Record<string, unknown>; x.fbs = f; } }
   if (col === "events") delete x.photos;
   if (col === "people") { delete x.canLeave; delete x.canPlan; delete x.canExpense; delete x.canRecon; delete x.rcDaily; }
   if (col === "leads") { delete x.type; delete x.hist; }
@@ -95,6 +96,31 @@ async function handleAdmin(req: Request) {
   };
   const scopesOf = (s: unknown) => (Array.isArray(s) ? s.filter((x) => typeof x === "string" && (RESOURCES[x] || WRITES[x])) : []);
   const act = body?.action;
+  if (act === "fb_status") {
+    const { data: r0 } = await db.from("app_secrets").select("v").eq("k", FBS_LAST).maybeSingle();
+    return json({ last: r0 ? JSON.parse(r0.v as string) : null });
+  }
+  if (act === "fb_pair") {
+    // owner ghép tay một vùng FarmBase chưa khớp với một vùng trên app
+    const fbId = fbStr(body.fbId, 64), zid = fbStr(body.zone, 120);
+    if (!fbId || !zid) return json({ error: "Thiếu vùng" }, 400);
+    const { data: r0 } = await db.from("app_secrets").select("v").eq("k", FBS_LAST).maybeSingle();
+    const last = r0 ? JSON.parse(r0.v as string) : null;
+    const row = (last?.unmatched || []).find((x: any) => x.id === fbId);
+    if (!row) return json({ error: "Không còn vùng này trong danh sách chưa ghép, hãy đồng bộ lại từ extension" }, 404);
+    const { data: zr } = await db.from("docs").select("data").eq("col", "zones").eq("id", zid).maybeSingle();
+    if (!zr) return json({ error: "Không có vùng này trên app" }, 404);
+    const { data: other } = await db.from("docs").select("id").eq("col", "zones").neq("id", zid).filter("data->>fbId", "eq", fbId).limit(1);
+    if (other && other.length) return json({ error: "Vùng FarmBase này đã ghép với vùng khác (" + other[0].id + ")" }, 409);
+    const d = zr.data || {};
+    const nd = { ...d, fbId, fbs: fbSnap(row, last.ranAt, last.syncedAt, "owner") };
+    const { error } = await db.from("docs").update({ data: nd }).eq("col", "zones").eq("id", zid);
+    if (error) return json({ error: "Chưa lưu được" }, 500);
+    last.unmatched = last.unmatched.filter((x: any) => x.id !== fbId);
+    await db.from("app_secrets").upsert({ k: FBS_LAST, v: JSON.stringify(last) });
+    await log("fb_pair", d.name || zid, "ghép vùng FarmBase " + (row.name || fbId) + " với vùng " + (d.name || zid), zid);
+    return json({ ok: true, unmatched: last.unmatched.length });
+  }
   if (act === "list") {
     const rows = await all();
     const { data: us } = await db.from("app_secrets").select("k,v").like("k", USE + "%");
@@ -204,6 +230,84 @@ function needKeys(arr: string[]): string[] {
   return [...out];
 }
 
+// ---- đồng bộ một chiều từ extension FarmBase (12 tiêu chí hồ sơ vùng) ----
+// Chỉ ghi data.fbId và data.fbs của vùng; không đụng bước, hồ sơ cứng, ô F. Không nhận CCCD, SĐT, tên nông hộ.
+const FBS_LAST = "fbsync:last";
+const FB_N = 12;
+const fbStr = (v: unknown, n = 160) => (v === undefined || v === null ? "" : String(v)).replace(/[\u0000-\u001f]+/g, " ").trim().slice(0, n);
+const fbIso = (v: unknown) => { const d = new Date(String(v || "")); return v && !isNaN(+d) ? d.toISOString() : null; };
+const fbKey = (s: unknown) => norm(s).replace(/^(xa|phuong|thi tran)\s+/, "").replace(/^(vung trong sau rieng|vung trong|vung sau rieng|vung)\s+/, "").replace(/[^a-z0-9]+/g, " ").trim();
+function fbRow(x: any) {
+  if (!x || typeof x !== "object") return null;
+  const id = fbStr(x.id, 64); if (!id) return null;
+  const flags = Array.isArray(x.flags) ? x.flags.slice(0, FB_N).map((f: unknown) => (f === 1 || f === 0 || f === -1 ? f : -1)) : [];
+  if (flags.length !== FB_N) return null;
+  return { id, code: fbStr(x.code, 60), name: fbStr(x.name, 160), province: fbStr(x.province, 80), ward: fbStr(x.ward, 80), vendor: fbStr(x.vendor, 160),
+    checkedAt: fbIso(x.checkedAt), flags, missing: flags.filter((f: number) => f === 1).length };
+}
+function fbSnap(r: any, ranAt: string, syncedAt: string, by: string) {
+  return { ranAt, syncedAt, by, checkedAt: r.checkedAt, flags: r.flags, missing: r.missing, code: r.code, name: r.name };
+}
+async function farmbaseSync(body: any, m: any) {
+  const ranAt = fbIso(body?.ranAt);
+  if (!ranAt) return json({ error: "bad_request", message: "Thiếu ranAt (thời điểm extension lấy dữ liệu)" }, 400);
+  if (Array.isArray(body?.criteria) && body.criteria.length !== FB_N) return json({ error: "bad_criteria", message: "Extension khác phiên bản: cần đúng " + FB_N + " tiêu chí" }, 400);
+  const list = Array.isArray(body?.rows) ? body.rows : null;
+  if (!list || !list.length || list.length > 3000) return json({ error: "bad_request", message: "Gửi 1 đến 3000 vùng mỗi lần" }, 400);
+  const rows = list.map(fbRow);
+  // vùng trên app
+  const Z: { id: string; d: any }[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await db.from("docs").select("id,data").eq("col", "zones").order("id").range(from, from + 999);
+    if (error) return json({ error: "server_error" }, 500);
+    Z.push(...(data || []).map((r: any) => ({ id: r.id, d: r.data || {} }))); if (!data || data.length < 1000) break;
+  }
+  const idx = (f: (d: any) => string) => { const o = new Map<string, string[]>(); Z.forEach((z) => { const k = f(z.d); if (k) o.set(k, [...(o.get(k) || []), z.id]); }); return o; };
+  const byFb = idx((d) => fbStr(d.fbId, 64)), byCode = idx((d) => fbKey(d.code)), byFbName = idx((d) => fbKey(d.fbName)), byName = idx((d) => fbKey(d.name));
+  const ZM = new Map(Z.map((z) => [z.id, z]));
+  const syncedAt = new Date().toISOString(), used = new Map<string, string>(), results: any[] = [], unmatched: any[] = [];
+  const cnt: Record<string, number> = { updated: 0, same: 0, old: 0, unmatched: 0, invalid: 0 };
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r) { cnt.invalid++; results.push({ i, status: "invalid" }); continue; }
+    let zid = "", how = "";
+    const pick = (L: string[] | undefined, h: string) => { if (zid || !L) return; const free = L.filter((x) => { const f = fbStr(ZM.get(x)?.d.fbId, 64); return !f || f === r.id; }); if (free.length === 1) { zid = free[0]; how = h; } };
+    pick(byFb.get(r.id), "fbId");
+    if (r.code) pick(byCode.get(fbKey(r.code)), "code");
+    pick(byFbName.get(fbKey(r.name)), "fbName");
+    // ghép theo tên chỉ khi cùng xã/phường (FarmBase có cả vùng của khách khác trùng tên)
+    if (r.ward) pick((byName.get(fbKey(r.name)) || []).filter((x) => fbKey(ZM.get(x)?.d.ward) === fbKey(r.ward)), "name");
+    if (zid && used.has(zid)) { zid = ""; how = "dup"; }
+    if (!zid) { cnt.unmatched++; unmatched.push(r); results.push({ id: r.id, status: "unmatched", reason: how === "dup" ? "Trùng với vùng FarmBase khác trong cùng lần gửi" : "Chưa ghép được vùng trên app" }); continue; }
+    used.set(zid, r.id);
+    const z = ZM.get(zid)!; const prev = z.d.fbs || null;
+    const name = fbStr(z.d.name, 160);
+    if (prev?.ranAt && prev.ranAt > ranAt) { cnt.old++; results.push({ id: r.id, status: "old", zone: zid, zoneName: name, message: "App đang giữ bản mới hơn (" + prev.ranAt + ")" }); continue; }
+    const same = prev && z.d.fbId === r.id && JSON.stringify(prev.flags) === JSON.stringify(r.flags) && (prev.checkedAt || null) === r.checkedAt;
+    // đọc lại ngay trước khi ghi để không đè thay đổi vừa có trên app
+    const { data: cur } = await db.from("docs").select("data").eq("col", "zones").eq("id", zid).maybeSingle();
+    const nd = { ...(cur?.data || z.d), fbId: r.id, fbs: fbSnap(r, ranAt, syncedAt, "api:" + fbStr(m.name, 80)) };
+    const { error } = await db.from("docs").update({ data: nd }).eq("col", "zones").eq("id", zid);
+    if (error) { results.push({ id: r.id, status: "error", zone: zid, zoneName: name }); continue; }
+    if (same) cnt.same++; else cnt.updated++;
+    results.push({ id: r.id, status: same ? "same" : "updated", zone: zid, zoneName: name, matchedBy: how });
+  }
+  // vùng chưa ghép: lưu lại để owner ghép tay trong app (chỉ tên, mã, địa bàn, cờ đủ/thiếu)
+  const { data: r0 } = await db.from("app_secrets").select("v").eq("k", FBS_LAST).maybeSingle();
+  const last0 = r0 ? JSON.parse(r0.v as string) : null;
+  if (!last0 || !last0.ranAt || last0.ranAt <= ranAt) {
+    // gộp với danh sách cũ: extension có thể gửi nhiều đợt hoặc chỉ một phần vùng
+    const um = new Map<string, any>((last0?.unmatched || []).map((x: any) => [x.id, x]));
+    results.forEach((x) => { if (x.id && x.status !== "unmatched") um.delete(x.id); });
+    unmatched.forEach((x) => um.set(x.id, x));
+    const last = { ranAt, syncedAt, key: fbStr(m.name, 80), sent: rows.length, counts: cnt, unmatched: [...um.values()].slice(0, 2000) };
+    await db.from("app_secrets").upsert({ k: FBS_LAST, v: JSON.stringify(last) });
+  }
+  try { await db.from("activity_log").insert({ action: "farmbase_sync", col: "zones", doc_id: "farmbase", title: "Đồng bộ FarmBase", name: "API: " + fbStr(m.name, 80),
+    summary: "nhận " + rows.length + " vùng: cập nhật " + cnt.updated + ", giữ nguyên " + cnt.same + ", chưa ghép " + cnt.unmatched + (cnt.old ? ", bỏ qua bản cũ " + cnt.old : "") }); } catch (_) { /* không chặn */ }
+  return json({ ok: true, ranAt, syncedAt, counts: cnt, results });
+}
+
 // ---- tạo lead từ hệ thống khác (form web, Zapier, Apps Script, AI qua MCP) ----
 const str = (v: unknown, n = 300) => (v === undefined || v === null ? "" : String(v)).replace(/[\u0000-\u001f]+/g, " ").trim().slice(0, n);
 async function createLead(x: any, m: any): Promise<any> {
@@ -250,14 +354,21 @@ async function handleData(req: Request, parts: string[]) {
     const okN = out.filter((r) => r.ok).length;
     return json(Array.isArray(body?.leads) || Array.isArray(body) ? { ok: okN > 0, created: okN, results: out } : out[0], okN ? 201 : 400);
   }
-  if (req.method !== "GET") return json({ error: "method_not_allowed", message: "API chỉ đọc, dùng GET (riêng POST /v1/leads để gửi nhu cầu khách hàng)" }, 405);
+  if (req.method === "POST" && res === "farmbase-sync" && !id) {
+    const a = await authKey(req, null);
+    if ("resp" in a) return a.resp;
+    if (!(a.m.scopes as string[]).includes("farmbase_sync")) return json({ error: "forbidden_resource", message: "Khóa này không được đồng bộ FarmBase (cần quyền farmbase_sync)" }, 403);
+    let body: any; try { body = await req.json(); } catch { return json({ error: "bad_json", message: "Gửi JSON" }, 400); }
+    try { return await farmbaseSync(body, a.m); } catch { return json({ error: "server_error" }, 500); }
+  }
+  if (req.method !== "GET") return json({ error: "method_not_allowed", message: "API chỉ đọc, dùng GET (riêng POST /v1/leads, POST /v1/farmbase-sync)" }, 405);
   const a = await authKey(req, null);
   if ("resp" in a) return a.resp;
   const m = a.m;
 
   if (!res) return json({ name: "BVI Điều hành API", version: "v1", key: m.name,
     resources: (m.scopes as string[]).filter((s) => RESOURCES[s]).map((s) => ({ id: s, label: RESOURCES[s], path: "/v1/" + s })),
-    write: (m.scopes as string[]).filter((s) => WRITES[s]).map((s) => ({ id: s, label: WRITES[s], method: "POST", path: "/v1/leads" })),
+    write: (m.scopes as string[]).filter((s) => WRITES[s]).map((s) => ({ id: s, label: WRITES[s], method: "POST", path: s === "farmbase_sync" ? "/v1/farmbase-sync" : "/v1/leads" })),
     params: { updated_since: "ISO 8601, chỉ lấy bản ghi sửa từ thời điểm này", limit: "1-1000, mặc định 500", offset: "bỏ qua N bản ghi đầu" } });
   if (!RESOURCES[res]) return json({ error: "unknown_resource", resources: Object.keys(RESOURCES) }, 404);
   if (!(m.scopes as string[]).includes(res)) return json({ error: "forbidden_resource", message: "Khóa này không được đọc " + res }, 403);

@@ -59,6 +59,7 @@ supabase/
   functions/            Edge Function (Deno), mỗi thư mục một hàm
   *.sql                 SQL đã chạy cho các bảng phụ (tham khảo)
 apps-script/Code.gs     Apps Script cầu nối Google Drive (dán vào script.google.com)
+extension/farmbase-ho-so-tu-dong/  Extension Chrome kiểm tra hồ sơ vùng trên admin.farmbase.vn, owner đồng bộ một chiều sang app (xem mục 4.1)
 ```
 
 ### 2.1 Sửa giao diện, thêm tính năng
@@ -107,7 +108,7 @@ Tất cả đặt `verify_jwt = false` vì mỗi hàm tự kiểm tra đăng nh�
 | Hàm | Việc | Secret cần |
 |---|---|---|
 | `admin-users` | Tạo, sửa, khóa tài khoản (chỉ owner) | không |
-| `api` | API REST cho đối tác `/api/v1/...` (chỉ đọc, riêng `POST /api/v1/leads` nhận nhu cầu khách hàng với quyền `leads_write`), quản lý khóa `/api/admin`, máy chủ MCP `/api/mcp` (có `bvi_list_leads`, `bvi_create_lead`) | không |
+| `api` | API REST cho đối tác `/api/v1/...` (chỉ đọc, riêng `POST /api/v1/leads` nhận nhu cầu khách hàng với quyền `leads_write`, `POST /api/v1/farmbase-sync` nhận kết quả từ extension FarmBase với quyền `farmbase_sync`), quản lý khóa `/api/admin`, máy chủ MCP `/api/mcp` (có `bvi_list_leads`, `bvi_create_lead`) | không |
 | `share` | Bản nháp, phát hành, thu hồi link báo cáo khách; trang công khai đọc bằng `GET ?t=` | không |
 | `expense` | Thu chi: tải ảnh, tự đọc chứng từ, lưu, duyệt | `ANTHROPIC_API_KEY` (đọc ảnh tự động), `OCR_MODEL` (tùy chọn) |
 | `drive` | Tải tệp lên Google Drive, đếm tệp hồ sơ qua Apps Script | `DRIVE_GAS_URL`, `DRIVE_GAS_TOKEN` |
@@ -129,6 +130,15 @@ Tạo bảng, sửa ràng buộc, policy là thay đổi trên hệ thống th�
 Các bước mã vùng trồng (trường `step` của zones, từ 0 đến 8):
 
 0 Mở quan hệ xã · 1 Gom dân, chốt hình thức · 2 Khảo sát từng lô · 3 Thu giấy tờ · 4 Tập huấn, ký hồ sơ · 5 Xã kiểm tra · 6 Nộp DVC, chờ mã nội địa · 7 Phía Trung Quốc bổ sung · 8 Mã GACC, duy trì
+
+### 4.1 Đồng bộ hồ sơ vùng từ extension FarmBase
+
+Một chiều, thủ công, chỉ owner: extension `extension/farmbase-ho-so-tu-dong` đọc admin.farmbase.vn (12 tiêu chí đủ/thiếu của từng vùng), hiện trên trang báo cáo của extension. Owner dán khóa API (tạo ở trang API, mẫu "Extension FarmBase", quyền `farmbase_sync`), chọn vùng, bấm "Đồng bộ lên BVI".
+
+- Máy chủ ghép vùng theo `fbId` đã lưu, rồi mã vùng, rồi `fbName`, rồi tên cùng xã. Chỉ ghi `zones.data.fbId` và `zones.data.fbs` (`ranAt`, `syncedAt`, `checkedAt`, `flags` 12 số 1 thiếu, 0 đủ, -1 chưa kiểm tra, `missing`). Không đụng bước, hồ sơ cứng, ô F. Bản gửi có `ranAt` cũ hơn bản đang lưu thì bỏ qua.
+- Vùng chưa ghép lưu ở `app_secrets` khóa `fbsync:last`; owner ghép tay trong trang API (hàm `api/admin`, action `fb_status`, `fb_pair`).
+- Trang Đối soát báo `zone_fb` khi ô F của Flycam, Kho bẫy lệch với FarmBase. Chi tiết hồ sơ vùng hiện dòng "FarmBase (extension)".
+- Cài extension: Chrome › Tiện ích › Chế độ nhà phát triển › Tải tiện ích đã giải nén › chọn thư mục extension.
 
 Lịch (`events`): `status` là draft (nháp, tự tạo từ công việc), plan (đã duyệt), done, cancel. Gắn vùng qua `zoneId`, `unitId` hoặc `taskIds`.
 
