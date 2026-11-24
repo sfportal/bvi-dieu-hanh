@@ -85,7 +85,7 @@ tonghop = {"title": "BÁO GIÁ TỔNG HỢP DỊCH VỤ", "subtitle": "Mã số 
     ["Dưới 10.000 mã", "100 đ/mã"], ["Từ 10.000 – 50.000 mã", "80 đ/mã"], ["Trên 50.000 – 100.000 mã", "72 đ/mã"], ["Trên 100.000 – 200.000 mã", "64 đ/mã"], ["Trên 200.000 – 500.000 mã", "56 đ/mã"], ["Trên 500.000 mã", "50 đ/mã"])),
   T("5. Dịch vụ kết nối chuyên gia kỹ thuật canh tác theo nhu cầu", tb(["Hạng mục", "Đơn giá"],
     ["Tập huấn, hướng dẫn kỹ thuật canh tác (tối đa 20 người/buổi)", "Online 2.000.000 đ/chuyên gia/buổi; trực tiếp 4.000.000 đ/chuyên gia/buổi"],
-    ["Công tác thực địa (nếu phát sinh)", "Xăng xe 2.000.000 đ/ngày; công tác phí 2.000.000 đ/ngày/người"])
+    ["Công tác thực địa (nếu phát sinh)", "Áp dụng khi vùng cách trung tâm TP. Buôn Ma Thuột trên 80 km: xăng xe khoán 2.000.000 đ/ngày; công tác phí 2.000.000 đ/ngày/người"])
     + "<p>Các gói phần mềm đã gồm 01 buổi hướng dẫn sử dụng FarmBase ban đầu và hỗ trợ qua Zalo, email, tài liệu.</p>"),
   T("6. Thanh toán", ul("Năm thứ nhất: 50% khi ký hợp đồng và 50% còn lại khi bàn giao.", "Từ năm thứ hai: phí năm thanh toán đầu năm. Hỗ trợ nhập nhật ký (nếu chọn): trả đầu vụ.", "Dịch vụ kết nối chuyên gia, công tác thực địa: thanh toán theo thực tế từng lần.")),
   {"t": "bank", "h": ""},

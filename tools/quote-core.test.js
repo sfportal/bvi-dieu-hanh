@@ -136,4 +136,8 @@ eq(QC.vars({ customer: {} }, { address: "12 Lê Lợi, TP. Hồ Chí Minh" }, {}
   const d = { kind: "quote", customer: cu, body: { blocks: [{ t: "text", html: "<table><tr><td>Hạng mục</td><td>3.000.000 đ/ha</td></tr></table>" }] } };
   eq(QC.check(d, co, { name: "H" }).filter(x => x.lvl === "err"), []);
   assert.ok(QC.check({ kind: "quote", customer: cu, body: { blocks: [{ t: "text", html: "<p>x</p>" }] } }, co, { name: "H" }).some(x => x.lvl === "err" && /bảng giá/.test(x.msg))); }
+// Xăng xe công tác khoán 2 triệu/ngày, không tính theo km
+{ const co = { name: "BVI", code: "bvi", tax_id: "6001653877", rep_name: "T", banks: [{ number: "3721077979" }] }, cu = { name: "A", contact_name: "B", contact_title: "C", contact_phone: "0912345678" };
+  const d = { kind: "letter", customer: cu, body: { layout: "doc", blocks: [{ t: "text", html: "<p>Phí xăng xe 8.000 đ/km</p>" }] } };
+  assert.ok(QC.check(d, co, { name: "H" }).some(x => x.lvl === "warn" && /khoán 2\.000\.000/.test(x.msg))); }
 console.log("OK");

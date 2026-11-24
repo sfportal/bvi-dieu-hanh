@@ -298,6 +298,7 @@
     const T = text.toLowerCase();
     if (/0901[\s.]?403[\s.]?819/.test(T)) E("Số 0901 403 819 không còn là liên hệ chung. Dùng 0911 423 839 (Ngọc).");
     if (/(cam kết|bảo đảm|đảm bảo)\s+(được\s+)?cấp mã/.test(T) && !/không\s+(cam kết|bảo đảm|đảm bảo)\s+(được\s+)?cấp mã/.test(T)) E("Không được cam kết kết quả cấp mã: việc cấp mã thuộc cơ quan nhà nước và nước nhập khẩu.");
+    if (/\d[\d.,]*\s*(đ|đồng)\s*\/\s*km/.test(T)) W("Xăng xe công tác nay khoán 2.000.000 đ/ngày khi vùng cách TP. Buôn Ma Thuột trên 80 km, không tính theo km.");
     if (/18[.,]?000[.,]?000|18 triệu|18tr/.test(T) && /vùng/.test(T)) W("Có số 18 triệu/vùng: gói làm mã mới bản 02/11 đã thay bằng 15 triệu + 5 triệu (tổng 20 triệu/vùng).");
     if (/30\s*[-–]\s*40\s*(triệu|tr)/.test(T) || /150[.,]000[.,]000|150 triệu/.test(T) || /30[.,]000[.,]000\s*(đ|đồng)?\s*\/\s*tháng|30 triệu\/tháng/.test(T)) W("Có mức giá cũ (30–40 triệu/mã, 150 triệu thiết lập hoặc 30 triệu/tháng). Kiểm tra lại theo bảng giá hiện hành.");
     if (/durianbase/.test(T)) W("Dùng tên FarmBase, không dùng DurianBase.");
