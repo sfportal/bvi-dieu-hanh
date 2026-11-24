@@ -20,6 +20,8 @@ const FB = (() => {
   const nv = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
   const vendorMatch = (name, keys = DEFAULT_VENDOR_KEYS) => { const n = ' ' + nv(name).replace(/[^a-z0-9]+/g, ' ') + ' '; return keys.some(k => /^\d+$/.test(k) ? n.includes(' ' + k + ' ') : n.includes(nv(k))); };
   const deepOk = r => r.deep && !r.deep.error && r.deep.sum.issues === 0;
+  // file scan hồ sơ (tên chứa "scan_hoso" trong thư viện vùng): 1 có, 0 chưa có, -1 lỗi đọc, null chưa kiểm tra
+  const scanState = r => !r.scan ? null : r.scan.error ? -1 : r.scan.n > 0 ? 1 : 0;
 
   function summarize(rows) {
     return {
@@ -33,16 +35,17 @@ const FB = (() => {
         units: DEEP.map(([k]) => rows.filter(r => (r.deep?.sum?.[k] || 0) > 0).length),
         totals: DEEP.map(([k]) => rows.reduce((n, r) => n + (r.deep?.sum?.[k] || 0), 0)),
       } : null,
+      scan: rows.some(r => r.scan) ? { has: rows.filter(r => scanState(r) === 1).length, none: rows.filter(r => scanState(r) === 0).length, error: rows.filter(r => scanState(r) === -1).length } : null,
     };
   }
 
   function toCSV(rows) {
-    const head = ['Tên vùng trồng', 'Mã', 'Trạng thái', 'Cây trồng', 'Tỉnh', 'Xã/Phường', 'Doanh nghiệp', 'Ngày kiểm tra hồ sơ', 'Số mục thiếu', ...LABELS, 'Số nông hộ', 'Số lô', ...DEEP.map(d => d[1]), 'ID'];
+    const head = ['Tên vùng trồng', 'Mã', 'Trạng thái', 'Cây trồng', 'Tỉnh', 'Xã/Phường', 'Doanh nghiệp', 'Ngày kiểm tra hồ sơ', 'Số mục thiếu', ...LABELS, 'Số nông hộ', 'Số lô', ...DEEP.map(d => d[1]), 'File scan hồ sơ', 'ID'];
     const esc = s => '"' + String(s ?? '').replace(/"/g, '""') + '"';
     const lines = rows.map(r => [
       r.name, r.code, STATUS[r.status] || r.status || '', r.crop, r.province, r.ward, r.vendor,
       r.checkedAt ? r.checkedAt.slice(0, 10) : 'Chưa kiểm tra', r.missing, ...r.flags.map(f => FLAG_TEXT[f]),
-      r.deep?.sum ? r.deep.sum.f : '', r.deep?.sum ? r.deep.sum.p : '', ...DEEP.map(([k]) => r.deep?.sum ? r.deep.sum[k] : (r.deep?.error ? 'Lỗi' : '')), r.id,
+      r.deep?.sum ? r.deep.sum.f : '', r.deep?.sum ? r.deep.sum.p : '', ...DEEP.map(([k]) => r.deep?.sum ? r.deep.sum[k] : (r.deep?.error ? 'Lỗi' : '')), r.scan ? (r.scan.error ? 'Lỗi' : r.scan.n) : '', r.id,
     ].map(esc).join(','));
     return '﻿' + [head.map(esc).join(','), ...lines].join('\r\n');
   }
@@ -52,7 +55,7 @@ const FB = (() => {
 
   // Đồng bộ một chiều sang BVI Điều hành (chỉ owner có khóa)
   const BVI_URL = 'https://pkckduidwfcncipwzdxa.supabase.co/functions/v1/api/v1'; // địa chỉ gốc API, owner sửa được trong cài đặt
-  const sig = r => (r.checkedAt || '') + '|' + r.flags.join(',') + '|' + (r.status || '') + '|' + (r.deep?.sum ? DEEP.map(([k]) => r.deep.sum[k]).join(',') + ',' + r.deep.sum.f + ',' + r.deep.sum.p : '');
+  const sig = r => (r.checkedAt || '') + '|' + r.flags.join(',') + '|' + (r.status || '') + '|' + (r.deep?.sum ? DEEP.map(([k]) => r.deep.sum[k]).join(',') + ',' + r.deep.sum.f + ',' + r.deep.sum.p : '') + '|' + (r.scan ? (r.scan.error ? -1 : r.scan.n) : '');
   const BVI_ST = {
     none: ['Chưa gửi', 'b-none'], changed: ['Có thay đổi, chưa gửi', 'b-chg'], ok: ['Đã gửi, khớp', 'b-ok'],
     unmatched: ['Chưa ghép vùng trên BVI', 'b-um'], old: ['BVI có bản mới hơn', 'b-um'], error: ['Lỗi khi gửi', 'b-err'], invalid: ['Dữ liệu không hợp lệ', 'b-err'],
@@ -65,6 +68,6 @@ const FB = (() => {
     return BVI_ST[st.status] ? st.status : 'error';
   }
 
-  return { LABELS, SHORT, FLAG_TEXT, STATUS, DEEP, DEFAULT_VENDOR_KEYS, vendorMatch, deepOk, summarize, toCSV, fmtTime, dateStamp, BVI_URL, BVI_ST, sig, bviState };
+  return { LABELS, SHORT, FLAG_TEXT, STATUS, DEEP, DEFAULT_VENDOR_KEYS, vendorMatch, deepOk, scanState, summarize, toCSV, fmtTime, dateStamp, BVI_URL, BVI_ST, sig, bviState };
 })();
 if (typeof self !== 'undefined') self.FB = FB;

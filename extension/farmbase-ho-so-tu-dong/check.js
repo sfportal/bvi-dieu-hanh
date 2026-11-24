@@ -30,6 +30,9 @@
   const QP = `query ($pu: ID!, $query: PlotPaginatedQueryInput!) { puPlotList(productionUnit: $pu, query: $query) { edges { node {
     id code areaM2 cropCount cadastrePage cadastrePlot cadastreImage { id } farmer { id fullName } } } pageInfo { endCursor hasNextPage } } }`;
 
+  // Thư viện vùng (mọi nhóm ảnh, tài liệu, gồm nhóm "Khác"): tìm file tên chứa "scan_hoso"
+  const QM = `query ($id: ID!) { productionUnit(id: $id) { id medias { id content medias { id fileName createdAt } } } }`;
+
   async function gql(query, variables) {
     const url = API + '?query=' + encodeURIComponent(query) + '&variables=' + encodeURIComponent(JSON.stringify(variables));
     const res = await fetch(url, { credentials: 'include' });
@@ -109,6 +112,16 @@
     };
   }
 
+  // file scan hồ sơ đã ký: tên chứa "scan_hoso" (không phân biệt hoa thường, dấu cách, gạch ngang)
+  const isScan = n => String(n || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[\s\-.]+/g, '_').includes('scan_hoso');
+  async function scanOf(id) {
+    const { productionUnit: u } = await gql(QM, { id });
+    const files = [];
+    (u?.medias || []).forEach(set => (set.medias || []).forEach(m => { if (isScan(m.fileName)) files.push({ name: m.fileName, set: set.content || '', at: m.createdAt || null }); }));
+    files.sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
+    return { n: files.length, files: files.slice(0, 20) };
+  }
+
   async function collect(scope = {}) {
     // phạm vi mặc định theo tên doanh nghiệp: tìm id các tổ chức khớp tên
     if (!scope.vendors?.length && scope.vendorKeys?.length) {
@@ -132,19 +145,20 @@
       };
     }).sort((a, b) => b.missing - a.missing || a.name.localeCompare(b.name, 'vi'));
 
-    if (scope.deep !== false && rows.length) {
+    if (rows.length) {
       let done = 0, i = 0, failed = 0;
       const tell = () => { try { chrome.runtime.sendMessage({ type: 'progress', done, total: rows.length }); } catch {} };
       tell();
       const worker = async () => {
         while (i < rows.length) {
           const r = rows[i++];
-          try { r.deep = await deepOf(r.id); } catch (e) { if (String(e.message).startsWith('AUTH:')) throw e; r.deep = { error: String(e.message || e).slice(0, 200) }; failed++; }
+          if (scope.deep !== false) { try { r.deep = await deepOf(r.id); } catch (e) { if (String(e.message).startsWith('AUTH:')) throw e; r.deep = { error: String(e.message || e).slice(0, 200) }; failed++; } }
+          try { r.scan = await scanOf(r.id); } catch (e) { if (String(e.message).startsWith('AUTH:')) throw e; r.scan = { error: String(e.message || e).slice(0, 200) }; }
           done++; if (done % 5 === 0 || done === rows.length) tell();
         }
       };
       await Promise.all(Array.from({ length: Math.min(4, rows.length) }, worker));
-      if (failed === rows.length) throw new Error('Không đọc được nông hộ, lô của vùng nào: ' + (rows[0].deep?.error || ''));
+      if (scope.deep !== false && failed === rows.length) throw new Error('Không đọc được nông hộ, lô của vùng nào: ' + (rows[0].deep?.error || ''));
     }
     return { ranAt: new Date().toISOString(), scope: { statuses: scope.statuses || STATUSES, vendors: scope.vendors || [], vendorNames: scope.vendorNames || [], deep: scope.deep !== false }, rows };
   }

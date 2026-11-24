@@ -1056,26 +1056,72 @@ function bindFbs(A){
 
 /* ---------- Trang "Vùng FarmBase": mọi vùng FarmBase đồng bộ từ extension (owner, quản lý xem) ---------- */
 const FB_STL={ACTIVE:["Đang hoạt động","good"],PENDING:["Chờ duyệt","warn"],INACTIVE:["Đã ngừng",""]};
-const FB_DP=[["fNoId","Nông hộ thiếu số CCCD","Thiếu số CCCD"],["fNoImg","Nông hộ thiếu ảnh CCCD","Thiếu ảnh CCCD"],["pNoImg","Lô thiếu ảnh bìa sổ đỏ","Lô thiếu ảnh bìa"],["pNoPage","Lô thiếu số tờ bản đồ","Lô thiếu số tờ"],["pNoPlot","Lô thiếu số thửa","Lô thiếu số thửa"],["pNoTrees","Lô thiếu số cây","Lô thiếu số cây"],["pNoArea","Lô thiếu diện tích","Lô thiếu diện tích"],["pZero","Lô diện tích bằng 0","Diện tích = 0"],["dup","Trùng tờ, thửa trong vùng","Trùng thửa"]];
-let FBU=null, FBUERR="", FBUL=false, FBN={}; // FBN: ghi chú, ngày thu hoạch, kết thúc vụ do owner, quản lý nhập (docs col "fbnote", id = id vùng FarmBase)
+const FB_DP=[["fNoId","Nông hộ thiếu số CCCD","NH: số CCCD"],["fNoImg","Nông hộ thiếu ảnh CCCD","NH: ảnh CCCD"],["pNoImg","Lô thiếu ảnh bìa sổ đỏ","Lô: ảnh bìa"],["pNoPage","Lô thiếu số tờ bản đồ","Lô: số tờ"],["pNoPlot","Lô thiếu số thửa","Lô: số thửa"],["pNoTrees","Lô thiếu số cây","Lô: số cây"],["pNoArea","Lô thiếu diện tích","Lô: diện tích"],["pZero","Lô diện tích bằng 0","Lô: DT = 0"],["dup","Trùng tờ, thửa trong vùng","Trùng thửa"]];
+let FBU=null, FBUERR="", FBUL=false, FBN={}; // FBN: ghi chú, ngày vụ, bước tiếp theo, tiến độ hồ sơ giấy theo id vùng FarmBase (API /api/fb, lưu app_secrets fbsync:notes)
+async function fbPost(body){ const {data}=await SB.auth.getSession(); const res=await fetch(SB_URL+"/functions/v1/api/fb",{method:"POST",headers:{"Content-Type":"application/json",apikey:SB_KEY,Authorization:"Bearer "+(data.session?.access_token||"")},body:JSON.stringify(body||{})});
+  const j=await res.json().catch(()=>null); return j||{error:"Lỗi "+res.status}; }
+// Bước tiếp theo: [{d: ngày, act: làm gì, res: kết quả cần đạt, done}]
+const fbToday=()=>new Date(Date.now()+7*3600e3).toISOString().slice(0,10);
+function fbNextStep(n){ const L=(n?.steps||[]).filter(x=>!x.done); if(!L.length) return null; return L.slice().sort((a,b)=>(a.d||"9999").localeCompare(b.d||"9999"))[0]; }
+function fbStepCell(u){ const n=FBN[u.id]||{}, all=n.steps||[], x=fbNextStep(n); if(!all.length) return '<span class="fn">Chưa có</span>';
+  if(!x) return fbBadge("Xong "+all.length+" bước","ok");
+  const late=x.d&&x.d<fbToday(); return (x.d?fbBadge((late?"Trễ · ":"")+fbDate(x.d),late?"err":""):'')+'<div style="overflow-wrap:anywhere">'+esc(x.act||"")+'</div>'+(x.res?'<div class="sub" style="font-size:12px">→ '+esc(x.res)+'</div>':'')+(all.filter(y=>!y.done).length>1?'<div class="sub" style="font-size:12px">+'+(all.filter(y=>!y.done).length-1)+' bước nữa</div>':''); }
+// Tiến độ hồ sơ giấy (file tổng hợp của Trinh), lưu ở .prog
+const FBP_K=[["pri","Ưu tiên"],["stage","Giai đoạn hiện tại"],["cccd","CCCD, sổ đỏ"],["hs","Hồ sơ giấy (thiếu bìa, in, ký, scan, nộp)"],["note","Ghi chú"],["ques","Questionnaire"],["extra","Ghi chú thêm"],["nkct","Nhật ký canh tác trên FarmBase"]];
+const fbHsKind=t=>{ const n=norm(t||""); return !n?"":/nop/.test(n)?"ok":/scan/.test(n)?"ok":/ky/.test(n)?"warn":/thieu/.test(n)?"err":/chua/.test(n)?"":"warn"; };
+function fbProgCell(u){ const p=FBN[u.id]?.prog; if(!p) return '<span class="fn">–</span>';
+  return (p.hs?fbBadge(p.hs,fbHsKind(p.hs)==="ok"?"ok":fbHsKind(p.hs)==="err"?"err":""):'')+(p.pri?fbBadge("ƯT "+p.pri,""):'')+(p.stage?'<div class="sub" style="font-size:12px;margin-top:2px">'+esc(p.stage.length>80?p.stage.slice(0,80)+"…":p.stage)+'</div>':''); }
 const fbDate=s=>s?s.slice(8,10)+"/"+s.slice(5,7)+"/"+s.slice(0,4):"";
 function openFbNote(id){ const u=(FBU?.units||[]).find(x=>x.id===id); if(!u) return; const n=FBN[id]||{};
   showDrawer('<div class="dh"><div style="min-width:0"><h2 style="overflow-wrap:anywhere">'+esc(u.name||id)+'</h2><div class="sub">'+esc([u.code,u.vendor].filter(Boolean).join(" · "))+'</div></div><button class="btn sm" data-close>Đóng</button></div>'
    +'<div class="db"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px"><label>Ngày thu hoạch<input type="date" id="fbnH" value="'+esc(n.harvest||"")+'" style="width:100%"></label><label>Ngày kết thúc vụ<input type="date" id="fbnE" value="'+esc(n.seasonEnd||"")+'" style="width:100%"></label></div>'
    +'<label style="display:block;margin-top:8px">Ghi chú<textarea id="fbnN" rows="5" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--surface)" placeholder="Tình trạng hồ sơ, việc cần làm, người phụ trách…">'+esc(n.note||"")+'</textarea></label>'
-   +'<div class="sub" style="font-size:12px">Không ghi số CCCD, số điện thoại nông hộ.'+(n.updatedAt?' Sửa lần cuối '+fbWhen(n.updatedAt)+'.':'')+'</div>'
+   +'<h3 style="margin:12px 0 4px;font-size:14px">Bước tiếp theo</h3><div class="sub" style="font-size:12px">Ngày nào, làm gì, ra kết quả gì.</div><div id="fbnL"></div><button class="btn sm" id="fbnA" style="margin-top:6px">+ Thêm bước</button>'
+   +'<div class="sub" style="font-size:12px;margin-top:8px">Không ghi số CCCD, số điện thoại nông hộ.'+(n.updatedAt?' Sửa lần cuối '+fbWhen(n.updatedAt)+'.':'')+'</div>'
    +'<div class="row" style="gap:6px;margin-top:8px"><button class="btn pri" id="fbnS">Lưu</button><span class="sub" id="fbnM"></span></div></div>');
-  $("#fbnS").addEventListener("click",async()=>{ const d={harvest:$("#fbnH").value||"",seasonEnd:$("#fbnE").value||"",note:$("#fbnN").value.trim().slice(0,2000),name:u.name||"",updatedAt:new Date().toISOString()};
+  const IN='width:100%;border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--surface);font:inherit';
+  const stepRow=x=>'<div class="fbst" style="border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:6px;display:grid;gap:6px">'
+    +'<div class="row between" style="gap:6px;flex-wrap:nowrap"><input type="date" class="fbsD" value="'+esc(x.d||"")+'" style="'+IN+';max-width:170px"><label class="row" style="gap:4px;white-space:nowrap"><input type="checkbox" class="fbsX"'+(x.done?' checked':'')+'> Xong</label><button class="btn sm fbsR" title="Xóa bước">Xóa</button></div>'
+    +'<input class="fbsA" maxlength="300" placeholder="Làm gì" value="'+esc(x.act||"")+'" style="'+IN+'"><input class="fbsK" maxlength="300" placeholder="Kết quả cần đạt" value="'+esc(x.res||"")+'" style="'+IN+'"></div>';
+  const box=$("#fbnL"), add=x=>{ box.insertAdjacentHTML("beforeend",stepRow(x)); box.lastElementChild.querySelector(".fbsR").addEventListener("click",e=>e.target.closest(".fbst").remove()); };
+  (n.steps||[]).forEach(add); if(!(n.steps||[]).length) add({d:fbToday()});
+  $("#fbnA").addEventListener("click",()=>{ add({d:fbToday()}); box.lastElementChild.querySelector(".fbsA").focus(); });
+  $("#fbnS").addEventListener("click",async()=>{ const steps=[...box.querySelectorAll(".fbst")].map(r=>({d:r.querySelector(".fbsD").value||"",act:r.querySelector(".fbsA").value.trim(),res:r.querySelector(".fbsK").value.trim(),done:r.querySelector(".fbsX").checked})).filter(x=>x.act||x.res);
+    const d={harvest:$("#fbnH").value||"",seasonEnd:$("#fbnE").value||"",note:$("#fbnN").value.trim().slice(0,2000),steps,name:u.name||""};
     if(d.harvest&&d.seasonEnd&&d.seasonEnd<d.harvest){ $("#fbnM").textContent="Ngày kết thúc vụ đang trước ngày thu hoạch."; return; }
     $("#fbnS").disabled=true; $("#fbnM").textContent="Đang lưu…";
-    const {error}=await SB.from("docs").upsert({col:"fbnote",id,data:d}); if(error){ $("#fbnS").disabled=false; $("#fbnM").textContent="Chưa lưu được: "+(error.message||error.code); return; }
-    FBN[id]=d; toast("Đã lưu"); closeDrawer(); render(); }); }
+    const r=await fbPost({action:"note",id,data:d}).catch(()=>({error:"Không kết nối được máy chủ"})); if(r.error){ $("#fbnS").disabled=false; $("#fbnM").textContent="Chưa lưu được: "+r.error; return; }
+    FBN[id]=r.note||d; toast("Đã lưu"); closeDrawer(); render(); }); }
 let FBF={q:"",st:"",ven:"",hs:"",dp:"",crit:"",n:60,view:""};
 const FB12S=["Địa chỉ","Thị trường","Tiêu chuẩn","ND đại diện","Ảnh bảng tên","Ảnh flycam","Ảnh kho thuốc","Ảnh thu hoạch","Ảnh bẫy côn trùng","DN: CCCD trước","DN: CCCD sau","DN: GPKD"];
-const FBT_CSS='<style>.fbt{overflow:auto;max-height:75vh;border:1px solid var(--line);border-radius:10px;background:var(--surface);margin-top:4px}.fbt table{border-collapse:collapse;width:100%;font-size:13px}.fbt th,.fbt td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;white-space:nowrap;vertical-align:top}.fbt th{position:sticky;top:0;background:var(--sunk);font-weight:600;z-index:1}.fbt th.v{writing-mode:vertical-rl;transform:rotate(180deg);font-size:11px;padding:8px 3px;vertical-align:bottom;text-align:left}.fbt td.c{text-align:center;padding:6px 2px}.fbt td.nm{white-space:normal;min-width:220px}.fbt td.w{white-space:normal;min-width:150px}.fbt .f1{color:#fff;background:var(--bad);border-radius:4px;padding:1px 5px;font-size:11px}.fbt .f0{color:var(--good)}.fbt .fn{color:var(--muted);font-size:11px}.fbt .n1{color:var(--warn);font-weight:600}.fbt .n2{color:var(--bad);font-weight:600}.fbt tr:hover td{background:var(--chip)}</style>';
+const FBT_CSS='<style>.fbt{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface);margin-top:4px}.fbt table{border-collapse:collapse;width:100%;font-size:13px}.fbt th,.fbt td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;white-space:nowrap;vertical-align:top}.fbt th{position:sticky;top:0;background:var(--sunk);font-weight:600;z-index:1}.fbt th.v{writing-mode:vertical-rl;transform:rotate(180deg);font-size:11px;padding:8px 3px;vertical-align:bottom;text-align:left}.fbt td.c{text-align:center;padding:6px 2px}.fbt td.nm{white-space:normal;min-width:220px}.fbt td.w{white-space:normal;min-width:150px}.fbt .f1{color:#fff;background:var(--bad);border-radius:4px;padding:1px 5px;font-size:11px}.fbt .f0{color:var(--good)}.fbt .fn{color:var(--muted);font-size:11px}.fbt .n1{color:var(--warn);font-weight:600}.fbt .n2{color:var(--bad);font-weight:600}.fbt tr:hover td{background:var(--chip)}</style>';
+const FBB='display:inline-block;border-radius:4px;padding:1px 6px;font-size:11px;white-space:nowrap;margin:2px 3px 0 0;';
+const fbBadge=(t,k)=>'<span style="'+FBB+(k==="err"?'background:#fee2e2;color:#b91c1c':k==="ok"?'background:#dcfce7;color:#15803d':'background:#fef3c7;color:#92400e')+'">'+esc(t)+'</span>';
+function fbMissCell(u){ const d=u.deep, ok=d&&!d.error, fl=u.flags||[], m=fl.filter(x=>x===1).length, unk=fl.filter(x=>x===-1).length;
+  let h='<button class="lnk" data-fbd="'+esc(u.id)+'" style="border:0;padding:0;background:none;color:var(--brand);text-decoration:underline;cursor:pointer;font:inherit">'+(ok?d.f+' hộ · '+d.p+' lô':'Xem chi tiết')+'</button>'+(u.areaM2!=null?' <span class="sub" style="font-size:12px">'+fmtHa(u.areaM2/10000)+' ha</span>':'')+'<br>';
+  h+=m?fbBadge("Hồ sơ vùng: "+m+"/12","err"):unk?fbBadge("Hồ sơ vùng: "+unk+" chưa KT",""):fbBadge("Hồ sơ vùng đủ","ok");
+  if(!d) h+=fbBadge("Chưa KT nông hộ, lô",""); else if(d.error) h+=fbBadge("Lỗi đọc nông hộ, lô","err");
+  else { const bad=FB_DP.filter(([k])=>d[k]>0); h+=bad.length?bad.map(([k,,sh])=>fbBadge(sh+" "+d[k],k==="dup"||k==="pZero"?"err":"")).join(""):fbBadge("Nông hộ, lô đủ","ok"); }
+  if(u.scan>0) h+=fbBadge("Có scan hồ sơ"+(u.scan>1?" ("+u.scan+")":""),"ok"); else if(u.scan===0) h+=fbBadge("Chưa có scan hồ sơ","err"); else if(u.scan===-1) h+=fbBadge("Lỗi đọc thư viện","err");
+  return h; }
+function openFbDetail(id){ const u=(FBU?.units||[]).find(x=>x.id===id); if(!u) return; const d=u.deep, ok=d&&!d.error, fl=u.flags||[], st=FB_STL[u.status]||[u.status||"",""], n=FBN[id]||{};
+  const tile=(v,l,warn)=>'<div class="panel" style="padding:8px 10px;min-width:0"><b style="font-size:18px'+(warn&&v?';color:var(--bad)':'')+'">'+v+'</b><div class="sub" style="font-size:12px">'+esc(l)+'</div></div>';
+  let h='<div class="dh"><div style="min-width:0"><h2 style="overflow-wrap:anywhere">'+esc(u.name||id)+'</h2><div class="sub">'+esc([u.code,u.vendor,st[0]].filter(Boolean).join(" · "))+'</div></div><button class="btn sm" data-close>Đóng</button></div><div class="db">';
+  if(ok) h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px">'+tile(d.f,"Nông hộ")+tile(d.p,"Lô")+FB_DP.map(([k,l])=>tile(d[k]||0,l,true)).join("")+'</div>';
+  else h+='<div class="alert'+(d?.error?' bad':'')+'">'+(d?.error?'Extension không đọc được nông hộ, lô của vùng này.':'Lần đồng bộ này chưa kiểm tra nông hộ, lô (bật "Kiểm tra nông hộ và lô" trên extension).')+'</div>';
+  h+='<div style="margin-top:10px">'+(u.scan>0?fbBadge("Có "+u.scan+" file scan hồ sơ trong thư viện","ok"):u.scan===0?fbBadge("Chưa có file scan hồ sơ (tên chứa scan_hoso) trong thư viện","err"):u.scan===-1?fbBadge("Không đọc được thư viện vùng","err"):fbBadge("Chưa kiểm tra file scan hồ sơ (cần extension 2.4.0)",""))+'</div>';
+  const pg=n.prog; if(pg) h+='<h3 style="margin:12px 0 4px;font-size:14px">Tiến độ hồ sơ giấy <span class="sub" style="font-weight:400">'+esc(pg.src||"")+(pg.at?' · nhập '+fbWhen(pg.at):'')+'</span></h3><div style="border:1px solid var(--line);border-radius:8px">'
+    +FBP_K.filter(([k])=>pg[k]).map(([k,l],i)=>'<div style="padding:6px 10px;'+(i?'border-top:1px solid var(--line)':'')+'"><div class="sub" style="font-size:12px">'+esc(l)+'</div><div style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(pg[k])+'</div></div>').join("")+'</div>';
+  if(ok&&d.dupPlots?.length) h+='<h3 style="margin:12px 0 4px;font-size:14px">Lô trùng tờ, thửa</h3><div>'+d.dupPlots.map(c=>fbBadge(c,"err")).join("")+'</div>';
+  h+='<h3 style="margin:12px 0 4px;font-size:14px">Hồ sơ vùng (12 mục)'+(u.checkedAt?' <span class="sub" style="font-weight:400">kiểm tra trên FarmBase '+fbDate(u.checkedAt.slice(0,10))+'</span>':'')+'</h3><div style="border:1px solid var(--line);border-radius:8px">'
+   +FB12S.map((l,i)=>'<div class="row between" style="padding:6px 10px;gap:8px;'+(i?'border-top:1px solid var(--line)':'')+'"><span>'+esc(FB12[i].replace(/^(Thiếu|Chưa chọn) /,"").replace(/^DN thiếu /,"Doanh nghiệp: ").replace(/^./,c=>c.toUpperCase()))+'</span>'+(fl[i]===1?fbBadge("Thiếu","err"):fl[i]===0?'<span style="color:var(--good)">✓</span>':fbBadge("Chưa kiểm tra",""))+'</div>').join("")+'</div>';
+  if(n.steps?.length) h+='<h3 style="margin:12px 0 4px;font-size:14px">Bước tiếp theo</h3><div style="border:1px solid var(--line);border-radius:8px">'+n.steps.slice().sort((a,b)=>(a.done-b.done)||(a.d||"9999").localeCompare(b.d||"9999")).map((x,i)=>'<div style="padding:6px 10px;'+(i?'border-top:1px solid var(--line)':'')+(x.done?';opacity:.6':'')+'"><div>'+(x.done?fbBadge("Xong","ok"):x.d&&x.d<fbToday()?fbBadge("Trễ","err"):'')+'<b>'+(x.d?fbDate(x.d):'Chưa có ngày')+'</b></div><div style="overflow-wrap:anywhere">'+esc(x.act||"")+'</div>'+(x.res?'<div class="sub" style="overflow-wrap:anywhere">Kết quả: '+esc(x.res)+'</div>':'')+'</div>').join("")+'</div>';
+  if(n.harvest||n.seasonEnd||n.note) h+='<h3 style="margin:12px 0 4px;font-size:14px">Ghi chú</h3><div class="sub">Thu hoạch: '+(n.harvest?fbDate(n.harvest):'–')+' · Kết thúc vụ: '+(n.seasonEnd?fbDate(n.seasonEnd):'–')+'</div>'+(n.note?'<div style="white-space:pre-wrap;overflow-wrap:anywhere;margin-top:4px">'+esc(n.note)+'</div>':'');
+  h+='<div class="sub" style="font-size:12px;margin-top:10px">App chỉ lưu số đếm. Tên nông hộ, từng lô thiếu gì xem trên báo cáo của extension. Đồng bộ '+fbWhen(u.syncedAt)+'.</div><div class="row" style="margin-top:8px"><button class="btn sm" data-fbn2="'+esc(id)+'">Sửa ghi chú, bước tiếp theo</button></div></div>';
+  showDrawer(h); $("#layer [data-fbn2]")?.addEventListener("click",()=>openFbNote(id)); }
 function fbTable(L){
   const cell=f=>f===1?'<span class="f1">Thiếu</span>':f===0?'<span class="f0">✓</span>':'<span class="fn">?</span>';
-  const head='<tr><th>#</th><th>Tên vùng trồng</th><th>Doanh nghiệp</th><th>Tỉnh / Xã</th><th>Trạng thái</th><th>Ngày KT</th><th>Thiếu</th><th>Nông hộ, lô</th><th>Thu hoạch</th><th>Kết thúc vụ</th><th>Ghi chú</th>'
+  const head='<tr><th>#</th><th>Tên vùng trồng</th><th>Doanh nghiệp</th><th>Tỉnh / Xã</th><th>Trạng thái</th><th>Thiếu</th><th>Hồ sơ giấy</th><th>Bước tiếp theo</th><th>Thu hoạch</th><th>Kết thúc vụ</th><th>Ghi chú</th>'
     +FB12S.map((l,i)=>'<th class="v" title="'+esc(FB12[i])+'">'+esc(l)+'</th>').join("")
     +FB_DP.map(([,l,sh])=>'<th class="v" title="'+esc(l)+'">'+esc(sh)+'</th>').join("")+'</tr>';
   const rows=L.map((u,i)=>{ const st=FB_STL[u.status]||[u.status||"?",""], d=u.deep, ok=d&&!d.error;
@@ -1083,9 +1129,9 @@ function fbTable(L){
     return '<tr><td class="sub">'+(i+1)+'</td><td class="nm"><b>'+esc(u.name||u.id)+'</b>'+(u.code?'<div class="sub" style="font-size:12px">'+esc(u.code)+'</div>':'')+'</td>'
      +'<td class="w">'+esc(u.vendor||"")+'</td><td>'+esc(u.province||"")+'<div class="sub" style="font-size:12px">'+esc(u.ward||"")+'</div></td>'
      +'<td><span class="pill '+st[1]+'" style="font-size:12px">'+esc(st[0])+'</span></td>'
-     +'<td>'+(u.checkedAt?dm(u.checkedAt.slice(0,10)):'<span class="fn">Chưa KT</span>')+'</td>'
-     +'<td class="c"><b'+(u.missing?' class="n2"':'')+'>'+(u.missing||0)+'</b></td>'
-     +'<td>'+(!d?'<span class="fn">Chưa kiểm tra</span>':d.error?'<span class="pill bad" style="font-size:12px">Lỗi đọc</span>':d.f+' hộ · '+d.p+' lô'+(dl.length?'':' <span class="f0">✓</span>')+(u.areaM2!=null?'<div class="sub" style="font-size:12px">'+fmtHa(u.areaM2/10000)+' ha</div>':''))+'</td>'
+     +'<td class="w" style="min-width:190px;max-width:280px">'+fbMissCell(u)+'</td>'
+     +'<td class="w" style="min-width:160px;max-width:240px">'+fbProgCell(u)+'</td>'
+     +'<td class="w" style="min-width:170px;max-width:260px"><button data-fbn="'+esc(u.id)+'" title="Nhập bước tiếp theo" style="border:0;padding:0;background:none;text-align:left;cursor:pointer;font:inherit;color:inherit;width:100%">'+fbStepCell(u)+'</button></td>'
      +(()=>{ const n=FBN[u.id]||{}; return '<td>'+(n.harvest?fbDate(n.harvest):'<span class="fn">–</span>')+'</td><td>'+(n.seasonEnd?fbDate(n.seasonEnd):'<span class="fn">–</span>')+'</td>'
        +'<td class="w" style="max-width:260px"><div style="display:flex;gap:6px;align-items:flex-start"><span style="flex:1;min-width:0;overflow-wrap:anywhere">'+(n.note?esc(n.note.length>90?n.note.slice(0,90)+"…":n.note):'<span class="fn">Chưa có</span>')+'</span><button class="btn sm" data-fbn="'+esc(u.id)+'" title="Nhập ghi chú, ngày thu hoạch, ngày kết thúc vụ">Sửa</button></div></td>'; })()
      +(u.flags||[]).map(f=>'<td class="c">'+cell(f)+'</td>').join("")
@@ -1094,16 +1140,16 @@ function fbTable(L){
 async function loadFbu(){ if(FBUL) return; FBUL=true;
   try{ const {data}=await SB.auth.getSession(); const res=await fetch(SB_URL+"/functions/v1/api/fb",{method:"POST",headers:{"Content-Type":"application/json",apikey:SB_KEY,Authorization:"Bearer "+(data.session?.access_token||"")},body:"{}"});
     const j=await res.json().catch(()=>null); if(!j||j.error){ FBUERR=String(j?.error||("Lỗi "+res.status)); FBU={units:[]}; } else { FBUERR=""; FBU=j; }
-    const {data:nr}=await SB.from("docs").select("id,data").eq("col","fbnote"); FBN={}; (nr||[]).forEach(r=>{ FBN[r.id]=r.data||{}; }); }
+    FBN=(j&&!j.error&&j.notes)||{}; }
   catch(e){ FBUERR="Không kết nối được máy chủ"; FBU={units:[]}; }
   FBUL=false; if(ui.view==="vung-fb") render(); }
 const fbDeepOk=u=>u.deep&&!u.deep.error&&!(u.deep.issues>0);
 function fbuList(){ const F=FBF, n=norm(F.q||"");
-  return (FBU?.units||[]).filter(u=>(!n||norm([u.name,u.code,u.vendor,u.ward,u.province,FBN[u.id]?.note].join(" ")).includes(n))
+  return (FBU?.units||[]).filter(u=>(!n||norm([u.name,u.code,u.vendor,u.ward,u.province,FBN[u.id]?.note,...Object.values(FBN[u.id]?.prog||{}),...(FBN[u.id]?.steps||[]).map(x=>x.act+" "+x.res)].join(" ")).includes(n))
     &&(!F.st||u.status===F.st)&&(!F.ven||u.vendor===F.ven)
     &&(!F.hs||(F.hs==="ok"?u.missing===0&&(u.flags||[]).every(x=>x===0):F.hs==="miss"?u.missing>0:!(u.flags||[]).length||(u.flags||[]).some(x=>x===-1)))
     &&(!F.dp||(F.dp==="ok"?fbDeepOk(u):F.dp==="miss"?u.deep&&!u.deep.error&&u.deep.issues>0:F.dp==="err"?u.deep?.error:!u.deep))
-    &&(!F.crit||(F.crit.startsWith("d:")?(u.deep?.[F.crit.slice(2)]||0)>0:(u.flags||[])[+F.crit]===1)))
+    &&(!F.crit||(F.crit==="s:1"?u.scan>0:F.crit==="s:0"?u.scan===0:F.crit.startsWith("d:")?(u.deep?.[F.crit.slice(2)]||0)>0:(u.flags||[])[+F.crit]===1)))
    .sort((a,b)=>((b.missing||0)+(b.deep?.issues||0))-((a.missing||0)+(a.deep?.issues||0))||String(a.name).localeCompare(String(b.name),"vi")); }
 function vFbUnits(){
   if(!canManage()) return '<div class="alert bad">Chỉ owner, quản lý xem trang này.</div>';
@@ -1120,6 +1166,7 @@ function vFbUnits(){
    +tile(U.length,"Vùng FarmBase","")+tile(cnt(u=>u.status==="ACTIVE"),"Đang hoạt động","")+tile(cnt(u=>u.status==="PENDING"),"Chờ duyệt","")+tile(cnt(u=>u.status==="INACTIVE"),"Đã ngừng","")
    +tile(cnt(u=>u.missing===0&&(u.flags||[]).every(x=>x===0)),"Đủ 12 mục hồ sơ","")+tile(cnt(fbDeepOk)+"/"+dk.length,"Đủ nông hộ, lô","")+tile(sum("f"),"Nông hộ","")+tile(sum("p"),"Lô","")
    +FB_DP.map(([k,l])=>tile(cnt(u=>(u.deep?.[k]||0)>0),l+" ("+sum(k)+")","d:"+k,true)).join("")
+   +tile(cnt(u=>u.scan>0),"Có file scan hồ sơ","s:1")+tile(cnt(u=>u.scan===0),"Chưa có file scan hồ sơ","s:0",true)
    +'</div><details style="margin-top:8px"'+(/^\d+$/.test(F.crit)?" open":"")+'><summary style="cursor:pointer" class="sub">Chi tiết 12 mục hồ sơ vùng</summary><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:6px">'
    +FB12.map((l,i)=>tile(cnt(u=>(u.flags||[])[i]===1),l,String(i),true)).join("")+'</div></details>';
   const vens=[...new Set(U.map(u=>u.vendor).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"vi"));
@@ -1131,12 +1178,12 @@ function vFbUnits(){
    +sel("fbuDp",[["","Nông hộ, lô: tất cả"],["miss","Nông hộ, lô còn thiếu"],["ok","Nông hộ, lô đủ"],["err","Lỗi đọc"],["none","Chưa kiểm tra"]],F.dp)
 +'</div>';
   const view=F.view||(innerWidth>=760?"tbl":"card");
-  h+='<div class="row between" style="gap:6px;flex-wrap:wrap;align-items:center;margin:8px 0"><div class="sub">'+L.length+' vùng'+(F.crit?' · đang lọc theo "'+esc(F.crit.startsWith("d:")?(FB_DP.find(x=>x[0]===F.crit.slice(2))||[])[1]:FB12[+F.crit])+'" <button class="btn sm" id="fbuNoCrit">Bỏ lọc</button>':'')+'</div><div class="row" style="gap:4px"><button class="btn sm'+(view==="tbl"?" pri":"")+'" data-fbv="tbl">Bảng</button><button class="btn sm'+(view==="card"?" pri":"")+'" data-fbv="card">Thẻ</button></div></div>';
+  h+='<div class="row between" style="gap:6px;flex-wrap:wrap;align-items:center;margin:8px 0"><div class="sub">'+L.length+' vùng'+(F.crit?' · đang lọc theo "'+esc(F.crit==="s:1"?"Có file scan hồ sơ":F.crit==="s:0"?"Chưa có file scan hồ sơ":F.crit.startsWith("d:")?(FB_DP.find(x=>x[0]===F.crit.slice(2))||[])[1]:FB12[+F.crit])+'" <button class="btn sm" id="fbuNoCrit">Bỏ lọc</button>':'')+'</div><div class="row" style="gap:4px"><button class="btn sm'+(view==="tbl"?" pri":"")+'" data-fbv="tbl">Bảng</button><button class="btn sm'+(view==="card"?" pri":"")+'" data-fbv="card">Thẻ</button></div></div>';
   if(view==="tbl"){ h+=fbTable(L.slice(0,F.n)); if(L.length>F.n) h+='<div class="row" style="margin-top:8px"><button class="btn" id="fbuMore">Xem thêm ('+(L.length-F.n)+' vùng)</button></div>'; return h; }
   h+='<div style="display:grid;gap:8px">'+L.slice(0,F.n).map(u=>{ const st=FB_STL[u.status]||[u.status||"?",""];
     const miss=(u.flags||[]).map((x,i)=>x===1?FB12[i]:"").filter(Boolean), d=u.deep;
     const dl=d&&!d.error?FB_DP.filter(([k])=>d[k]>0):[];
-    return '<div class="panel" style="padding:10px 12px;min-width:0"><div class="row between" style="gap:6px;align-items:flex-start;flex-wrap:nowrap"><div style="min-width:0;overflow-wrap:anywhere"><b>'+esc(u.name||u.id)+'</b><div class="sub">'+esc([u.code,u.vendor,u.ward,u.province].filter(Boolean).join(" · "))+'</div></div><span class="pill '+st[1]+'" style="white-space:nowrap">'+esc(st[0])+'</span></div>'
+    return '<div class="panel" style="padding:10px 12px;min-width:0"><div class="row between" style="gap:6px;align-items:flex-start;flex-wrap:nowrap"><div style="min-width:0;overflow-wrap:anywhere"><b>'+esc(u.name||u.id)+'</b><div class="sub">'+esc([u.code,u.vendor,u.ward,u.province].filter(Boolean).join(" · "))+'</div><button class="btn sm" data-fbd="'+esc(u.id)+'" style="margin-top:4px">Xem chi tiết</button></div><span class="pill '+st[1]+'" style="white-space:nowrap">'+esc(st[0])+'</span></div>'
      +'<div class="row" style="gap:4px 8px;flex-wrap:wrap;margin-top:6px;font-size:13px">'
      +'<span class="pill '+(miss.length?"warn":(u.flags||[]).some(x=>x===-1)?"":"good")+'">Hồ sơ '+(miss.length?"thiếu "+miss.length+"/12":(u.flags||[]).some(x=>x===-1)?"chưa kiểm tra đủ":"đủ 12 mục")+'</span>'
      +(d?(d.error?'<span class="pill bad">Lỗi đọc nông hộ, lô</span>':'<span class="pill '+(dl.length?"warn":"good")+'">'+d.f+' nông hộ · '+d.p+' lô'+(dl.length?'':' · đủ')+'</span>'):'<span class="pill">Chưa kiểm tra nông hộ, lô</span>')
@@ -1144,7 +1191,7 @@ function vFbUnits(){
      +(miss.length?'<div class="sub" style="margin-top:4px">Thiếu: '+esc(miss.join(", "))+'</div>':'')
      +(dl.length?'<div class="row" style="gap:4px;flex-wrap:wrap;margin-top:4px">'+dl.map(([k,,sh])=>'<span class="pill '+(k==="dup"||k==="pZero"?"bad":"warn")+'" style="font-size:12px">'+esc(sh)+' '+d[k]+'</span>').join("")+'</div>'+(d.dupPlots?.length?'<div class="sub" style="font-size:12px;margin-top:2px">Lô trùng thửa: '+esc(d.dupPlots.join(", "))+'</div>':''):'')
      +(()=>{ const n=FBN[u.id]||{}; return '<div style="margin-top:6px;padding:6px 8px;background:var(--chip);border-radius:8px;font-size:13px"><div class="row between" style="gap:6px;flex-wrap:nowrap;align-items:flex-start"><div style="min-width:0;overflow-wrap:anywhere">'
-       +'<span class="sub">Thu hoạch:</span> '+(n.harvest?fbDate(n.harvest):'–')+' · <span class="sub">Kết thúc vụ:</span> '+(n.seasonEnd?fbDate(n.seasonEnd):'–')+(n.note?'<div style="margin-top:2px">'+esc(n.note)+'</div>':'')+'</div><button class="btn sm" data-fbn="'+esc(u.id)+'">Sửa</button></div></div>'; })()
+       +'<span class="sub">Thu hoạch:</span> '+(n.harvest?fbDate(n.harvest):'–')+' · <span class="sub">Kết thúc vụ:</span> '+(n.seasonEnd?fbDate(n.seasonEnd):'–')+(n.note?'<div style="margin-top:2px">'+esc(n.note)+'</div>':'')+(n.steps?.length?'<div style="margin-top:4px"><span class="sub">Bước tiếp theo:</span> '+fbStepCell(u)+'</div>':'')+'</div><button class="btn sm" data-fbn="'+esc(u.id)+'">Sửa</button></div></div>'; })()
      +'<div class="sub" style="font-size:12px;margin-top:4px">Đồng bộ '+fbWhen(u.syncedAt)+(u.checkedAt?' · KT hồ sơ '+dm(u.checkedAt.slice(0,10)):'')+'</div></div>'; }).join("")+'</div>';
   if(L.length>F.n) h+='<div class="row" style="margin-top:8px"><button class="btn" id="fbuMore">Xem thêm ('+(L.length-F.n)+' vùng)</button></div>';
   return h; }
@@ -1156,9 +1203,10 @@ function bindFbUnits(A){
   $("#fbuNoCrit")?.addEventListener("click",()=>{ FBF.crit=""; render(); });
   $("#fbuMore")?.addEventListener("click",()=>{ FBF.n+=100; render(); });
   A.querySelectorAll("[data-fbn]").forEach(b=>b.addEventListener("click",()=>openFbNote(b.dataset.fbn)));
+  A.querySelectorAll("[data-fbd]").forEach(b=>b.addEventListener("click",()=>openFbDetail(b.dataset.fbd)));
   A.querySelectorAll("[data-fbv]").forEach(b=>b.addEventListener("click",()=>{ FBF.view=b.dataset.fbv; render(); }));
   $("#fbuCsv")?.addEventListener("click",()=>{ const L=fbuList(), q=v=>'"'+String(v??"").replace(/"/g,'""')+'"';
-    const head=["Tên vùng","Mã","Trạng thái","Tổ chức","Xã","Tỉnh","Diện tích (ha)","Số mục hồ sơ thiếu",...FB12,"Số nông hộ","Số lô",...FB_DP.map(x=>x[1]),"Lô trùng thửa","Ngày thu hoạch","Ngày kết thúc vụ","Ghi chú","Đồng bộ lúc"];
-    const rows=L.map(u=>[u.name,u.code,(FB_STL[u.status]||[u.status])[0],u.vendor,u.ward,u.province,u.areaM2!=null?(u.areaM2/10000).toFixed(2):"",u.missing,...(u.flags||[]).map(x=>x===1?"Thiếu":x===0?"Đủ":"Chưa kiểm tra"),u.deep?.f??"",u.deep?.p??"",...FB_DP.map(([k])=>u.deep?.error?"Lỗi":u.deep?.[k]??""),(u.deep?.dupPlots||[]).join(" "),FBN[u.id]?.harvest||"",FBN[u.id]?.seasonEnd||"",FBN[u.id]?.note||"",u.syncedAt]);
+    const head=["Tên vùng","Mã","Trạng thái","Tổ chức","Xã","Tỉnh","Diện tích (ha)","Số mục hồ sơ thiếu",...FB12,"Số nông hộ","Số lô",...FB_DP.map(x=>x[1]),"Lô trùng thửa","File scan hồ sơ","Ưu tiên (tiến độ)","Giai đoạn hiện tại","CCCD, sổ đỏ","Hồ sơ giấy","Ghi chú tiến độ","Ngày thu hoạch","Ngày kết thúc vụ","Ghi chú","Bước tiếp theo","Đồng bộ lúc"];
+    const rows=L.map(u=>[u.name,u.code,(FB_STL[u.status]||[u.status])[0],u.vendor,u.ward,u.province,u.areaM2!=null?(u.areaM2/10000).toFixed(2):"",u.missing,...(u.flags||[]).map(x=>x===1?"Thiếu":x===0?"Đủ":"Chưa kiểm tra"),u.deep?.f??"",u.deep?.p??"",...FB_DP.map(([k])=>u.deep?.error?"Lỗi":u.deep?.[k]??""),(u.deep?.dupPlots||[]).join(" "),u.scan==null?"":u.scan===-1?"Lỗi":u.scan,...["pri","stage","cccd","hs","note"].map(k=>FBN[u.id]?.prog?.[k]||""),FBN[u.id]?.harvest||"",FBN[u.id]?.seasonEnd||"",FBN[u.id]?.note||"",(()=>{ const x=fbNextStep(FBN[u.id]); return x?[fbDate(x.d),x.act,x.res].filter(Boolean).join(" · "):""; })(),u.syncedAt]);
     const blob=new Blob(["﻿"+[head,...rows].map(r=>r.map(q).join(",")).join("\r\n")],{type:"text/csv;charset=utf-8"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="vung-farmbase_"+todayStr()+".csv"; a.click(); });
 }
