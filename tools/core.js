@@ -1145,6 +1145,33 @@ function fbuList(){ const F=FBF, n=norm(F.q||"");
     &&(!F.dp||(F.dp==="ok"?fbDeepOk(u):F.dp==="miss"?u.deep&&!u.deep.error&&u.deep.issues>0:F.dp==="err"?u.deep?.error:!u.deep))
     &&(!F.crit||(F.crit==="s:1"?u.scan>0:F.crit==="s:0"?u.scan===0:F.crit.startsWith("d:")?(u.deep?.[F.crit.slice(2)]||0)>0:(u.flags||[])[+F.crit]===1)))
    .sort((a,b)=>((b.missing||0)+(b.deep?.issues||0))-((a.missing||0)+(a.deep?.issues||0))||String(a.name).localeCompare(String(b.name),"vi")); }
+// Lịch bước tiếp theo: các bước của những vùng đang lọc, theo tháng
+function fbCal(L){
+  const td=fbToday(), mon=FBF.mon||td.slice(0,7), [y,m]=mon.split("-").map(Number);
+  const items=[]; L.forEach(u=>(FBN[u.id]?.steps||[]).forEach(x=>items.push({u,x})));
+  const nm=u=>(u.name||u.id).replace(/^v[uù]ng\s+tr[oồ]ng\s+(s[aầ]u\s+ri[eê]ng\s+)?/i,"");
+  const it=(o,full)=>{ const late=!o.x.done&&o.x.d&&o.x.d<td, k=o.x.done?"ok":late?"err":"";
+    return '<button data-fbn="'+esc(o.u.id)+'" title="'+esc(nm(o.u)+": "+(o.x.act||"")+(o.x.res?" → "+o.x.res:""))+'" style="display:block;width:100%;text-align:left;border:0;border-radius:6px;padding:3px 6px;margin-top:3px;cursor:pointer;font:inherit;font-size:12px;line-height:1.35;'
+      +(k==="ok"?'background:#dcfce7;color:#15803d;text-decoration:line-through':k==="err"?'background:#fee2e2;color:#b91c1c':'background:var(--chip);color:inherit')+'"><b>'+esc(full?nm(o.u):(nm(o.u).length>22?nm(o.u).slice(0,22)+"…":nm(o.u)))+'</b> '+esc(full?(o.x.act||""):((o.x.act||"").length>40?o.x.act.slice(0,40)+"…":o.x.act||""))
+      +(full&&o.x.res?'<div style="opacity:.8">→ '+esc(o.x.res)+'</div>':'')+'</button>'; };
+  const late=items.filter(o=>!o.x.done&&o.x.d&&o.x.d<td).sort((a,b)=>a.x.d.localeCompare(b.x.d)), nod=items.filter(o=>!o.x.d&&!o.x.done);
+  let h='';
+  if(!items.length) return h+'<div class="alert">Chưa có vùng nào có bước tiếp theo. Bấm Sửa ở một vùng để thêm bước (ngày, làm gì, kết quả).</div>';
+  if(late.length) h+='<details class="panel" style="padding:8px 10px;margin-bottom:8px" open><summary style="cursor:pointer;color:var(--bad);font-weight:600">Trễ hạn, chưa xong ('+late.length+')</summary>'+late.map(o=>'<div style="display:flex;gap:6px;align-items:flex-start"><span class="sub" style="font-size:12px;min-width:44px;padding-top:5px">'+fbDate(o.x.d).slice(0,5)+'</span><div style="flex:1;min-width:0">'+it(o,true)+'</div></div>').join("")+'</details>';
+  if(nod.length) h+='<details class="panel" style="padding:8px 10px;margin-bottom:8px"><summary style="cursor:pointer;font-weight:600">Chưa có ngày ('+nod.length+')</summary>'+nod.map(o=>it(o,true)).join("")+'</details>';
+  h+='<div class="row between" style="gap:6px;margin:6px 0;flex-wrap:nowrap"><div class="row" style="gap:4px"><button class="btn sm" data-fbm="-1">‹</button><b style="min-width:110px;text-align:center">Tháng '+m+'/'+y+'</b><button class="btn sm" data-fbm="1">›</button></div><button class="btn sm" data-fbm="0">Hôm nay</button></div>';
+  const days=new Date(Date.UTC(y,m,0)).getUTCDate(), ds=d=>mon+"-"+String(d).padStart(2,"0"), by={};
+  items.forEach(o=>{ if(o.x.d&&o.x.d.startsWith(mon)) (by[o.x.d]=by[o.x.d]||[]).push(o); });
+  const WD=["CN","T2","T3","T4","T5","T6","T7"];
+  if(innerWidth<760){ const ks=Object.keys(by).sort();
+    h+=ks.length?ks.map(k=>'<div class="panel" style="padding:8px 10px;margin-top:6px'+(k===td?';border-color:var(--brand)':'')+'"><div style="font-weight:600">'+WD[new Date(k+"T00:00:00Z").getUTCDay()]+' '+fbDate(k).slice(0,5)+(k===td?' <span class="sub">· hôm nay</span>':'')+'</div>'+by[k].map(o=>it(o,true)).join("")+'</div>').join(""):'<div class="sub" style="margin-top:6px">Tháng này chưa có bước nào.</div>';
+    return h; }
+  const first=(new Date(Date.UTC(y,m-1,1)).getUTCDay()+6)%7; // tuần bắt đầu thứ Hai
+  let g='<div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px">'+["T2","T3","T4","T5","T6","T7","CN"].map(w=>'<div class="sub" style="font-size:12px;text-align:center">'+w+'</div>').join("");
+  for(let i=0;i<first;i++) g+='<div></div>';
+  for(let d=1;d<=days;d++){ const k=ds(d), L2=by[k]||[];
+    g+='<div style="min-height:92px;border:1px solid '+(k===td?'var(--brand)':'var(--line)')+';border-radius:8px;padding:4px;background:var(--surface);min-width:0"><div style="font-size:12px;'+(k===td?'color:var(--brand);font-weight:700':'color:var(--muted)')+'">'+d+'</div>'+L2.slice(0,4).map(o=>it(o,false)).join("")+(L2.length>4?'<div class="sub" style="font-size:11px;margin-top:2px">+'+(L2.length-4)+' bước</div>':'')+'</div>'; }
+  return h+g+'</div>'; }
 function vFbUnits(){
   if(!canManage()) return '<div class="alert bad">Chỉ owner, quản lý xem trang này.</div>';
   if(FBU===null){ loadFbu(); return '<div class="empty">Đang tải vùng FarmBase…</div>'; }
@@ -1172,7 +1199,8 @@ function vFbUnits(){
    +sel("fbuDp",[["","Nông hộ, lô: tất cả"],["miss","Nông hộ, lô còn thiếu"],["ok","Nông hộ, lô đủ"],["err","Lỗi đọc"],["none","Chưa kiểm tra"]],F.dp)
 +'</div>';
   const view=F.view||(innerWidth>=760?"tbl":"card");
-  h+='<div class="row between" style="gap:6px;flex-wrap:wrap;align-items:center;margin:8px 0"><div class="sub">'+L.length+' vùng'+(F.crit?' · đang lọc theo "'+esc(F.crit==="s:1"?"Có file scan hồ sơ":F.crit==="s:0"?"Chưa có file scan hồ sơ":F.crit.startsWith("d:")?(FB_DP.find(x=>x[0]===F.crit.slice(2))||[])[1]:FB12[+F.crit])+'" <button class="btn sm" id="fbuNoCrit">Bỏ lọc</button>':'')+'</div><div class="row" style="gap:4px"><button class="btn sm'+(view==="tbl"?" pri":"")+'" data-fbv="tbl">Bảng</button><button class="btn sm'+(view==="card"?" pri":"")+'" data-fbv="card">Thẻ</button></div></div>';
+  h+='<div class="row between" style="gap:6px;flex-wrap:wrap;align-items:center;margin:8px 0"><div class="sub">'+L.length+' vùng'+(F.crit?' · đang lọc theo "'+esc(F.crit==="s:1"?"Có file scan hồ sơ":F.crit==="s:0"?"Chưa có file scan hồ sơ":F.crit.startsWith("d:")?(FB_DP.find(x=>x[0]===F.crit.slice(2))||[])[1]:FB12[+F.crit])+'" <button class="btn sm" id="fbuNoCrit">Bỏ lọc</button>':'')+'</div><div class="row" style="gap:4px"><button class="btn sm'+(view==="tbl"?" pri":"")+'" data-fbv="tbl">Bảng</button><button class="btn sm'+(view==="card"?" pri":"")+'" data-fbv="card">Thẻ</button><button class="btn sm'+(view==="cal"?" pri":"")+'" data-fbv="cal">Lịch</button></div></div>';
+  if(view==="cal") return h+fbCal(L);
   if(view==="tbl"){ h+=fbTable(L.slice(0,F.n)); if(L.length>F.n) h+='<div class="row" style="margin-top:8px"><button class="btn" id="fbuMore">Xem thêm ('+(L.length-F.n)+' vùng)</button></div>'; return h; }
   h+='<div style="display:grid;gap:8px">'+L.slice(0,F.n).map(u=>{ const st=FB_STL[u.status]||[u.status||"?",""];
     const miss=(u.flags||[]).map((x,i)=>x===1?FB12[i]:"").filter(Boolean), d=u.deep;
@@ -1200,6 +1228,7 @@ function bindFbUnits(A){
   A.querySelectorAll("[data-fbn]").forEach(b=>b.addEventListener("click",()=>openFbNote(b.dataset.fbn)));
   A.querySelectorAll("[data-fbd]").forEach(b=>b.addEventListener("click",()=>openFbDetail(b.dataset.fbd)));
   A.querySelectorAll("[data-fbv]").forEach(b=>b.addEventListener("click",()=>{ FBF.view=b.dataset.fbv; render(); }));
+  A.querySelectorAll("[data-fbm]").forEach(b=>b.addEventListener("click",()=>{ const k=+b.dataset.fbm; if(!k){ FBF.mon=""; } else { const [y,m]=(FBF.mon||fbToday().slice(0,7)).split("-").map(Number), d=new Date(Date.UTC(y,m-1+k,1)); FBF.mon=d.toISOString().slice(0,7); } render(); }));
   $("#fbuCsv")?.addEventListener("click",()=>{ const L=fbuList(), q=v=>'"'+String(v??"").replace(/"/g,'""')+'"';
     const head=["Tên vùng","Mã","Trạng thái","Tổ chức","Xã","Tỉnh","Diện tích (ha)","Số mục hồ sơ thiếu",...FB12,"Số nông hộ","Số lô",...FB_DP.map(x=>x[1]),"Lô trùng thửa","File scan hồ sơ","Ngày thu hoạch","Ngày kết thúc vụ","Ghi chú","Bước tiếp theo","Đồng bộ lúc"];
     const rows=L.map(u=>[u.name,u.code,(FB_STL[u.status]||[u.status])[0],u.vendor,u.ward,u.province,u.areaM2!=null?(u.areaM2/10000).toFixed(2):"",u.missing,...(u.flags||[]).map(x=>x===1?"Thiếu":x===0?"Đủ":"Chưa kiểm tra"),u.deep?.f??"",u.deep?.p??"",...FB_DP.map(([k])=>u.deep?.error?"Lỗi":u.deep?.[k]??""),(u.deep?.dupPlots||[]).join(" "),u.scan==null?"":u.scan===-1?"Lỗi":u.scan,FBN[u.id]?.harvest||"",FBN[u.id]?.seasonEnd||"",FBN[u.id]?.note||"",(()=>{ const x=fbNextStep(FBN[u.id]); return x?[fbDate(x.d),x.act,x.res].filter(Boolean).join(" · "):""; })(),u.syncedAt]);
