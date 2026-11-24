@@ -81,7 +81,11 @@ const FB = (() => {
         const payload = { ranAt: data.ranAt, criteria: LABELS, rows: part.map(r => ({ id: r.id, code: r.code, name: r.name, status: r.status, crop: r.crop, province: r.province, ward: r.ward, vendor: r.vendor, vendorId: r.vendorId,
           farmerCount: r.farmerCount, plotCount: r.plotCount, areaM2: r.areaM2, checkedAt: r.checkedAt, flags: r.flags,
           scan: r.scan ? (r.scan.error ? -1 : r.scan.n) : null,
-          deep: r.deep?.sum ? { ...r.deep.sum, dupPlots: r.deep.dups.flatMap(d => d.plots).slice(0, 30) } : r.deep?.error ? { error: true } : null })) };
+          deep: r.deep?.sum ? { ...r.deep.sum, dupPlots: r.deep.dups.flatMap(d => d.plots).slice(0, 30),
+            // chi tiết để owner, quản lý biết ai thiếu, lô nào: tên nông hộ, mã lô và cờ thiếu; không gửi số CCCD, số tờ, số thửa
+            farmers: (r.deep.farmers || []).slice(0, 300).map(f => ({ n: f.name, i: f.noId ? 1 : 0, f: f.noFront ? 1 : 0, b: f.noBack ? 1 : 0 })),
+            plots: (r.deep.plots || []).slice(0, 300).map(p => ({ c: p.code, o: p.farmer, img: p.noImg ? 1 : 0, pg: p.noPage ? 1 : 0, pl: p.noPlot ? 1 : 0, t: p.noTrees ? 1 : 0, a: p.noArea ? 1 : 0, z: p.zero ? 1 : 0, d: p.dup ? 1 : 0, trees: p.trees, area: p.area })),
+            dupG: (r.deep.dups || []).slice(0, 50).map(d => d.plots.slice(0, 20)) } : r.deep?.error ? { error: true } : null })) };
         const res = await fetch(URL_SYNC, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-API-Key': bvi.key }, body: JSON.stringify(payload) });
         let j = null; try { j = await res.json(); } catch {}
         if (!res.ok || !j?.ok) {
