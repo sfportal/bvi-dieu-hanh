@@ -200,7 +200,7 @@ async function handleFbView(req: Request) {
 
 // ---- trang "Mục tiêu công ty": chỉ owner và quản lý được owner cấp quyền xem; quản lý ghi nhận, phân công ----
 // Lưu ở app_secrets (không có policy, chỉ service role đọc) nên nhân viên, chỉ xem, API đối tác không bao giờ đọc được.
-// goals:data = { items: [{ id, title, detail, period, due, kpi, prio, status, to[], acks{uid:{at,name,note}}, createdAt, updatedAt }] }
+// goals:data = { items: [{ id, title, detail, period, due, kpi, prio, status, to[], acks{uid:{at,name,note}}, checks[{id,t,st,by,at,doneBy,doneAt}], createdAt, updatedAt }] }
 // goals:access = { users: [uid quản lý được xem] }
 const GOALS = "goals:data";
 const GOALS_ACC = "goals:access";
@@ -241,6 +241,24 @@ async function handleGoals(req: Request) {
     g.acks = g.acks && typeof g.acks === "object" ? g.acks : {};
     g.acks[me.id] = { at: new Date().toISOString(), name: me.name || me.email, note: txt(body.note, 2000) };
     await save(); await log("goal_ack", "ghi nhận mục tiêu", g.id);
+    return json({ ok: true, goal: g });
+  }
+  if (act === "check") {
+    // checklist việc của mục tiêu (owner, quản lý được xem): thêm, xong, hủy, mở lại, xóa
+    const g = items.find((x) => x.id === body.id); if (!g) return json({ error: "Không thấy mục tiêu" }, 404);
+    g.checks = Array.isArray(g.checks) ? g.checks : [];
+    const now = new Date().toISOString(), nm = me.name || me.email;
+    if (body.op === "add") {
+      const t = txt(body.text, 300); if (!t) return json({ error: "Nhập nội dung việc" }, 400);
+      if (g.checks.length >= 200) return json({ error: "Tối đa 200 việc mỗi mục tiêu" }, 400);
+      g.checks.push({ id: "c" + crypto.randomUUID().replace(/-/g, "").slice(0, 10), t, st: "open", by: nm, at: now });
+    } else {
+      const c = g.checks.find((x: any) => x.id === body.item); if (!c) return json({ error: "Không thấy việc" }, 404);
+      if (body.op === "del") g.checks = g.checks.filter((x: any) => x !== c);
+      else if (["open", "done", "cancel"].includes(body.st)) { c.st = body.st; c.doneBy = body.st === "open" ? "" : nm; c.doneAt = body.st === "open" ? "" : now; }
+      else return json({ error: "unknown_action" }, 400);
+    }
+    await save(); await log("goal_check", "cập nhật checklist mục tiêu", g.id);
     return json({ ok: true, goal: g });
   }
   if (!owner) return json({ error: "Chỉ owner sửa mục tiêu" }, 403);

@@ -1723,7 +1723,7 @@ function vGoals(){
   const cnt=k=>all.filter(g=>(g.status||"open")===k).length;
   const L=all.filter(g=>GF.st==="all"||(g.status||"open")===GF.st).slice().sort((a,b)=>["high","mid","low"].indexOf(a.prio||"mid")-["high","mid","low"].indexOf(b.prio||"mid")||(a.due||"9999").localeCompare(b.due||"9999"));
   const need=all.filter(g=>(g.status||"open")==="open"&&gTargets(g).some(p=>p.id===meId)&&!(g.acks||{})[meId]).length;
-  let h='<div class="row between" style="flex-wrap:wrap;gap:8px"><div style="min-width:0"><h1>Mục tiêu công ty</h1><div class="sub">Chỉ owner và quản lý được cấp quyền thấy trang này. '+(own?'Quản lý ghi nhận mục tiêu, rồi sắp xếp, giao việc cho đội.':'Đọc mục tiêu, bấm Ghi nhận kèm cách phân công, rồi giao việc.')+'</div></div>'
+  let h='<div class="row between" style="flex-wrap:wrap;gap:8px"><div style="min-width:0"><h1>Mục tiêu công ty</h1><div class="sub">Chỉ owner và quản lý được cấp quyền thấy trang này. '+(own?'Quản lý ghi nhận mục tiêu, rồi chia việc thành checklist: thêm, tick xong hoặc hủy.':'Đọc mục tiêu, bấm Ghi nhận kèm cách phân công, rồi thêm việc vào checklist.')+'</div></div>'
    +(own?'<div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn" id="gAcc">Người được xem</button><button class="btn pri" id="gAdd">Thêm mục tiêu</button></div>':'')+'</div>';
   if(need) h+='<div class="alert" style="margin-top:10px">Bạn có <b>'+need+'</b> mục tiêu chưa ghi nhận.</div>';
   if(own&&!(GOAL.managers||[]).length) h+='<div class="alert" style="margin-top:10px">Chưa có quản lý nào được xem. Bấm "Người được xem" để cấp quyền.</div>';
@@ -1740,13 +1740,21 @@ function vGoals(){
      +'<div style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px"><div class="sub" style="font-size:12px;margin-bottom:4px">Quản lý ghi nhận'+((g.to||[]).length?'':' (mọi quản lý được xem)')+'</div>'
      +(T.length?T.map(p=>{ const a=A[p.id]; return '<div style="margin-top:4px;overflow-wrap:anywhere">'+(a?'<span class="pill good">Đã ghi nhận</span>':'<span class="pill warn">Chưa ghi nhận</span>')+' <b>'+esc(p.name)+'</b>'+(a?' <span class="sub" style="font-size:12px">'+gWhen(a.at)+'</span>'+(a.note?'<div class="sub" style="white-space:pre-wrap;margin:2px 0 0 4px">'+esc(a.note)+'</div>':''):'')+'</div>'; }).join(""):'<div class="sub">Chưa có quản lý nào.</div>')
      +'</div>'
-     +'<div style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px"><div class="sub" style="font-size:12px;margin-bottom:4px">Công việc đã giao: '+TK.length+(TK.length?', xong '+done:'')+'</div>'
+     +gChecks(g)
+     +(TK.length?'<div style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px"><div class="sub" style="font-size:12px;margin-bottom:4px">Công việc đã giao: '+TK.length+', xong '+done+'</div>'
      +TK.slice(0,8).map(([k,t])=>'<div style="margin-top:3px;overflow-wrap:anywhere;cursor:pointer" data-gtask="'+esc(k)+'"><span class="pill'+(t.status==="done"?' good':t.due&&t.due<gToday()?' bad':'')+'">'+esc(TSTAT[t.status]||t.status||"")+'</span> '+esc(t.title||"")+(t.A?' <span class="sub" style="font-size:12px">· '+esc(pname(t.A)||"")+'</span>':'')+(t.due?' <span class="sub" style="font-size:12px">· '+gDate(t.due)+'</span>':'')+'</div>').join("")
-     +(TK.length>8?'<div class="sub" style="font-size:12px">+'+(TK.length-8)+' việc nữa</div>':'')+'</div>'
+     +(TK.length>8?'<div class="sub" style="font-size:12px">+'+(TK.length-8)+' việc nữa</div>':'')+'</div>':'')
      +'<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:10px">'+(!own||mine?'<button class="btn sm'+(myAck?'':' pri')+'" data-gack="'+esc(g.id)+'">'+(myAck?'Sửa ghi nhận':'Ghi nhận, phân công')+'</button>':'')
-     +(PROFILE.role!=="viewer"?'<button class="btn sm" data-gtnew="'+esc(g.id)+'">+ Giao việc</button>':'')+'</div></div>'; });
+     +'</div></div>'; });
   return h+'</div>';
 }
+function gChecks(g){ const C=g.checks||[], dn=C.filter(c=>c.st==="done").length, live=C.filter(c=>c.st!=="cancel").length, k=esc(g.id);
+  return '<div style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px"><div class="sub" style="font-size:12px;margin-bottom:4px">Checklist việc'+(C.length?': xong '+dn+'/'+live:'')+'</div>'
+   +C.map(c=>{ const v=k+'|'+esc(c.id); return '<div class="row" style="gap:8px;flex-wrap:nowrap;align-items:flex-start;margin-top:4px">'
+     +(c.st==="cancel"?'<span class="pill" style="flex:none">Đã hủy</span>':'<input type="checkbox" data-gcst="'+v+'|done"'+(c.st==="done"?' checked':'')+' style="flex:none;width:18px;height:18px;margin-top:2px" aria-label="Xong">')
+     +'<div style="flex:1;min-width:0;overflow-wrap:anywhere'+(c.st!=="open"?';text-decoration:line-through;color:var(--muted)':'')+'">'+esc(c.t)+(c.st!=="open"&&c.doneBy?' <span class="sub" style="font-size:11px;text-decoration:none;display:inline-block">· '+esc(c.doneBy)+(c.doneAt?' '+gWhen(c.doneAt):'')+'</span>':'')+'</div>'
+     +(c.st==="open"?'<button class="btn sm" style="flex:none" data-gcst="'+v+'|cancel">Hủy</button>':c.st==="cancel"?'<button class="btn sm" style="flex:none" data-gcst="'+v+'|open">Mở lại</button><button class="btn sm" style="flex:none" data-gcdel="'+v+'">Xóa</button>':'')+'</div>'; }).join("")
+   +'<div class="row" style="gap:6px;flex-wrap:nowrap;margin-top:6px"><input data-gcin="'+k+'" maxlength="300" placeholder="Thêm việc cần làm…" style="flex:1;min-width:0;border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--surface);font:inherit"><button class="btn sm" style="flex:none" data-gcadd="'+k+'">Thêm</button></div></div>'; }
 function bindGoals(A){
   A.querySelectorAll("[data-gst]").forEach(b=>b.addEventListener("click",()=>{ GF.st=b.dataset.gst; render(); }));
   $("#gAdd")?.addEventListener("click",()=>openGoal(null));
@@ -1756,6 +1764,14 @@ function bindGoals(A){
   A.querySelectorAll("[data-gtask]").forEach(b=>b.addEventListener("click",()=>openTask(b.dataset.gtask)));
   // việc mới chỉ mang mã mục tiêu; tên việc do quản lý tự đặt
   A.querySelectorAll("[data-gtnew]").forEach(b=>b.addEventListener("click",()=>openTask(null,{kind:"task",goal:b.dataset.gtnew})));
+  // checklist: thêm việc, tick xong, hủy, mở lại, xóa
+  const gck=async(body,focus)=>{ const r=await goalPost({action:"check",...body}).catch(()=>({error:"Không kết nối được máy chủ"})); if(r.error){ toast(r.error); return; }
+    const I=GOAL.items, i=I.findIndex(x=>x.id===body.id); if(i>=0) I[i]=r.goal; render(); if(focus) document.querySelector('[data-gcin="'+CSS.escape(body.id)+'"]')?.focus(); };
+  A.querySelectorAll("[data-gcadd]").forEach(b=>{ const id=b.dataset.gcadd, inp=A.querySelector('[data-gcin="'+CSS.escape(id)+'"]');
+    const go=()=>{ const t=inp.value.trim(); if(!t){ inp.focus(); return; } b.disabled=true; gck({id,op:"add",text:t},true); };
+    b.addEventListener("click",go); inp.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); go(); } }); });
+  A.querySelectorAll("[data-gcst]").forEach(el=>el.addEventListener(el.tagName==="INPUT"?"change":"click",()=>{ const [id,item,st]=el.dataset.gcst.split("|"); el.disabled=true; gck({id,op:"set",item,st:el.tagName==="INPUT"?(el.checked?"done":"open"):st}); }));
+  A.querySelectorAll("[data-gcdel]").forEach(el=>el.addEventListener("click",()=>{ const [id,item]=el.dataset.gcdel.split("|"); if(el.dataset.c!=="1"){ el.dataset.c="1"; el.textContent="Xóa hẳn?"; return; } el.disabled=true; gck({id,op:"del",item}); }));
 }
 const G_IN='width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--surface);font:inherit';
 function openGoal(id){ const g=id?(GOAL.items||[]).find(x=>x.id===id):null; const M=GOAL.managers||[], to=g?.to||[];
@@ -1782,7 +1798,7 @@ function openGoalAck(id){ const g=(GOAL.items||[]).find(x=>x.id===id); if(!g) re
   showDrawer('<div class="dh"><div style="min-width:0"><h2 style="overflow-wrap:anywhere">'+esc(g.title)+'</h2><div class="sub">Ghi nhận mục tiêu</div></div><button class="btn sm" data-close>Đóng</button></div><div class="db">'
    +(g.kpi?'<div><b>Chỉ tiêu:</b> <span style="white-space:pre-wrap">'+esc(g.kpi)+'</span></div>':'')
    +'<label style="display:block;margin-top:8px">Cách sắp xếp, phân công<textarea id="gaN" rows="7" maxlength="2000" style="'+G_IN+'" placeholder="Ai phụ trách phần nào, mốc thời gian, cần thêm gì">'+esc(a?.note||"")+'</textarea></label>'
-   +'<div class="sub" style="font-size:12px;margin-top:4px">Sau khi ghi nhận, bấm "+ Giao việc" ở mục tiêu để tạo việc cho từng người.</div>'
+   +'<div class="sub" style="font-size:12px;margin-top:4px">Sau khi ghi nhận, thêm các việc cần làm vào checklist của mục tiêu.</div>'
    +'<div class="row" style="gap:6px;margin-top:8px"><button class="btn pri" id="gaS">'+(a?"Lưu":"Ghi nhận")+'</button><span class="sub" id="gaM"></span></div></div>');
   $("#gaS").addEventListener("click",async()=>{ $("#gaS").disabled=true; $("#gaM").textContent="Đang lưu…";
     const r=await goalPost({action:"ack",id,note:$("#gaN").value.trim()}).catch(()=>({error:"Không kết nối được máy chủ"}));
