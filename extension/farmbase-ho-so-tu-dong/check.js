@@ -114,46 +114,26 @@
 
   // file scan hồ sơ đã ký: tên chứa "scan_hoso" (không phân biệt hoa thường, dấu cách, gạch ngang)
   const isScan = n => String(n || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[\s\-.]+/g, '_').includes('scan_hoso');
-  // nhóm ảnh trong thư viện vùng → mục hồ sơ (theo thứ tự CRITERIA 4..8)
-  const nk = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase().replace(/[^a-z0-9]+/g, '_');
-  const CAT = [/growing_area|vung_trong|bang_ten|bang_thong_tin|signboard/, /flycam|fly_cam|drone/, /pesticide|kho_thuoc|kho_phan|storage/, /harvest|thu_hoach/, /insect|trap|bay_con_trung|con_trung/];
-  // Đọc thư viện vùng từng phần nhỏ: một trường lỗi (vd. file thiếu tên) không làm hỏng cả thư viện
-  const PU = b => `query ($id: ID!) { productionUnit(id: $id) { id medias { id ${b} } } }`;
-  const QL = [
-    ['full', PU('content tags { name } medias { id fileName createdAt }')],
-    ['count', PU('medias { id }')],
-    ['group', PU('content')],
-    ['tag', PU('tags { name }')],
-    ['file', PU('medias { id fileName }')],
-  ];
+  // Thư viện vùng = một media set của vùng: medias (mọi file) + tags [{ name, mediaIds }].
+  // name là mã nhóm (FarmBase giữ danh sách này ở frontend); file không thuộc nhóm nào là "Khác".
+  const CAT_KEYS = ['GROWING_AREA', 'FLYCAM', 'PESTICIDE_STORAGE', 'HARVEST_PROCESS', 'INSECT_TRAP']; // theo thứ tự CRITERIA 4..8
+  const CAT_VI = { GROWING_AREA: 'Vùng trồng', HARVEST_PROCESS: 'Quy trình thu hoạch', FLYCAM: 'Flycam', INSECT_TRAP: 'Bẫy côn trùng', PESTICIDE_STORAGE: 'Kho thuốc' };
+  const QM = `query ($id: ID!) { productionUnit(id: $id) { id medias { id tags { name mediaIds } medias { id fileName createdAt } } } }`;
   async function scanOf(id) {
-    const errs = [], got = {};
-    const run = async ([k, q]) => {
-      try { const d = await gql(q, { id }, true); if (d.__warn) errs.push(k + ': ' + d.__warn); got[k] = (d.productionUnit?.medias || []).filter(Boolean); if (!d.productionUnit) errs.push(k + ': không có dữ liệu'); }
-      catch (e) { if (String(e.message).startsWith('AUTH:')) throw e; errs.push(k + ': ' + String(e.message || e).slice(0, 160)); }
-    };
-    await run(QL[0]);
-    if (!got.full) for (const x of QL.slice(1)) await run(x);
-    const base = got.full || got.count || got.group || got.tag || got.file;
-    if (!base) throw new Error(errs.join(' | ').slice(0, 300) || 'Không đọc được thư viện');
-    const by = k => new Map((got[k] || []).map(x => [x.id, x]));
-    const G = by('group'), T = by('tag'), C = by('count'), F = by('file');
-    const ids = [...new Set([...(got.full || []), ...(got.count || []), ...(got.group || []), ...(got.tag || []), ...(got.file || [])].map(x => x.id))];
-    const sets = ids.map(sid => { const f = (got.full || []).find(x => x.id === sid) || {};
-      const content = f.content ?? G.get(sid)?.content ?? '', tags = f.tags || T.get(sid)?.tags || [];
-      const medias = f.medias || C.get(sid)?.medias || F.get(sid)?.medias || [];
-      const named = f.medias || F.get(sid)?.medias || null;
-      return { c: String(content || ''), t: tags.map(t => t?.name || '').filter(Boolean).join(','), n: medias.filter(Boolean).length, named }; });
-    const hasNames = !!(got.full || got.file);
-    const files = [];
-    sets.forEach(x => (x.named || []).forEach(m => { if (m && isScan(m.fileName)) files.push({ name: m.fileName, set: x.c, at: m.createdAt || null }); }));
-    files.sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
-    // đếm ảnh theo nhóm; không nhận ra nhóm nào thì null (giữ kết quả kiểm tra của FarmBase)
-    const cats = CAT.map(() => 0); let known = 0;
-    sets.forEach(x => { const key = nk(x.c + ' ' + x.t); const i = CAT.findIndex(re => re.test(key)); if (i >= 0) { known++; cats[i] += x.n; } });
-    const out = { n: files.length, files: files.slice(0, 20), sets: sets.slice(0, 30).map(({ named, ...x }) => x), cats: sets.length && !known ? null : cats, warn: errs.join(' | ').slice(0, 300) };
-    if (!hasNames) out.error = 'Không đọc được tên file: ' + out.warn; // vẫn dùng được số ảnh theo nhóm
-    return out;
+    const d = await gql(QM, { id }, true);
+    const m = d.productionUnit?.medias, sets = Array.isArray(m) ? m.filter(Boolean) : m ? [m] : [];
+    const all = sets.flatMap(x => (x.medias || []).filter(Boolean)), byId = new Map(all.map(f => [String(f.id), f]));
+    const seen = new Set(), groups = {};
+    sets.forEach(x => (x.tags || []).forEach(t => {
+      const k = String(t?.name || '').trim().toUpperCase(); if (!CAT_VI[k]) return; // bỏ tên lạ như FarmBase
+      (t.mediaIds || []).forEach(mid => { mid = String(mid); if (byId.has(mid) && !seen.has(mid)) { seen.add(mid); groups[k] = (groups[k] || 0) + 1; } });
+    }));
+    const other = all.filter(f => !seen.has(String(f.id)));
+    const files = other.filter(f => isScan(f.fileName)).map(f => ({ name: f.fileName, set: 'Khác', at: f.createdAt || null }))
+      .sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
+    const cats = CAT_KEYS.map(k => groups[k] || 0);
+    const list = [...Object.keys(CAT_VI).map(k => ({ c: CAT_VI[k], n: groups[k] || 0 })), { c: 'Khác', n: other.length }];
+    return { n: files.length, files: files.slice(0, 20), sets: list, cats, warn: d.__warn || '' };
   }
 
   async function collect(scope = {}) {
