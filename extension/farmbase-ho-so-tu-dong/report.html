@@ -44,6 +44,11 @@
   .b-ok { background: #dcfce7; color: var(--g); } .b-um { background: #ffedd5; color: #9a3412; } .b-err { background: #fee2e2; color: var(--r); }
   td.bv { white-space: normal; min-width: 150px; }
   td.dp { white-space: normal; min-width: 170px; }
+  .ms { position: relative; } .ms summary { list-style: none; cursor: pointer; padding: 6px 8px; border: 1px solid var(--bd); border-radius: 6px; background: #fff; min-width: 180px; max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ms summary::-webkit-details-marker { display: none; } .ms summary::after { content: ' ▾'; color: var(--mut); }
+  .ms .msp { position: absolute; z-index: 5; top: 36px; left: 0; background: #fff; border: 1px solid var(--bd); border-radius: 8px; padding: 8px; width: 340px; box-shadow: 0 4px 16px rgba(0,0,0,.12); }
+  .ms .msp input:not([type=checkbox]) { width: 100%; } .ms .row { display: flex; gap: 6px; margin: 6px 0; }
+  .ms .msl { max-height: 300px; overflow: auto; display: grid; gap: 2px; } .ms .msl label { display: flex; gap: 6px; align-items: center; }
   .lnk { border: 0; padding: 0; background: none; color: var(--g); text-decoration: underline; cursor: pointer; }
   .scope { background: #fff; border: 1px solid var(--bd); border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; }
   .scope .row { display: flex; gap: 8px 16px; flex-wrap: wrap; align-items: center; }
@@ -72,36 +77,22 @@
     </div>
     <div class="row" style="margin-top:8px"><span>Tổ chức:</span> <b id="scVsum"></b>
       <input id="scVq" placeholder="Tìm tổ chức…" style="min-width:220px">
-      <button id="scVload">Tải danh sách tổ chức</button><button id="scAll">Chọn tất cả tổ chức</button>
+      <button id="scVload">Tải danh sách tổ chức</button><button id="scDef">Mặc định</button><button id="scAll">Chọn tất cả tổ chức</button>
       <span style="flex:1"></span><button id="scSave">Lưu phạm vi</button><button class="primary" id="scRun">Lưu và chạy ngay</button>
     </div>
     <div class="vl" id="scVlist"></div>
     <div id="scMsg" class="muted" style="margin-top:4px"></div>
   </section>
   <div class="kpis" id="kpis"></div>
-  <section class="bvi" id="bvi">
-    <div class="row">
-      <b>Đồng bộ sang BVI Điều hành</b>
-      <span class="muted">Một chiều: chỉ gửi kết quả kiểm tra hồ sơ (đủ/thiếu) sang app BVI, không sửa gì trên FarmBase. Chỉ owner có khóa.</span>
-    </div>
-    <div class="row" id="bviNoKey" style="margin-top:8px">
-      <input id="bviKey" type="password" autocomplete="off" placeholder="Dán khóa API bvi_… (owner tạo ở trang API, mẫu Extension FarmBase)" style="min-width:340px;flex:1">
-      <button id="bviSave">Lưu khóa</button>
-    </div>
-    <div class="row" id="bviHasKey" style="margin-top:8px" hidden>
-      <span class="muted">Đã lưu khóa <span id="bviPfx"></span></span><button id="bviDel">Xóa khóa</button>
-      <span style="flex:1"></span>
-      <button id="bviPick">Chọn vùng cần gửi</button><button id="bviNone">Bỏ chọn</button>
-      <button class="primary" id="bviGo">Đồng bộ lên BVI</button>
-    </div>
-    <div id="bviMsg" style="margin-top:6px"></div>
-  </section>
   <div class="filters">
     <input id="q" placeholder="Tìm tên vùng, mã, doanh nghiệp…" style="min-width:260px">
     <select id="fProv"><option value="">Tất cả tỉnh</option></select>
-    <select id="fVendor"><option value="">Tất cả doanh nghiệp</option></select>
+    <details class="ms" id="msVen"><summary id="msVenS">Doanh nghiệp</summary><div class="msp">
+      <input id="msVenQ" placeholder="Tìm doanh nghiệp…"><div class="row"><button id="msVenDef">Mặc định</button><button id="msVenAll">Tất cả</button><button id="msVenNone">Bỏ chọn</button></div>
+      <div class="msl" id="msVenL"></div></div></details>
     <select id="fCrit"><option value="">Mọi tiêu chí</option></select>
-    <select id="fStatus"><option value="">Mọi trạng thái vùng</option><option value="ACTIVE">Đang hoạt động</option><option value="PENDING">Chờ duyệt</option><option value="INACTIVE">Đã ngừng</option></select>
+    <details class="ms" id="msSt"><summary id="msStS">Trạng thái vùng</summary><div class="msp"><div class="msl" id="msStL">
+      <label><input type="checkbox" data-fst="ACTIVE"> Đang hoạt động</label><label><input type="checkbox" data-fst="PENDING"> Chờ duyệt</label><label><input type="checkbox" data-fst="INACTIVE"> Đã ngừng</label></div></div></details>
     <select id="fDeep"><option value="">Nông hộ, lô: tất cả</option><option value="missing">Nông hộ, lô: còn thiếu</option><option value="ok">Nông hộ, lô: đủ</option><option value="error">Nông hộ, lô: lỗi đọc</option><option value="none">Nông hộ, lô: chưa kiểm tra</option></select>
     <select id="fBvi"><option value="">Mọi trạng thái BVI</option></select>
     <select id="fState">
@@ -115,6 +106,23 @@
     <button id="run">Chạy lại ngay</button>
     <button class="primary" id="csv">Tải CSV (theo bộ lọc)</button>
   </div>
+  <section class="bvi" id="bvi">
+    <div class="row">
+      <b>Đồng bộ sang BVI Điều hành</b>
+      <span class="muted">Một chiều, gửi các vùng đang lọc (bỏ tick ở bảng để bớt vùng) sang trang Vùng FarmBase của app. Không sửa gì trên FarmBase.</span>
+      <span style="flex:1"></span>
+      <button id="bviPick">Chọn lại theo bộ lọc</button>
+      <button class="primary" id="bviGo">Đồng bộ sang BVI</button>
+    </div>
+    <details id="bviCfg" style="margin-top:6px"><summary>Cài đặt API BVI <span id="bviPfx" class="muted"></span></summary>
+      <div class="row" style="margin-top:6px">
+        <label>Địa chỉ API <input id="bviUrl" style="min-width:420px" placeholder="https://…/functions/v1/api/v1"></label>
+        <label>Khóa API <input id="bviKey" type="password" autocomplete="off" placeholder="bvi_… (owner tạo ở trang API, mẫu Extension FarmBase)" style="min-width:300px"></label>
+        <button id="bviSave">Lưu</button><button id="bviTest">Kiểm tra kết nối</button><button id="bviDel">Xóa khóa</button>
+      </div>
+    </details>
+    <div id="bviMsg" style="margin-top:6px"></div>
+  </section>
   <div class="wrap"><table id="tbl"></table></div>
   <h2>Lịch sử đồng bộ sang BVI</h2>
   <div class="wrap" style="max-height:220px"><table id="shist"></table></div>

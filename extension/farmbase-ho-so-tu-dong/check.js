@@ -110,6 +110,13 @@
   }
 
   async function collect(scope = {}) {
+    // phạm vi mặc định theo tên doanh nghiệp: tìm id các tổ chức khớp tên
+    if (!scope.vendors?.length && scope.vendorKeys?.length) {
+      const nv = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
+      const hit = name => { const n = ' ' + nv(name).replace(/[^a-z0-9]+/g, ' ') + ' '; return scope.vendorKeys.some(k => /^\d+$/.test(k) ? n.includes(' ' + k + ' ') : n.includes(nv(k))); };
+      const V = (await vendors()).filter(v => hit(v.name));
+      if (V.length) scope = { ...scope, vendors: V.map(v => v.id), vendorNames: V.map(v => v.name) };
+    }
     const filter = unitFilter(scope);
     const units = await paged(Q, d => d.productionUnitList, { query: { sort: [{ direction: 'DESC', field: 'id' }], ...(filter ? { filter } : {}) } });
     const rows = units.map(p => {
