@@ -31,13 +31,16 @@
     id code areaM2 cropCount cadastrePage cadastrePlot legalImages { id medias { id } } farmer { id fullName } } } pageInfo { endCursor hasNextPage } } }`;
 
   // Thư viện vùng (mọi nhóm ảnh, tài liệu, gồm nhóm "Khác"): tìm file tên chứa "scan_hoso"
-  const QM = `query ($id: ID!) { productionUnit(id: $id) { id medias { id content medias { id fileName createdAt } } } }`;
+  const QM = `query ($id: ID!) { productionUnit(id: $id) { id medias { id content tags { name } medias { id fileName createdAt } } } }`;
+  const QM0 = `query ($id: ID!) { productionUnit(id: $id) { id medias { id content medias { id fileName } } } }`;
 
-  async function gql(query, variables) {
+  async function gql(query, variables, partial) {
     const url = API + '?query=' + encodeURIComponent(query) + '&variables=' + encodeURIComponent(JSON.stringify(variables));
     const res = await fetch(url, { credentials: 'include' });
     let r;
     try { r = await res.json(); } catch { throw new Error('API trả về dữ liệu không đọc được (HTTP ' + res.status + ')'); }
+    // partial: chấp nhận dữ liệu khi API chỉ lỗi một phần (vd. một file trong thư viện)
+    if (partial && r.data && r.errors?.length && !(r.errors || []).some(e => /forbidden|unauth/i.test(e.extensions?.code || ''))) { r.data.__warn = r.errors.map(e => e.message).join('; ').slice(0, 200); return r.data; }
     if (r.errors || !r.data) {
       const msg = (r.errors || []).map(e => e.message).join('; ') || 'Không có dữ liệu';
       throw new Error(/auth|unauth|token|login|permission|forbidden|quyền|đăng nhập/i.test(msg) || (r.errors || []).some(e => /forbidden|unauth/i.test(e.extensions?.code || '')) || res.status === 401 || res.status === 403
@@ -114,12 +117,21 @@
 
   // file scan hồ sơ đã ký: tên chứa "scan_hoso" (không phân biệt hoa thường, dấu cách, gạch ngang)
   const isScan = n => String(n || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[\s\-.]+/g, '_').includes('scan_hoso');
+  // nhóm ảnh trong thư viện vùng → mục hồ sơ (theo thứ tự CRITERIA 4..8)
+  const nk = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase().replace(/[^a-z0-9]+/g, '_');
+  const CAT = [/growing_area|vung_trong|bang_ten|bang_thong_tin|signboard/, /flycam|fly_cam|drone/, /pesticide|kho_thuoc|kho_phan|storage/, /harvest|thu_hoach/, /insect|trap|bay_con_trung|con_trung/];
   async function scanOf(id) {
-    const { productionUnit: u } = await gql(QM, { id });
+    let d, warn = '';
+    try { d = await gql(QM, { id }, true); } catch (e) { if (String(e.message).startsWith('AUTH:')) throw e; warn = String(e.message || e).slice(0, 200); d = await gql(QM0, { id }, true); }
+    const u = d.productionUnit; if (d.__warn) warn = (warn ? warn + ' | ' : '') + d.__warn;
     const files = [];
-    (u?.medias || []).forEach(set => (set.medias || []).forEach(m => { if (isScan(m.fileName)) files.push({ name: m.fileName, set: set.content || '', at: m.createdAt || null }); }));
+    (u?.medias || []).filter(Boolean).forEach(set => (set.medias || []).forEach(m => { if (m && isScan(m.fileName)) files.push({ name: m.fileName, set: set.content || '', at: m.createdAt || null }); }));
     files.sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
-    return { n: files.length, files: files.slice(0, 20) };
+    // đếm ảnh theo nhóm: -1 = không nhận ra nhóm nào (giữ kết quả kiểm tra của FarmBase)
+    const sets = (u?.medias || []).filter(Boolean).map(set => ({ c: String(set.content || ''), t: (set.tags || []).map(t => t?.name || '').filter(Boolean).join(','), n: (set.medias || []).filter(Boolean).length }));
+    const cats = CAT.map(() => 0); let known = 0;
+    sets.forEach(x => { const key = nk(x.c + ' ' + x.t); const i = CAT.findIndex(re => re.test(key)); if (i >= 0) { known++; cats[i] += x.n; } });
+    return { n: files.length, files: files.slice(0, 20), sets: sets.slice(0, 30), cats: sets.length && !known ? null : cats, warn };
   }
 
   async function collect(scope = {}) {
@@ -136,7 +148,8 @@
       const checked = !!p.documentCheckedAt;
       const set = new Set((p.documentWarnings || []).map(w => w.code + '|' + (w.field || '')));
       // 1 = thiếu, 0 = đủ, -1 = chưa kiểm tra
-      const flags = CRITERIA.map(([key, calc]) => checked ? (set.has(key) ? 1 : 0) : (calc ? (calc(p) ? 1 : 0) : -1));
+      // mục tự tính được (địa chỉ, thị trường, tiêu chuẩn, đại diện, ảnh doanh nghiệp) luôn đọc dữ liệu hiện tại; ảnh vùng tính lại từ thư viện bên dưới
+      const flags = CRITERIA.map(([key, calc]) => calc ? (calc(p) ? 1 : 0) : checked ? (set.has(key) ? 1 : 0) : -1);
       return {
         id: p.id, name: p.name || '', code: p.code || '', crop: p.crop?.name || '', status: p.status || '',
         province: p.province?.name || '', ward: p.ward?.name || '', vendor: p.ownerVendor?.name || '', vendorId: p.ownerVendor?.id || '',
@@ -154,6 +167,8 @@
           const r = rows[i++];
           if (scope.deep !== false) { try { r.deep = await deepOf(r.id); } catch (e) { if (String(e.message).startsWith('AUTH:')) throw e; r.deep = { error: String(e.message || e).slice(0, 200) }; failed++; } }
           try { r.scan = await scanOf(r.id); } catch (e) { if (String(e.message).startsWith('AUTH:')) throw e; r.scan = { error: String(e.message || e).slice(0, 200) }; }
+          // ảnh vùng: đếm trực tiếp trong thư viện (kết quả "kiểm tra hồ sơ" của FarmBase có thể cũ)
+          if (r.scan?.cats) { r.scan.cats.forEach((n, j) => { r.flags[4 + j] = n > 0 ? 0 : 1; }); r.missing = r.flags.filter(f => f === 1).length; r.live = true; }
           done++; if (done % 5 === 0 || done === rows.length) tell();
         }
       };

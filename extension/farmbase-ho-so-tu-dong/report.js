@@ -64,7 +64,8 @@ function scanCell(r) {
   const s = FB.scanState(r);
   if (s === null) return '<span class="fn">Chưa kiểm tra</span>';
   if (s === -1) return `<span class="b b-err" title="${esc(r.scan.error)}">Lỗi đọc</span>`;
-  return s ? `<button class="lnk" data-scan="${esc(r.id)}">Có ${r.scan.n} file</button>` : '<span class="f1">Chưa có</span>';
+  const tip = esc(['Thư viện: ' + (r.scan.sets || []).map(x => (x.c || x.t || '?') + ' ' + x.n).join(', '), r.scan.warn ? 'Cảnh báo: ' + r.scan.warn : ''].filter(Boolean).join(' · '));
+  return s ? `<button class="lnk" data-scan="${esc(r.id)}" title="${tip}">Có ${r.scan.n} file</button>` : `<span class="f1" title="${tip}">Chưa có</span>`;
 }
 function openScan(id) {
   const r = DATA?.rows.find(x => x.id === id); if (!r?.scan?.files) return;
