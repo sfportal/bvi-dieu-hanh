@@ -48,7 +48,7 @@
 index.html              Ứng dụng (file DỰNG RA, không sửa tay)
 bao-cao.html            Trang báo cáo công khai cho khách (sửa trực tiếp)
 api.html                Trang hướng dẫn API, MCP cho đối tác (sửa trực tiếp)
-huong-dan/              Tài liệu hướng dẫn sử dụng (PDF)
+huong-dan/              Tài liệu hướng dẫn sử dụng (PDF); vung-farmbase.html: hướng dẫn có hình trang Vùng FarmBase (ảnh trong vung-farmbase/, chụp từ dữ liệu mẫu)
 tools/
   source.html           Bản gốc giao diện: toàn bộ màn hình, CSS, logic chính
   core.js               Lớp Supabase và các tính năng thêm sau: đăng nhập, tài khoản,

@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hướng dẫn Vùng FarmBase · BVI Điều hành</title>
+<style>
+:root{--brand:#1f5135;--line:#e5e7eb;--muted:#6b7280;--bg:#f6f7f4;--hl:#e11d48}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#1f2937;background:var(--bg)}
+header{background:var(--brand);color:#fff;padding:22px 16px}
+header h1{margin:0;font-size:22px;line-height:1.3}
+header p{margin:6px 0 0;opacity:.9;font-size:14px}
+main{max-width:980px;margin:0 auto;padding:16px}
+nav{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:16px}
+nav b{display:block;margin-bottom:4px}
+nav ol{margin:0;padding-left:20px;columns:2;column-gap:24px}
+nav a{color:var(--brand);text-decoration:none}
+nav a:hover{text-decoration:underline}
+.step{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+.step h2{display:flex;gap:10px;align-items:center;margin:0 0 8px;font-size:18px;line-height:1.3}
+.n{flex:none;width:30px;height:30px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-size:15px}
+.step p,.step li{margin:4px 0}
+.step ul{padding-left:20px;margin:6px 0}
+figure{margin:12px 0 0}
+figure img{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:10px;cursor:zoom-in}
+figure.phone img{max-width:340px;margin:0 auto}
+figcaption{font-size:13px;color:var(--muted);margin-top:6px}
+.tip{background:#f0fdf4;border-left:4px solid var(--brand);padding:8px 12px;border-radius:6px;margin-top:10px;font-size:14px}
+.warn{background:#fff7ed;border-left:4px solid #ea580c;padding:8px 12px;border-radius:6px;margin-top:10px;font-size:14px}
+.box{display:inline-block;border:2px solid var(--hl);border-radius:6px;padding:0 5px;font-size:13px;color:var(--hl);font-weight:600}
+kbd{background:#f3f4f6;border:1px solid var(--line);border-radius:5px;padding:0 6px;font:inherit;font-size:14px}
+footer{text-align:center;color:var(--muted);font-size:13px;padding:8px 16px 28px}
+#zoom{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:12px;z-index:9;cursor:zoom-out}
+#zoom img{max-width:none;width:min(1600px,100%);height:auto;border-radius:8px}
+@media (max-width:640px){nav ol{columns:1}header h1{font-size:19px}.step{padding:12px}}
+@media print{#zoom,nav{display:none}.step{break-inside:avoid}body{background:#fff}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Hướng dẫn trang Vùng FarmBase</h1>
+  <p>Xem vùng trồng nào còn thiếu gì và cập nhật tiến độ. Dành cho owner và quản lý. Hình minh họa dùng dữ liệu mẫu.</p>
+</header>
+<main>
+<nav>
+  <b>Các bước</b>
+  <ol>
+    <li><a href="#b1">Mở trang, xem lần đồng bộ</a></li>
+    <li><a href="#b2">Xem nhanh bằng các ô số</a></li>
+    <li><a href="#b3">Lọc theo "Thiếu gì"</a></li>
+    <li><a href="#b4">Đọc bảng danh sách vùng</a></li>
+    <li><a href="#b5">Cột Hồ sơ scan</a></li>
+    <li><a href="#b6">Xem chi tiết: ai thiếu, lô nào</a></li>
+    <li><a href="#b7">Bổ sung trên FarmBase</a></li>
+    <li><a href="#b8">Ghi chú và bước tiếp theo</a></li>
+    <li><a href="#b9">Xem lịch bước tiếp theo</a></li>
+    <li><a href="#b10">Dùng trên điện thoại</a></li>
+    <li><a href="#b11">Xuất PDF, tải CSV</a></li>
+  </ol>
+</nav>
+
+<section class="step" id="b1">
+  <h2><span class="n">1</span>Mở trang, xem lần đồng bộ</h2>
+  <p>Vào <a href="https://sfportal.github.io/bvi-dieu-hanh/#vung-fb">BVI Điều hành</a>, mở menu <b>Vùng, khách hàng › Vùng FarmBase</b>. Chỉ owner và quản lý thấy trang này.</p>
+  <ul>
+    <li>Dòng <b>Đồng bộ gần nhất</b> cho biết dữ liệu lấy từ FarmBase lúc nào. Dữ liệu tự đồng bộ định kỳ.</li>
+    <li>Bấm <span class="box">Tải lại</span> để lấy bản mới nhất. Bấm <span class="box">Hướng dẫn</span> để mở trang này.</li>
+  </ul>
+  <figure><img src="vung-farmbase/1-dau-trang.png" alt="Đầu trang Vùng FarmBase" loading="lazy"><figcaption>Khung đỏ: nút Hướng dẫn, Tải lại và dòng Đồng bộ gần nhất.</figcaption></figure>
+</section>
+
+<section class="step" id="b2">
+  <h2><span class="n">2</span>Xem nhanh bằng các ô số</h2>
+  <p>Mỗi ô là số vùng còn thiếu một mục. Số đỏ là còn thiếu. Số trong ngoặc là tổng số hộ hoặc lô thiếu.</p>
+  <ul>
+    <li><b>Bấm vào một ô</b> để chỉ hiện các vùng thiếu mục đó. Bấm lần nữa để bỏ lọc.</li>
+    <li>Mở <b>Chi tiết 12 mục hồ sơ vùng</b> để thấy từng mục: ảnh flycam, ảnh bảng tên, ảnh kho thuốc, CCCD doanh nghiệp…</li>
+  </ul>
+  <figure><img src="vung-farmbase/2-o-so.png" alt="Các ô số tổng quan" loading="lazy"><figcaption>Ví dụ: 7 vùng có nông hộ thiếu ảnh CCCD (tổng 12 hộ), 3 vùng thiếu ảnh flycam.</figcaption></figure>
+</section>
+
+<section class="step" id="b3">
+  <h2><span class="n">3</span>Lọc theo "Thiếu gì"</h2>
+  <p>Hàng bộ lọc gồm: ô tìm (tên, mã, tổ chức, xã), trạng thái, tổ chức, hồ sơ 12 mục, nông hộ và lô.</p>
+  <ul>
+    <li>Ô cuối cùng <span class="box">Thiếu gì</span>: chọn một mục, ví dụ "Thiếu ảnh flycam" hoặc "Lô thiếu ảnh sổ đỏ". Số trong ngoặc là số vùng thiếu.</li>
+    <li>Bấm <span class="box">Bỏ lọc</span> để xem lại tất cả.</li>
+  </ul>
+  <figure><img src="vung-farmbase/3-bo-loc.png" alt="Bộ lọc Thiếu gì" loading="lazy"><figcaption>Đang lọc các vùng thiếu ảnh flycam.</figcaption></figure>
+</section>
+
+<section class="step" id="b4">
+  <h2><span class="n">4</span>Đọc bảng danh sách vùng</h2>
+  <p>Có 3 cách xem: <b>Bảng</b> (đủ cột), <b>Thẻ</b> (gọn, hợp điện thoại), <b>Lịch</b> (bước tiếp theo). Vùng thiếu nhiều nhất nằm trên cùng.</p>
+  <ul>
+    <li>Cột <b>Thiếu</b>: số hộ, số lô, diện tích và các nhãn còn thiếu. Ví dụ "NH: số CCCD 1" là 1 nông hộ thiếu số CCCD.</li>
+    <li>Kéo ngang để xem thêm cột: bước tiếp theo, thu hoạch, ghi chú, từng mục hồ sơ. Hàng tiêu đề luôn ghim trên cùng khi cuộn xuống.</li>
+  </ul>
+  <figure><img src="vung-farmbase/4-bang.png" alt="Bảng danh sách vùng" loading="lazy"><figcaption>Khung đỏ: chọn cách xem Bảng, Thẻ, Lịch.</figcaption></figure>
+</section>
+
+<section class="step" id="b5">
+  <h2><span class="n">5</span>Cột Hồ sơ scan</h2>
+  <p><b>Có</b>: thư viện vùng trên FarmBase đã có file tên chứa <kbd>scan_hoso</kbd> (bản hồ sơ đã có chữ ký dân và doanh nghiệp). <b>Chưa có</b>: cần scan bản đã ký.</p>
+  <div class="tip">Cách bổ sung: scan bản đã ký, đặt tên file có chữ <kbd>scan_hoso</kbd>, ví dụ <kbd>scan_hoso_EaHding1.pdf</kbd>, rồi tải lên thư viện của vùng trên FarmBase.</div>
+  <figure><img src="vung-farmbase/5-cot-scan.png" alt="Cột Hồ sơ scan" loading="lazy"></figure>
+</section>
+
+<section class="step" id="b6">
+  <h2><span class="n">6</span>Xem chi tiết: ai thiếu, lô nào</h2>
+  <p>Bấm vào ô ở cột <b>Thiếu</b> (hoặc nút <b>Xem chi tiết</b> ở dạng Thẻ). Khung bên phải mở ra:</p>
+  <ul>
+    <li><b>Nông hộ còn thiếu</b>: tên hộ, thiếu số CCCD, ảnh CCCD mặt trước hay mặt sau.</li>
+    <li><b>Lô trùng tờ, thửa</b>: các lô khai trùng số tờ và số thửa trong cùng vùng.</li>
+    <li><b>Lô còn thiếu</b>: mã lô, của hộ nào, thiếu ảnh sổ đỏ, số tờ, số thửa, số cây hay diện tích.</li>
+    <li><b>Hồ sơ vùng (12 mục)</b> và <b>Bước tiếp theo</b> ở cuối.</li>
+  </ul>
+  <figure><img src="vung-farmbase/6-chi-tiet.png" alt="Chi tiết nông hộ và lô còn thiếu" loading="lazy"><figcaption>Nông hộ, lô trùng và lô còn thiếu của một vùng.</figcaption></figure>
+  <figure><img src="vung-farmbase/6b-chi-tiet-ho-lo.png" alt="Chi tiết 12 mục hồ sơ vùng" loading="lazy"><figcaption>Cuộn xuống: 12 mục hồ sơ vùng, bước tiếp theo và nút sửa.</figcaption></figure>
+  <div class="warn">"Lô: ảnh sổ đỏ" là mục <b>Ảnh sổ đỏ trang tờ thửa và lô đất</b> trong form lô trên FarmBase. Mục đó chưa có ảnh nào thì tính là thiếu.</div>
+</section>
+
+<section class="step" id="b7">
+  <h2><span class="n">7</span>Bổ sung trên FarmBase</h2>
+  <p>Trang này chỉ để xem, không sửa dữ liệu trên FarmBase. Để hết thiếu:</p>
+  <ul>
+    <li>Vào <b>admin.farmbase.vn</b>, mở đúng vùng, nông hộ hoặc lô như trong bảng chi tiết.</li>
+    <li>Bổ sung ảnh, số liệu còn thiếu rồi lưu.</li>
+    <li>Sau lần đồng bộ kế tiếp, nhãn thiếu trên trang này tự mất.</li>
+  </ul>
+</section>
+
+<section class="step" id="b8">
+  <h2><span class="n">8</span>Ghi chú và bước tiếp theo</h2>
+  <p>Bấm <b>Sửa</b> ở cột Ghi chú (hoặc nút "Sửa ghi chú, bước tiếp theo" trong chi tiết).</p>
+  <ul>
+    <li>Điền ngày thu hoạch, ngày kết thúc vụ, ghi chú tình trạng hồ sơ.</li>
+    <li>Bấm <span class="box">+ Thêm bước</span>, điền <b>ngày</b>, <b>làm gì</b>, <b>kết quả cần đạt</b>. Có thể thêm nhiều bước.</li>
+    <li>Bấm <span class="box">Lưu</span>. Làm xong bước nào thì tick <b>Xong</b>. Bước quá ngày mà chưa xong hiện nhãn đỏ <b>Trễ</b>.</li>
+  </ul>
+  <div class="warn">Không ghi số CCCD, số điện thoại nông hộ vào ghi chú.</div>
+  <figure><img src="vung-farmbase/7-sua-buoc.png" alt="Form sửa ghi chú và bước tiếp theo" loading="lazy"></figure>
+</section>
+
+<section class="step" id="b9">
+  <h2><span class="n">9</span>Xem lịch bước tiếp theo</h2>
+  <p>Bấm <span class="box">Lịch</span> để thấy các bước của mọi vùng theo tháng. Đầu trang gom các bước <b>trễ hạn</b> và bước <b>chưa có ngày</b>. Bấm vào một bước để sửa ngay. Dùng nút ‹ › để đổi tháng, "Hôm nay" để quay về.</p>
+  <figure><img src="vung-farmbase/8-lich.png" alt="Lịch bước tiếp theo" loading="lazy"></figure>
+</section>
+
+<section class="step" id="b10">
+  <h2><span class="n">10</span>Dùng trên điện thoại</h2>
+  <p>Trên điện thoại trang tự chuyển sang dạng <b>Thẻ</b>: mỗi vùng một thẻ, có nhãn thiếu, hồ sơ scan, bước tiếp theo và nút Sửa. Lịch trên điện thoại hiện theo ngày.</p>
+  <figure class="phone"><img src="vung-farmbase/11-dien-thoai.png" alt="Dạng thẻ trên điện thoại" loading="lazy"></figure>
+</section>
+
+<section class="step" id="b11">
+  <h2><span class="n">11</span>Xuất PDF, tải CSV</h2>
+  <ul>
+    <li>Lọc trước (ví dụ một tổ chức, hoặc "Thiếu ảnh flycam"), rồi bấm <span class="box">Xuất PDF</span>. Hộp in mở ra, chọn máy in <b>Lưu thành PDF</b> (Save as PDF).</li>
+    <li>File PDF có 2 phần: <b>Tổng quan</b> (mỗi mục thiếu, bao nhiêu vùng, tên vùng) và <b>Chi tiết từng vùng</b>. Không có số CCCD, số tờ, số thửa.</li>
+    <li><span class="box">Tải CSV</span> tải danh sách đang lọc để mở bằng Excel.</li>
+  </ul>
+  <figure><img src="vung-farmbase/9-nut-xuat.png" alt="Nút Xuất PDF và Tải CSV" loading="lazy"></figure>
+  <figure><img src="vung-farmbase/10-pdf.png" alt="Báo cáo PDF phần tổng quan" loading="lazy"><figcaption>Phần Tổng quan của báo cáo PDF.</figcaption></figure>
+  <div class="warn">Báo cáo dùng nội bộ, không gửi ra ngoài công ty.</div>
+</section>
+</main>
+<footer>BVI Điều hành · <a href="https://sfportal.github.io/bvi-dieu-hanh/#vung-fb">Mở trang Vùng FarmBase</a></footer>
+<div id="zoom"><img alt=""></div>
+<script>
+const Z=document.getElementById('zoom'), ZI=Z.querySelector('img');
+document.querySelectorAll('figure img').forEach(i=>i.addEventListener('click',()=>{ZI.src=i.src;Z.style.display='flex';}));
+Z.addEventListener('click',()=>{Z.style.display='none';});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')Z.style.display='none';});
+</script>
+</body>
+</html>
