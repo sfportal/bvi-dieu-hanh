@@ -125,4 +125,15 @@ eq(QC.guessXa({ name: "UBND xã Ea Kiết" }), "xã Ea Kiết");
 eq(QC.vars({ customer: {} }, { address: "150 Phan Huy Chú" }, {}).noi_lap, "Đắk Lắk");
 eq(QC.vars({ customer: {} }, { address: "150 Phan Huy Chú, Phường Thành Nhất, tỉnh Đắk Lắk" }, {}).noi_lap, "Đắk Lắk");
 eq(QC.vars({ customer: {} }, { address: "12 Lê Lợi, TP. Hồ Chí Minh" }, {}).noi_lap, "Hồ Chí Minh");
+// Phụ lục sang trang mới (xem, PDF, Word); thứ tự thẻ trong w:pPr đúng chuẩn để Word mở không lỗi
+{ const d = { kind: "contract", status: "draft", customer: { name: "A" }, body: { title: "HĐ", blocks: [{ t: "text", h: "Điều 1", html: "<p>x</p>" }, { t: "text", h: "Phụ lục 1. Phạm vi", html: "<p>y</p>" }] } };
+  const h = QC.render(d, { name: "BVI" }, {}); assert.ok(/<h3 class="qd-pb">Phụ lục 1/.test(h) && !/<h3 class="qd-pb">Điều 1/.test(h));
+  const x = QC.docxFiles(d, { name: "BVI" }, {})["word/document.xml"]; assert.ok(/<w:pageBreakBefore\/>[^]*?Phụ lục 1/.test(x));
+  const ord = ["keepNext", "keepLines", "pageBreakBefore", "pBdr", "spacing", "ind", "jc"];
+  (x.match(/<w:pPr>.*?<\/w:pPr>/g) || []).forEach(pp => { const tags = (pp.match(/<w:(\w+)/g) || []).map(t => t.slice(3)).filter(t => ord.includes(t)); assert.deepStrictEqual(tags, [...tags].sort((a, b) => ord.indexOf(a) - ord.indexOf(b)), pp); }); }
+// Bảng giá tham khảo (bảng trong đoạn văn, không có bảng tính tiền) không bị báo đỏ
+{ const co = { name: "BVI", code: "bvi", tax_id: "6001653877", rep_name: "T", banks: [{ number: "3721077979" }] }, cu = { name: "A", contact_name: "B", contact_title: "C", contact_phone: "0912345678" };
+  const d = { kind: "quote", customer: cu, body: { blocks: [{ t: "text", html: "<table><tr><td>Hạng mục</td><td>3.000.000 đ/ha</td></tr></table>" }] } };
+  eq(QC.check(d, co, { name: "H" }).filter(x => x.lvl === "err"), []);
+  assert.ok(QC.check({ kind: "quote", customer: cu, body: { blocks: [{ t: "text", html: "<p>x</p>" }] } }, co, { name: "H" }).some(x => x.lvl === "err" && /bảng giá/.test(x.msg))); }
 console.log("OK");

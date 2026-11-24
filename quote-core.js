@@ -96,10 +96,11 @@
     + '.qd table{width:100%;border-collapse:collapse;margin:6px 0}.qd td,.qd th{border:1px solid #c9d2c9;padding:5px 7px;vertical-align:top;text-align:left}.qd th{background:#eef3ee;font-weight:600}'
     + '.qd .r{text-align:right;white-space:nowrap}.qd .c{text-align:center}.qd tr.tt td{font-weight:700;background:#f6f8f5}.qd .w{font-style:italic;margin:2px 0 8px}'
     + '.qd-meta td:first-child{width:130px;color:#444}.qd-sign{display:flex;justify-content:space-between;gap:20px;margin-top:26px;text-align:center}.qd-sign>div{flex:1}.qd-sign .n{margin-top:70px;font-weight:700}'
-    + '.qd-wm{position:absolute;top:10px;right:14px;border:2px solid #b83a2e;color:#b83a2e;font-weight:700;font-size:12px;padding:3px 8px;border-radius:6px;transform:rotate(3deg);background:#fff}'
-    + '.qd-items{overflow-x:auto}@media (max-width:600px){.qd{padding:16px 12px}.qd td,.qd th{padding:4px 5px;font-size:12px}}'
+    + '.qd td,.qd th{overflow-wrap:break-word}.qd h3.qd-pb{break-before:page;page-break-before:always}'
+    + '.qd-wm{display:table;margin:-12px 0 10px auto;border:2px solid #b83a2e;color:#b83a2e;font-weight:700;font-size:12px;padding:3px 8px;border-radius:6px;transform:rotate(2deg);background:#fff}'
+    + '.qd-items{overflow-x:auto}@media (max-width:600px){.qd{padding:16px 12px}.qd td,.qd th{padding:4px 5px;font-size:12px}.qd-items td,.qd-items th{font-size:11.5px;padding:4px 3px}.qd-items th{white-space:normal}.qd-items tr>:first-child{display:none}}'
     + '.qd table.qd-hd,.qd table.qd-hd td{border:0;padding:0 4px;text-align:center;vertical-align:top}.qd-hd td:first-child{width:42%}.qd .qd-to{margin:12px 0 10px 40px}.qd .qd-dt{font-style:italic}.qd-sign .l{text-align:left;font-size:12px}'
-    + '@media print{.qd{padding:0;max-width:none}.qd-wm{position:fixed}}';
+    + '@media print{.qd{padding:0;max-width:none}.qd-wm{margin-top:0}}';
 
   function render(doc, co, creator) {
     doc = doc || {}; co = co || {}; const body = doc.body || {}, blocks = body.blocks || [], V = vars(doc, co, creator), c = doc.customer || {};
@@ -115,7 +116,7 @@
     else if (doc.kind === "letter") { /* công văn: số ở đầu trang; tài liệu: không cần bảng số */ }
     else h += '<table class="qd-meta"><tr><td>Số</td><td>' + V.so + '</td></tr><tr><td>Ngày</td><td>' + V.ngay + '</td></tr><tr><td>Kính gửi</td><td><b>' + V.khach_hang + '</b>' + (c.address ? "<br>" + V.dia_chi_khach : "") + '</td></tr></table>';
     blocks.forEach(b => {
-      const H = b.h ? '<h3>' + clean(F(b.h)) + '</h3>' : "";
+      const H = b.h ? '<h3' + (/^\s*phụ lục/i.test(String(b.h).replace(/<[^>]+>/g, "")) ? ' class="qd-pb"' : "") + '>' + clean(F(b.h)) + '</h3>' : "";
       if (b.t === "text") h += H + clean(F(b.html));
       else if (b.t === "items") {
         const k = calc(b), rows = b.rows || [];
@@ -175,8 +176,9 @@
   }
   function para(r, o) {
     o = o || {}; if (!r && !o.keep) return "";
-    const p = (o.jc ? '<w:jc w:val="' + o.jc + '"/>' : "") + (o.before != null || o.after != null ? '<w:spacing' + (o.before != null ? ' w:before="' + o.before + '"' : "") + (o.after != null ? ' w:after="' + o.after + '"' : "") + "/>" : "")
-      + (o.ind ? '<w:ind w:left="' + o.ind + '" w:hanging="' + (o.hang || 0) + '"/>' : "") + (o.border ? '<w:pBdr><w:bottom w:val="single" w:sz="12" w:space="4" w:color="' + GREEN + '"/></w:pBdr>' : "") + (o.keepNext ? "<w:keepNext/>" : "");
+    const p = (o.keepNext ? "<w:keepNext/>" : "") + (o.pb ? "<w:pageBreakBefore/>" : "") + (o.border ? '<w:pBdr><w:bottom w:val="single" w:sz="12" w:space="4" w:color="' + GREEN + '"/></w:pBdr>' : "")
+      + (o.before != null || o.after != null ? '<w:spacing' + (o.before != null ? ' w:before="' + o.before + '"' : "") + (o.after != null ? ' w:after="' + o.after + '"' : "") + "/>" : "")
+      + (o.ind ? '<w:ind w:left="' + o.ind + '" w:hanging="' + (o.hang || 0) + '"/>' : "") + (o.jc ? '<w:jc w:val="' + o.jc + '"/>' : "");
     return "<w:p>" + (p ? "<w:pPr>" + p + "</w:pPr>" : "") + r + "</w:p>";
   }
   // gom các nút liền nhau: chữ, thẻ định dạng thành một đoạn; thẻ khối xử lý riêng
@@ -194,7 +196,7 @@
     if (t === "div" && has(n, "qd-to")) return blocks(n.kids, f, Object.assign({}, o, { ind: 567, before: 200, after: 160 }));
     if (t === "span" && has(n, "qd-dt")) return para(runs(n, Object.assign({}, f, { i: true })), o);
     if (t === "div" && has(n, "qd-st")) return blocks(n.kids, f, { jc: "center", after: 160 });
-    if (t === "h3") return para(runs(n, Object.assign({}, f, { b: true, color: GREEN })), { before: 220, after: 80, keepNext: true });
+    if (t === "h3") return para(runs(n, Object.assign({}, f, { b: true, color: GREEN })), { before: 220, after: 80, keepNext: true, pb: has(n, "qd-pb") });
     if (t === "h4") return para(runs(n, Object.assign({}, f, { b: true })), { before: 160, after: 60, keepNext: true });
     if (t === "p") return blocks(n.kids, has(n, "w") ? Object.assign({}, f, { i: true }) : f, o);
     if (t === "hr") return para("", { keep: true, border: true });
@@ -289,7 +291,7 @@
       if (![0, 5, 8, 10].includes(num(b.vat))) W(lab2 + ": thuế GTGT " + b.vat + "% khác các mức thường dùng (0, 5, 8, 10%).");
       if (k === "quote" && rows.length && !calc(b).total) E(lab2 + ": tổng bằng 0.");
     });
-    if (k === "quote" && !B.some(b => b.t === "items")) E("Báo giá chưa có bảng giá.");
+    if (k === "quote" && !B.some(b => b.t === "items") && !B.some(b => b.t === "text" && /<table/i.test(b.html || ""))) E("Báo giá chưa có bảng giá.");
     if (k === "contract") { if (!B.some(b => b.t === "parties")) W("Hợp đồng chưa có khối Thông tin hai bên."); if (!B.some(b => b.t === "sign")) W("Hợp đồng chưa có khối Chữ ký."); }
     if (k === "letter" && body.layout !== "doc" && !body.to) W("Văn bản chưa có phần Kính gửi.");
     // nội dung sai quy định, dữ liệu cũ
