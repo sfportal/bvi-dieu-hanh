@@ -1,7 +1,8 @@
 {
   "manifest_version": 3,
   "name": "FarmBase - Tổng hợp hồ sơ vùng trồng",
-  "version": "2.4.0",
+  "version": "2.5.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnnPozKSGe5T6Lz0PHx6H4xV5up6dbqQcS6+TPKeTk9Foyf0jBEsHBvKNQhns6ByJNV41T9kvbavID94RnuOH6Ahpx7T9f5eI5yBMJK08YMdrAsc3I5rD2fRYqSejk2N/KTyDP6KqeVLiOPOqSmw0xFz1fw8vksJZjruKQ382C/3o3AqEVllvbOyG7xFHFaLkEmzQIA8me6S0SszWfNoO1ckGGe1mayIFg9y6nl8Gc1/H5z2QygiGNIwf+kCiCKTUERB44w5KXKWGhfWSe7G4KcMRH7tAGLmgi8/qlxpMxSUYceKla/RJ246EOR01NmyYqR6I8v8rqRVQ5PfOKtFzDQIDAQAB",
   "description": "Kiểm tra hồ sơ vùng trồng, nông hộ, lô trên admin.farmbase.vn theo trạng thái và tổ chức; báo cáo, xuất CSV; owner đồng bộ một chiều sang BVI Điều hành.",
   "icons": {
     "16": "icon16.png",

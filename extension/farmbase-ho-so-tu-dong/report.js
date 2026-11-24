@@ -283,6 +283,28 @@ $('bviTest').onclick = async () => {
   } catch (e) { renderBvi('<span class="err">Không kết nối được: ' + esc(e.message || e) + '</span>'); }
 };
 $('bviDel').onclick = async () => { const { bvi = {} } = await chrome.storage.local.get('bvi'); delete bvi.key; await chrome.storage.local.set({ bvi }); renderBvi('Đã xóa khóa khỏi extension.'); };
+$('bakOut').onclick = async () => {
+  const { settings, filt, bvi = {} } = await chrome.storage.local.get(['settings', 'filt', 'bvi']);
+  const o = { app: 'farmbase-ho-so-tu-dong', version: chrome.runtime.getManifest().version, at: new Date().toISOString(), settings: settings || null, filt: filt || null, bvi: { url: bvi.url || '', ...($('bakKey').checked && bvi.key ? { key: bvi.key } : {}) } };
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(o, null, 2)], { type: 'application/json' }));
+  a.download = 'thiet-lap-farmbase-ext_' + FB.dateStamp(o.at) + '.json'; a.click();
+  renderBvi('<span class="ok">Đã tải file thiết lập' + (o.bvi.key ? ' (có khóa API, giữ file kín)' : ' (không kèm khóa API)') + '.</span>');
+};
+$('bakIn').onclick = () => $('bakFile').click();
+$('bakFile').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const o = JSON.parse(await f.text());
+    if (o?.app !== 'farmbase-ho-so-tu-dong') throw new Error('Không phải file thiết lập của extension này');
+    const { bvi = {} } = await chrome.storage.local.get('bvi'), set = {};
+    if (o.settings && typeof o.settings === 'object') set.settings = o.settings;
+    if (o.filt && typeof o.filt === 'object') set.filt = o.filt;
+    const nb = { ...bvi }; if (/^https:\/\/\S+$/.test(o.bvi?.url || '')) nb.url = o.bvi.url; if (/^bvi_[A-Za-z0-9]{40}$/.test(o.bvi?.key || '')) nb.key = o.bvi.key; set.bvi = nb;
+    await chrome.storage.local.set(set);
+    if (set.settings) await chrome.runtime.sendMessage({ type: 'saveSettings', settings: set.settings }).catch(() => {});
+    renderBvi('<span class="ok">Đã khôi phục thiết lập từ file ' + esc(f.name) + '. Đang tải lại trang…</span>'); setTimeout(() => location.reload(), 800);
+  } catch (err) { renderBvi('<span class="err">Không khôi phục được: ' + esc(err.message || err) + '</span>'); }
+};
 $('bviPick').onclick = () => { pickFiltered(); renderTable(); renderBvi(); };
 $('bviGo').onclick = bviSend;
 $('scVq').oninput = renderScope;
