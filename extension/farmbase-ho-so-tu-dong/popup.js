@@ -35,15 +35,16 @@ async function render() {
   const ch = latest?.changes;
   $('changes').textContent = ch ? `So với lần trước: ${ch.improved.length} vùng bổ sung thêm hồ sơ, ${ch.worse.length} vùng thiếu thêm, ${ch.added.length} vùng mới.` : '';
 
-  const st = { freq: 'daily', weekday: 1, time: '07:00', autoDownload: false, notify: true, ...(settings || {}) };
+  const st = { autoSync: false, freq: 'daily', weekday: 1, time: '07:00', autoDownload: false, notify: true, ...(settings || {}) };
   $('freq').value = st.freq; $('weekday').value = String(st.weekday); $('time').value = st.time;
-  $('notify').checked = st.notify; $('autoDownload').checked = st.autoDownload;
-  $('wd-row').style.display = st.freq === 'weekly' ? '' : 'none';
+  $('notify').checked = st.notify; $('autoDownload').checked = st.autoDownload; $('autoSync').checked = !!st.autoSync;
+  freqRows();
   const { next } = await send({ type: 'getNext' });
   $('next').textContent = next ? 'Lần chạy tự động tiếp theo: ' + FB.fmtTime(new Date(next).toISOString()) : 'Lịch tự động đang tắt.';
 }
 
-$('freq').onchange = () => { $('wd-row').style.display = $('freq').value === 'weekly' ? '' : 'none'; };
+function freqRows() { const f = $('freq').value; $('wd-row').style.display = f === 'weekly' ? '' : 'none'; $('tm-row').style.display = f === 'daily' || f === 'weekly' ? '' : 'none'; }
+$('freq').onchange = () => { freqRows(); if (['m30', 'h1'].includes($('freq').value)) $('autoSync').checked = true; };
 $('run').onclick = async () => {
   $('run').disabled = true; $('run').textContent = 'Đang chạy…';
   await send({ type: 'runNow' });
@@ -55,7 +56,7 @@ $('csv').onclick = () => send({ type: 'downloadCSV' });
 $('save').onclick = async () => {
   await send({ type: 'saveSettings', settings: {
     freq: $('freq').value, weekday: Number($('weekday').value), time: $('time').value || '07:00',
-    notify: $('notify').checked, autoDownload: $('autoDownload').checked,
+    notify: $('notify').checked, autoDownload: $('autoDownload').checked, autoSync: $('autoSync').checked,
   } });
   $('save').textContent = 'Đã lưu ✓'; setTimeout(() => { $('save').textContent = 'Lưu lịch'; }, 1500);
   render();

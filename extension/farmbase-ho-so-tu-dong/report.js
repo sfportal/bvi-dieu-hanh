@@ -181,40 +181,11 @@ function renderBvi(extra) {
 async function bviSend() {
   const { bvi } = await chrome.storage.local.get('bvi');
   if (!bvi?.key || !DATA || !PICK.size || SENDING) return;
-  const URL_SYNC = (bvi.url || FB.BVI_URL).replace(/\/+$/, '') + '/farmbase-sync';
   SENDING = true; renderBvi();
-  const rows = DATA.rows.filter(r => PICK.has(r.id));
-  const map = { ...SYNC.map }, counts = { updated: 0, same: 0, old: 0, unmatched: 0, invalid: 0 };
-  let error = null, sent = 0;
-  try {
-    for (let i = 0; i < rows.length; i += 1000) {
-      const part = rows.slice(i, i + 1000);
-      // chỉ gửi tên, mã, địa bàn, tên doanh nghiệp, ngày kiểm tra và cờ đủ/thiếu
-      const payload = { ranAt: DATA.ranAt, criteria: FB.LABELS, rows: part.map(r => ({ id: r.id, code: r.code, name: r.name, status: r.status, crop: r.crop, province: r.province, ward: r.ward, vendor: r.vendor, vendorId: r.vendorId,
-        farmerCount: r.farmerCount, plotCount: r.plotCount, areaM2: r.areaM2, checkedAt: r.checkedAt, flags: r.flags,
-        // chỉ gửi số đếm và mã lô trùng; không gửi tên nông hộ, số CCCD, số tờ, số thửa
-        scan: r.scan ? (r.scan.error ? -1 : r.scan.n) : null,
-        deep: r.deep?.sum ? { ...r.deep.sum, dupPlots: r.deep.dups.flatMap(d => d.plots).slice(0, 30) } : r.deep?.error ? { error: true } : null })) };
-      const res = await fetch(URL_SYNC, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-API-Key': bvi.key }, body: JSON.stringify(payload) });
-      let j = null; try { j = await res.json(); } catch {}
-      if (!res.ok || !j?.ok) {
-        const code = j?.error || 'http_' + res.status;
-        throw new Error({ invalid_api_key: 'Khóa không đúng', revoked_api_key: 'Khóa đã bị thu hồi', expired_api_key: 'Khóa đã hết hạn', forbidden_resource: 'Khóa không có quyền đồng bộ FarmBase', rate_limited: 'Gửi quá nhanh, thử lại sau 1 phút' }[code] || j?.message || code);
-      }
-      Object.keys(counts).forEach(k => counts[k] += j.counts?.[k] || 0);
-      const byId = new Map(part.map(r => [r.id, r]));
-      (j.results || []).forEach(x => { if (!x.id || !byId.has(x.id)) return;
-        map[x.id] = { status: x.status, zone: x.zone || null, zoneName: x.zoneName || '', sig: FB.sig(byId.get(x.id)), at: j.syncedAt, msg: x.message || x.reason || '' }; });
-      sent += part.length;
-    }
-  } catch (e) { error = String(e?.message || e); }
-  const last = { at: new Date().toISOString(), ranAt: DATA.ranAt, sent, counts, error };
-  const { bviHist = [] } = await chrome.storage.local.get('bviHist');
-  SYNC = { map, last };
-  await chrome.storage.local.set({ bviSync: SYNC, bviHist: [last, ...bviHist].slice(0, 50) });
+  let r = null; try { r = await FB.bviPush(DATA, DATA.rows.filter(x => PICK.has(x.id))); } catch (e) { renderBvi('<span class="err">' + esc(e.message || e) + '</span>'); }
   SENDING = false;
-
-  renderTable(); renderBvi(); renderSyncHist([last, ...bviHist]);
+  if (r) { SYNC = r.SYNC; renderSyncHist(r.hist); }
+  renderTable(); renderBvi();
 }
 function renderSyncHist(list) {
   $('shist').innerHTML = '<tr><th>Thời điểm</th><th>Dữ liệu lấy lúc</th><th>Gửi</th><th>Cập nhật</th><th>Giữ nguyên</th><th>Kết quả</th></tr>' +
@@ -340,7 +311,7 @@ $('run').onclick = async () => {
   if (!r?.ok) alert('Không chạy được: ' + (r?.error || ''));
 };
 chrome.storage.onChanged.addListener(ch => {
-  if (ch.latest || ch.history) load();
+  if (ch.latest || ch.history || ch.bviSync) load();
   if (ch.status) { const s = ch.status.newValue || {}; $('prog').textContent = s.running ? 'Đang kiểm tra' + (s.progress ? ` từng vùng: ${s.progress.done}/${s.progress.total}` : '…') : ''; }
 });
 load();

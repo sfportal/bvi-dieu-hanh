@@ -3,7 +3,8 @@ importScripts('lib.js');
 const ADMIN_URL = 'https://admin.farmbase.vn/dashboard';
 const ALARM = 'fb-auto-check';
 const DEFAULT_SCOPE = { statuses: ['ACTIVE'], vendors: [], vendorNames: [], vendorKeys: FB.DEFAULT_VENDOR_KEYS, deep: true };
-const DEFAULTS = { freq: 'daily', weekday: 1, time: '07:00', autoDownload: false, notify: true, scope: DEFAULT_SCOPE };
+const INTERVAL = { m30: 30, h1: 60 }; // chạy lặp theo phút
+const DEFAULTS = { autoSync: false, freq: 'daily', weekday: 1, time: '07:00', autoDownload: false, notify: true, scope: DEFAULT_SCOPE };
 const HISTORY_MAX = 90;
 
 async function getSettings() {
@@ -28,6 +29,7 @@ async function schedule() {
   const s = await getSettings();
   await chrome.alarms.clear(ALARM);
   if (s.freq === 'off') return null;
+  if (INTERVAL[s.freq]) { const when = Date.now() + 60000; await chrome.alarms.create(ALARM, { when, periodInMinutes: INTERVAL[s.freq] }); return when; }
   const when = nextRunTime(s);
   await chrome.alarms.create(ALARM, { when, periodInMinutes: s.freq === 'weekly' ? 7 * 24 * 60 : 24 * 60 });
   return when;
@@ -126,7 +128,13 @@ async function doRun(source) {
     });
 
     if (s.autoDownload) await downloadCSV(data);
-    if (s.notify) {
+    // lịch tự động: gửi luôn sang BVI (máy chủ bỏ qua vùng không đổi)
+    let syncErr = null;
+    if (source === 'auto' && s.autoSync) { try { const r = await FB.bviPush(data, data.rows); syncErr = r.SYNC.last.error; } catch (e) { syncErr = String(e?.message || e); } }
+    if (syncErr) chrome.notifications.create('fb-sync-' + Date.now(), { type: 'basic', iconUrl: 'icon128.png', title: 'Chưa đồng bộ được sang BVI', message: syncErr });
+    // chạy mỗi 30 phút, mỗi giờ: chỉ báo khi có vùng thay đổi số mục thiếu
+    const quiet = source === 'auto' && INTERVAL[s.freq] && !(changes && (changes.improved.length || changes.worse.length || changes.added.length));
+    if (s.notify && !quiet) {
       const top = FB.LABELS.map((l, i) => [l, summary.counts[i]]).sort((a, b) => b[1] - a[1]).slice(0, 3)
         .map(([l, c]) => `${l}: ${c}`).join(' · ');
       chrome.notifications.create('fb-done-' + Date.now(), {
