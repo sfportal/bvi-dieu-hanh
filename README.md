@@ -99,6 +99,8 @@ Quyền ghi `docs`: owner, manager ghi mọi loại; staff ghi mọi loại tr�
 
 Quyền tính năng bật theo từng nhân sự (trong `docs` loại people): `canPlan` (kế hoạch tuần), `canLeave` (duyệt nghỉ phép), `canExpense` (ghi thu chi), `canRecon` (trang Đối soát việc; quản lý luôn có). Owner bật trong trang Tài khoản.
 
+Mục tiêu công ty (`#muc-tieu`, nhóm Tổng quan): chỉ owner và tài khoản **Quản lý** được owner cấp quyền (nút "Người được xem" trên trang, hoặc ô "Mục tiêu công ty" trong trang Tài khoản). Owner thêm, sửa, xóa mục tiêu (chỉ tiêu, kỳ, hạn, ưu tiên, trạng thái, giao cho quản lý nào); quản lý bấm "Ghi nhận, phân công" để ghi cách sắp xếp, rồi "+ Giao việc" tạo công việc gắn mục tiêu. Dữ liệu ở `app_secrets` khóa `goals:data`, danh sách người được xem ở `goals:access`, đọc ghi qua `POST /api/goals` (JWT, máy chủ kiểm tra quyền), nên nhân viên, chỉ xem và API đối tác không đọc được. Công việc chỉ lưu mã mục tiêu (`tasks.data.goal`), không lưu nội dung. Nhật ký chỉ ghi thao tác, không ghi nội dung mục tiêu.
+
 Storage: bucket `files` (công khai, tệp đính kèm thường), bucket `receipts` (riêng tư, ảnh chứng từ thu chi, chỉ xem qua link ký có hạn).
 
 ### 3.2 Edge Function

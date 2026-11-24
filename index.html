@@ -490,7 +490,7 @@ async function startSession(){
   if(prof.role!=="viewer") assetsNs=makeAssets();
   shellAuth(true); renderShell(); $("#app").innerHTML='<div class="empty">Đang tải dữ liệu…</div>';
   try{ await loadAll(); }catch(e){ $("#app").innerHTML='<div class="alert bad">Không đọc được dữ liệu: '+esc(e.message||"")+'. Tải lại trang.</div>'; return; }
-  loadedCols=new Set(COLS); ready=true; subscribe(); render();
+  loadedCols=new Set(COLS); ready=true; subscribe(); goalInit(); render();
 }
 async function boot(){
   renderShell(); shellAuth(false);
@@ -518,7 +518,7 @@ function accT(x){ if(!x) return ""; const d=new Date(x); if(isNaN(d)) return "";
   return p(d.getHours())+":"+p(d.getMinutes())+" "+p(d.getDate())+"/"+p(d.getMonth()+1)+'<div class="sub">'+rel+'</div>'; }
 function accSeenCell(u){ const a=(ACT||{})[u.id]||{}; const seen=[a.seen,u.last_sign_in_at].filter(Boolean).sort().pop(); const old=!seen||Date.now()-new Date(seen)>3*864e5;
   return '<td'+(old?' style="color:var(--warn,#d9a441)"':'')+'>'+(seen?accT(seen):'<span class="sub">Chưa vào</span>')+'</td><td>'+(a.work?accT(a.work):'<span class="sub">Chưa có</span>')+'</td><td>'+(a.n7?'<b>'+a.n7+'</b>':'<span class="sub">0</span>')+'</td>'; }
-async function loadAcc(){ const [r]=await Promise.all([callAdmin({action:"list"}),loadAct()]); if(r.error){ toast(r.error==="owner_only"?"Chỉ owner xem được":r.error); ACC=[]; } else ACC=r.users; if(ui.view==="tai-khoan") render(); }
+async function loadAcc(){ const [r,g]=await Promise.all([callAdmin({action:"list"}),loadAct(),goalPost({action:"list"}).catch(()=>({}))]); if(g&&g.access) GACC=g.access; if(r.error){ toast(r.error==="owner_only"?"Chỉ owner xem được":r.error); ACC=[]; } else ACC=r.users; if(ui.view==="tai-khoan") render(); }
 function vAccounts(){
   if(!isOwner()) return '<div class="alert bad">Chỉ owner quản lý tài khoản.</div>';
   if(ACC===null){ loadAcc(); return '<div class="empty">Đang tải danh sách tài khoản…</div>'; }
@@ -537,7 +537,7 @@ function accForm(u){
    +'<div class="f"><label for="a_p">Gắn với nhân sự (để thấy việc của mình)</label><select id="a_p"><option value="">— Chưa gắn —</option>'+people.map(([k,p])=>'<option value="'+k+'"'+(u?.person_id===k?" selected":"")+'>'+esc(p.name)+'</option>').join("")+'</select></div>'
    +'<div class="f2"><div class="f"><label for="a_r">Vai trò</label><select id="a_r"'+(isSelf?" disabled":"")+'>'+Object.entries(ROLE_L).filter(([k])=>k!=="owner"||u?.role==="owner").map(([k,l])=>'<option value="'+k+'"'+((u?.role||"staff")===k?" selected":"")+'>'+l+'</option>').join("")+'</select></div>'
    +'<div class="f"><label>Tài chính</label><label class="chk"><input type="checkbox" id="a_f"'+(u?.can_finance||u?.role==="owner"?" checked":"")+(isSelf?" disabled":"")+'><span>Được xem số tiền hợp đồng</span></label></div></div>'
-   +'<div class="f"><label>Tính năng</label><label class="chk"><input type="checkbox" id="a_pl"'+(u?.role==="owner"||(u?.person_id&&S.people[u.person_id]?.canPlan)?" checked":"")+(u?.role==="owner"?" disabled":"")+'><span>Kế hoạch tuần: dán lịch, bảng tuần, rà soát công việc</span></label><label class="chk"><input type="checkbox" id="a_lv"'+(u?.role==="owner"||(u?.person_id&&S.people[u.person_id]?.canLeave)?" checked":"")+(u?.role==="owner"?" disabled":"")+'><span>Duyệt đơn nghỉ phép, về sớm</span></label><label class="chk"><input type="checkbox" id="a_ex"'+(u?.role==="owner"||(u?.person_id&&S.people[u.person_id]?.canExpense)?" checked":"")+(u?.role==="owner"?" disabled":"")+'><span>Ghi thu chi: chụp chứng từ thanh toán (chỉ thấy phiếu của mình)</span></label><label class="chk"><input type="checkbox" id="a_rc"'+(u?.role==="owner"||(u?.person_id&&S.people[u.person_id]?.canRecon)?" checked":"")+(u?.role==="owner"?" disabled":"")+'><span>Đối soát việc: xem việc trễ, lệch giữa lịch, báo cáo, tiến độ, hồ sơ vùng</span></label><div class="sub">Cần gắn với nhân sự. Người không có quyền vẫn thấy "Lịch hôm nay của tôi" ở Tổng quan.</div></div>'
+   +'<div class="f"><label>Tính năng</label><label class="chk"><input type="checkbox" id="a_pl"'+(u?.role==="owner"||(u?.person_id&&S.people[u.person_id]?.canPlan)?" checked":"")+(u?.role==="owner"?" disabled":"")+'><span>Kế hoạch tuần: dán lịch, bảng tuần, rà soát công việc</span></label><label class="chk"><input type="checkbox" id="a_lv"'+(u?.role==="owner"||(u?.person_id&&S.people[u.person_id]?.canLeave)?" checked":"")+(u?.role==="owner"?" disabled":"")+'><span>Duyệt đơn nghỉ phép, về sớm</span></label><label class="chk"><input type="checkbox" id="a_ex"'+(u?.role==="owner"||(u?.person_id&&S.people[u.person_id]?.canExpense)?" checked":"")+(u?.role==="owner"?" disabled":"")+'><span>Ghi thu chi: chụp chứng từ thanh toán (chỉ thấy phiếu của mình)</span></label><label class="chk"><input type="checkbox" id="a_rc"'+(u?.role==="owner"||(u?.person_id&&S.people[u.person_id]?.canRecon)?" checked":"")+(u?.role==="owner"?" disabled":"")+'><span>Đối soát việc: xem việc trễ, lệch giữa lịch, báo cáo, tiến độ, hồ sơ vùng</span></label>'+(u&&u.role!=="owner"?'<label class="chk"><input type="checkbox" id="a_gl"'+((GACC||[]).includes(u.id)?" checked":"")+'><span>Mục tiêu công ty: xem, ghi nhận mục tiêu owner đưa ra (chỉ tài khoản Quản lý)</span></label>':'')+'<div class="sub">Cần gắn với nhân sự. Người không có quyền vẫn thấy "Lịch hôm nay của tôi" ở Tổng quan.</div></div>'
    +(u?'':'<div class="f"><label for="a_pw">Mật khẩu cấp lần đầu (để trống: hệ thống tự tạo)</label><input id="a_pw" minlength="8" autocomplete="off"></div>')
    +'<div class="row"><button class="btn pri">'+(u?"Lưu":"Tạo tài khoản")+'</button><span class="sub" id="accM"></span></div></form>'
    +(u&&!isSelf?'<div class="panel" style="margin-top:12px"><div class="row" style="flex-wrap:wrap"><button class="btn" id="accPw">Đặt lại mật khẩu</button><button class="btn" id="accAct">'+(u.active?"Ngừng kích hoạt":"Kích hoạt lại")+'</button><button class="btn" id="accDel">Xóa tài khoản</button></div><div id="accOut" style="margin-top:8px"></div></div>':'')
@@ -559,6 +559,7 @@ function openAcc(id){
     const ex=$("#a_ex")?.checked; if(pid&&S.people[pid]&&!!S.people[pid].canExpense!==!!ex&&body.role!=="owner") await upd("people",pid,{canExpense:!!ex});
     if(u?.person_id&&u.person_id!==pid&&S.people[u.person_id]?.canExpense&&!ACC.some(x=>x.id!==u.id&&x.person_id===u.person_id)) await upd("people",u.person_id,{canExpense:false});
     if(u?.person_id&&u.person_id!==pid&&S.people[u.person_id]?.canLeave&&!ACC.some(x=>x.id!==u.id&&x.person_id===u.person_id)) await upd("people",u.person_id,{canLeave:false});
+    const gl=$("#a_gl"); if(u&&gl&&!!gl.checked!==(GACC||[]).includes(u.id)){ if(gl.checked&&body.role!=="manager"){ m.textContent="Chỉ tài khoản Quản lý được xem mục tiêu công ty."; await loadAcc(); return; } await goalAccSet(u.id,gl.checked); }
     m.textContent="Đã lưu"; if(!u){ $("#accF").insertAdjacentHTML("afterend",pwBox(r.email,r.password)); bindCp(L); $("#accF").querySelector("button").disabled=true; } await loadAcc(); });
   $("#accPw")?.addEventListener("click",async()=>{ const r=await callAdmin({action:"reset_password",id:u.id}); if(r.error){ toast(r.error); return; } $("#accOut").innerHTML=pwBox(u.email,r.password); bindCp(L); loadAcc(); });
   $("#accAct")?.addEventListener("click",async()=>{ const r=await callAdmin({action:"set_active",id:u.id,active:!u.active}); if(r.error){ toast(r.error); return; } toast(u.active?"Đã khóa tài khoản":"Đã kích hoạt lại"); closeDrawer(); loadAcc(); });
@@ -1690,6 +1691,109 @@ function bindFbUnits(A){
     const blob=new Blob(["﻿"+[head,...rows].map(r=>r.map(q).join(",")).join("\r\n")],{type:"text/csv;charset=utf-8"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="vung-farmbase_"+todayStr()+".csv"; a.click(); });
 }
 
+/* ---------- Trang "Mục tiêu công ty": chỉ owner và quản lý được owner cấp quyền (API /api/goals, lưu app_secrets) ---------- */
+// Owner đưa ra mục tiêu; quản lý được cấp quyền xem, bấm "Ghi nhận" kèm cách sắp xếp, phân công, rồi giao việc gắn với mục tiêu.
+// Công việc giao từ mục tiêu chỉ lưu mã mục tiêu (goal), không lưu nội dung, nên nhân viên không thấy mục tiêu.
+let GOAL=null, GOALOK=false, GOALERR="", GOALL=false, GACC=null;
+const G_PRIO_L={high:["Ưu tiên cao","bad"],mid:["Ưu tiên vừa","warn"],low:["Ưu tiên thấp",""]};
+const G_ST_L={open:"Đang thực hiện",done:"Đã đạt",pause:"Tạm dừng"};
+function canGoals(){ return isOwner()||GOALOK; }
+async function goalPost(body){ const {data}=await SB.auth.getSession(); const res=await fetch(SB_URL+"/functions/v1/api/goals",{method:"POST",headers:{"Content-Type":"application/json",apikey:SB_KEY,Authorization:"Bearer "+(data.session?.access_token||"")},body:JSON.stringify(body||{})});
+  const j=await res.json().catch(()=>null); return j||{error:"Lỗi "+res.status}; }
+// quản lý: hỏi máy chủ xem đã được cấp quyền chưa, có thì hiện mục "Mục tiêu" trên thanh điều hướng
+async function goalInit(){ if(isOwner()){ GOALOK=true; return; } if(PROFILE?.role!=="manager") return;
+  const r=await goalPost({action:"list"}).catch(()=>({error:"net"})); if(!r.error){ GOALOK=true; GOAL=r; if(ready) render(); } }
+async function goalLoad(){ if(GOALL) return; GOALL=true; GOALERR="";
+  const r=await goalPost({action:"list"}).catch(()=>({error:"Không kết nối được máy chủ"})); GOALL=false;
+  if(r.error){ GOALERR=r.error==="no_access"?"Bạn chưa được cấp quyền xem mục tiêu công ty. Nhờ owner bật trong trang Tài khoản.":r.error; GOAL={items:[],managers:[],me:{}}; if(r.error==="no_access") GOALOK=false; }
+  else{ GOAL=r; if(r.access) GACC=r.access; }
+  if(ui.view==="muc-tieu"||ui.view==="tai-khoan") render(); }
+const gDate=s=>s?s.slice(8,10)+"/"+s.slice(5,7)+"/"+s.slice(0,4):"";
+const gToday=()=>new Date(Date.now()+7*3600e3).toISOString().slice(0,10);
+function gWhen(x){ const d=new Date(x); if(isNaN(d)) return ""; const p=n=>String(n).padStart(2,"0"); return p(d.getHours())+":"+p(d.getMinutes())+" "+p(d.getDate())+"/"+p(d.getMonth()+1); }
+// quản lý cần ghi nhận: người được giao, hoặc mọi quản lý được xem nếu chưa giao riêng
+function gTargets(g){ const M=GOAL?.managers||[]; const to=(g.to||[]).filter(id=>M.some(p=>p.id===id)); return to.length?M.filter(p=>to.includes(p.id)):M; }
+function gTasks(id){ return Object.entries(S.tasks||{}).filter(([,t])=>t.goal===id); }
+let GF={st:"open"};
+function vGoals(){
+  if(!canGoals()&&GOAL===null){ goalLoad(); return '<div class="empty">Đang kiểm tra quyền…</div>'; }
+  if(GOAL===null){ goalLoad(); return '<div class="empty">Đang tải mục tiêu…</div>'; }
+  if(GOALERR) return '<div class="alert bad">'+esc(GOALERR)+'</div>';
+  const own=isOwner(), meId=PROFILE?.id, all=GOAL.items||[];
+  const cnt=k=>all.filter(g=>(g.status||"open")===k).length;
+  const L=all.filter(g=>GF.st==="all"||(g.status||"open")===GF.st).slice().sort((a,b)=>["high","mid","low"].indexOf(a.prio||"mid")-["high","mid","low"].indexOf(b.prio||"mid")||(a.due||"9999").localeCompare(b.due||"9999"));
+  const need=all.filter(g=>(g.status||"open")==="open"&&gTargets(g).some(p=>p.id===meId)&&!(g.acks||{})[meId]).length;
+  let h='<div class="row between" style="flex-wrap:wrap;gap:8px"><div style="min-width:0"><h1>Mục tiêu công ty</h1><div class="sub">Chỉ owner và quản lý được cấp quyền thấy trang này. '+(own?'Quản lý ghi nhận mục tiêu, rồi sắp xếp, giao việc cho đội.':'Đọc mục tiêu, bấm Ghi nhận kèm cách phân công, rồi giao việc.')+'</div></div>'
+   +(own?'<div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn" id="gAcc">Người được xem</button><button class="btn pri" id="gAdd">Thêm mục tiêu</button></div>':'')+'</div>';
+  if(need) h+='<div class="alert" style="margin-top:10px">Bạn có <b>'+need+'</b> mục tiêu chưa ghi nhận.</div>';
+  if(own&&!(GOAL.managers||[]).length) h+='<div class="alert" style="margin-top:10px">Chưa có quản lý nào được xem. Bấm "Người được xem" để cấp quyền.</div>';
+  h+='<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:12px">'+[["open","Đang thực hiện"],["done","Đã đạt"],["pause","Tạm dừng"],["all","Tất cả"]].map(([k,l])=>'<button class="btn sm'+(GF.st===k?' pri':'')+'" data-gst="'+k+'">'+l+' ('+(k==="all"?all.length:cnt(k))+')</button>').join("")+'</div>';
+  if(!L.length) return h+'<div class="empty" style="margin-top:12px">'+(all.length?'Không có mục tiêu ở nhóm này.':own?'Chưa có mục tiêu. Bấm "Thêm mục tiêu" để đưa ra mục tiêu đầu tiên.':'Owner chưa đưa ra mục tiêu nào.')+'</div>';
+  h+='<div style="display:grid;gap:10px;margin-top:12px">';
+  L.forEach(g=>{ const P=G_PRIO_L[g.prio||"mid"]||G_PRIO_L.mid, T=gTargets(g), A=g.acks||{}, late=g.due&&g.due<gToday()&&(g.status||"open")==="open";
+    const TK=gTasks(g.id), done=TK.filter(([,t])=>t.status==="done").length, mine=T.some(p=>p.id===meId), myAck=A[meId];
+    h+='<div class="panel" style="min-width:0"><div class="row between" style="gap:8px;flex-wrap:wrap;align-items:flex-start"><div style="min-width:0;flex:1"><h2 style="margin:0;overflow-wrap:anywhere">'+esc(g.title)+'</h2>'
+     +'<div class="row" style="gap:4px;flex-wrap:wrap;margin-top:4px"><span class="pill '+P[1]+'">'+P[0]+'</span><span class="pill">'+esc(G_ST_L[g.status||"open"])+'</span>'+(g.period?'<span class="pill">'+esc(g.period)+'</span>':'')+(g.due?'<span class="pill'+(late?' bad':'')+'">'+(late?'Trễ · ':'Hạn ')+gDate(g.due)+'</span>':'')+'</div></div>'
+     +(own?'<button class="btn sm" data-gedit="'+esc(g.id)+'">Sửa</button>':'')+'</div>'
+     +(g.kpi?'<div style="margin-top:8px"><b>Chỉ tiêu:</b> <span style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(g.kpi)+'</span></div>':'')
+     +(g.detail?'<div style="margin-top:6px;white-space:pre-wrap;overflow-wrap:anywhere">'+esc(g.detail)+'</div>':'')
+     +'<div style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px"><div class="sub" style="font-size:12px;margin-bottom:4px">Quản lý ghi nhận'+((g.to||[]).length?'':' (mọi quản lý được xem)')+'</div>'
+     +(T.length?T.map(p=>{ const a=A[p.id]; return '<div style="margin-top:4px;overflow-wrap:anywhere">'+(a?'<span class="pill good">Đã ghi nhận</span>':'<span class="pill warn">Chưa ghi nhận</span>')+' <b>'+esc(p.name)+'</b>'+(a?' <span class="sub" style="font-size:12px">'+gWhen(a.at)+'</span>'+(a.note?'<div class="sub" style="white-space:pre-wrap;margin:2px 0 0 4px">'+esc(a.note)+'</div>':''):'')+'</div>'; }).join(""):'<div class="sub">Chưa có quản lý nào.</div>')
+     +'</div>'
+     +'<div style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px"><div class="sub" style="font-size:12px;margin-bottom:4px">Công việc đã giao: '+TK.length+(TK.length?', xong '+done:'')+'</div>'
+     +TK.slice(0,8).map(([k,t])=>'<div style="margin-top:3px;overflow-wrap:anywhere;cursor:pointer" data-gtask="'+esc(k)+'"><span class="pill'+(t.status==="done"?' good':t.due&&t.due<gToday()?' bad':'')+'">'+esc(TSTAT[t.status]||t.status||"")+'</span> '+esc(t.title||"")+(t.A?' <span class="sub" style="font-size:12px">· '+esc(pname(t.A)||"")+'</span>':'')+(t.due?' <span class="sub" style="font-size:12px">· '+gDate(t.due)+'</span>':'')+'</div>').join("")
+     +(TK.length>8?'<div class="sub" style="font-size:12px">+'+(TK.length-8)+' việc nữa</div>':'')+'</div>'
+     +'<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:10px">'+(!own||mine?'<button class="btn sm'+(myAck?'':' pri')+'" data-gack="'+esc(g.id)+'">'+(myAck?'Sửa ghi nhận':'Ghi nhận, phân công')+'</button>':'')
+     +(PROFILE.role!=="viewer"?'<button class="btn sm" data-gtnew="'+esc(g.id)+'">+ Giao việc</button>':'')+'</div></div>'; });
+  return h+'</div>';
+}
+function bindGoals(A){
+  A.querySelectorAll("[data-gst]").forEach(b=>b.addEventListener("click",()=>{ GF.st=b.dataset.gst; render(); }));
+  $("#gAdd")?.addEventListener("click",()=>openGoal(null));
+  $("#gAcc")?.addEventListener("click",openGoalAcc);
+  A.querySelectorAll("[data-gedit]").forEach(b=>b.addEventListener("click",()=>openGoal(b.dataset.gedit)));
+  A.querySelectorAll("[data-gack]").forEach(b=>b.addEventListener("click",()=>openGoalAck(b.dataset.gack)));
+  A.querySelectorAll("[data-gtask]").forEach(b=>b.addEventListener("click",()=>openTask(b.dataset.gtask)));
+  // việc mới chỉ mang mã mục tiêu; tên việc do quản lý tự đặt
+  A.querySelectorAll("[data-gtnew]").forEach(b=>b.addEventListener("click",()=>openTask(null,{kind:"task",goal:b.dataset.gtnew})));
+}
+const G_IN='width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--surface);font:inherit';
+function openGoal(id){ const g=id?(GOAL.items||[]).find(x=>x.id===id):null; const M=GOAL.managers||[], to=g?.to||[];
+  showDrawer('<div class="dh"><h2>'+(g?"Sửa mục tiêu":"Thêm mục tiêu")+'</h2><button class="btn sm" data-close>Đóng</button></div><div class="db"><div class="grid" style="gap:8px">'
+   +'<div class="f"><label for="gT">Mục tiêu</label><input id="gT" maxlength="200" value="'+esc(g?.title||"")+'" placeholder="Ví dụ: Đạt 50 mã vùng trồng mới"></div>'
+   +'<div class="f"><label for="gK">Chỉ tiêu đo được</label><textarea id="gK" rows="2" maxlength="1000" style="'+G_IN+'" placeholder="Con số, kết quả cần đạt">'+esc(g?.kpi||"")+'</textarea></div>'
+   +'<div class="f2"><div class="f"><label for="gPd">Kỳ</label><input id="gPd" maxlength="60" value="'+esc(g?.period||"")+'" placeholder="Quý 1/2027"></div><div class="f"><label for="gD">Hạn</label><input id="gD" type="date" value="'+esc(g?.due||"")+'"></div></div>'
+   +'<div class="f2"><div class="f"><label for="gP">Mức ưu tiên</label><select id="gP">'+Object.entries(G_PRIO_L).map(([k,l])=>'<option value="'+k+'"'+((g?.prio||"mid")===k?" selected":"")+'>'+l[0]+'</option>').join("")+'</select></div>'
+   +'<div class="f"><label for="gS">Trạng thái</label><select id="gS">'+Object.entries(G_ST_L).map(([k,l])=>'<option value="'+k+'"'+((g?.status||"open")===k?" selected":"")+'>'+l+'</option>').join("")+'</select></div></div>'
+   +'<div class="f"><label for="gDt">Mô tả, định hướng</label><textarea id="gDt" rows="6" maxlength="4000" style="'+G_IN+'" placeholder="Bối cảnh, cách làm mong muốn, nguồn lực">'+esc(g?.detail||"")+'</textarea></div>'
+   +'<div class="f"><label>Giao cho quản lý</label>'+(M.length?M.map(p=>'<label class="chk"><input type="checkbox" class="gTo" value="'+esc(p.id)+'"'+(to.includes(p.id)?" checked":"")+'><span>'+esc(p.name)+'</span></label>').join("")+'<div class="sub">Không chọn ai: mọi quản lý được xem cần ghi nhận.</div>':'<div class="sub">Chưa có quản lý nào được xem. Cấp quyền ở nút "Người được xem".</div>')+'</div>'
+   +(g&&Object.keys(g.acks||{}).length?'<label class="chk"><input type="checkbox" id="gRe"><span>Nội dung đã đổi: yêu cầu quản lý ghi nhận lại</span></label>':'')
+   +'<div class="sub" style="font-size:12px">Không ghi số CCCD, số điện thoại.</div>'
+   +'<div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn pri" id="gSv">Lưu</button>'+(g?'<button class="btn" id="gDel">Xóa</button>':'')+'<span class="sub" id="gM"></span></div></div></div>');
+  $("#gSv").addEventListener("click",async()=>{ const d={title:$("#gT").value.trim(),kpi:$("#gK").value.trim(),period:$("#gPd").value.trim(),due:$("#gD").value||"",prio:$("#gP").value,status:$("#gS").value,detail:$("#gDt").value.trim(),to:[...document.querySelectorAll(".gTo:checked")].map(x=>x.value),reack:!!$("#gRe")?.checked};
+    if(!d.title){ $("#gM").textContent="Nhập mục tiêu."; return; } $("#gSv").disabled=true; $("#gM").textContent="Đang lưu…";
+    const r=await goalPost({action:"save",id:g?.id||null,data:d}).catch(()=>({error:"Không kết nối được máy chủ"}));
+    if(r.error){ $("#gSv").disabled=false; $("#gM").textContent="Chưa lưu được: "+r.error; return; }
+    const I=GOAL.items||(GOAL.items=[]), i=I.findIndex(x=>x.id===r.goal.id); if(i<0) I.push(r.goal); else I[i]=r.goal; toast("Đã lưu"); closeDrawer(); render(); });
+  $("#gDel")?.addEventListener("click",async e=>{ const b=e.currentTarget; if(b.dataset.c!=="1"){ b.dataset.c="1"; b.textContent="Bấm lần nữa để xóa"; return; }
+    const r=await goalPost({action:"delete",id:g.id}).catch(()=>({error:"Không kết nối được máy chủ"})); if(r.error){ toast(r.error); return; }
+    GOAL.items=(GOAL.items||[]).filter(x=>x.id!==g.id); toast("Đã xóa"); closeDrawer(); render(); }); }
+function openGoalAck(id){ const g=(GOAL.items||[]).find(x=>x.id===id); if(!g) return; const a=(g.acks||{})[PROFILE.id];
+  showDrawer('<div class="dh"><div style="min-width:0"><h2 style="overflow-wrap:anywhere">'+esc(g.title)+'</h2><div class="sub">Ghi nhận mục tiêu</div></div><button class="btn sm" data-close>Đóng</button></div><div class="db">'
+   +(g.kpi?'<div><b>Chỉ tiêu:</b> <span style="white-space:pre-wrap">'+esc(g.kpi)+'</span></div>':'')
+   +'<label style="display:block;margin-top:8px">Cách sắp xếp, phân công<textarea id="gaN" rows="7" maxlength="2000" style="'+G_IN+'" placeholder="Ai phụ trách phần nào, mốc thời gian, cần thêm gì">'+esc(a?.note||"")+'</textarea></label>'
+   +'<div class="sub" style="font-size:12px;margin-top:4px">Sau khi ghi nhận, bấm "+ Giao việc" ở mục tiêu để tạo việc cho từng người.</div>'
+   +'<div class="row" style="gap:6px;margin-top:8px"><button class="btn pri" id="gaS">'+(a?"Lưu":"Ghi nhận")+'</button><span class="sub" id="gaM"></span></div></div>');
+  $("#gaS").addEventListener("click",async()=>{ $("#gaS").disabled=true; $("#gaM").textContent="Đang lưu…";
+    const r=await goalPost({action:"ack",id,note:$("#gaN").value.trim()}).catch(()=>({error:"Không kết nối được máy chủ"}));
+    if(r.error){ $("#gaS").disabled=false; $("#gaM").textContent="Chưa lưu được: "+r.error; return; }
+    const I=GOAL.items, i=I.findIndex(x=>x.id===id); if(i>=0) I[i]=r.goal; toast("Đã ghi nhận"); closeDrawer(); render(); }); }
+async function goalAccSet(uid,on){ const r=await goalPost({action:"access",user:uid,on:!!on}).catch(()=>({error:"Không kết nối được máy chủ"})); if(r.error){ toast(r.error); return false; } GACC=r.access; GOAL=null; goalLoad(); return true; }
+async function openGoalAcc(){ const L=ACC||(await callAdmin({action:"list"})).users||[]; const M=L.filter(p=>p.role==="manager"&&p.active), on=new Set(GACC||GOAL?.access||[]);
+  showDrawer('<div class="dh"><h2>Người được xem mục tiêu</h2><button class="btn sm" data-close>Đóng</button></div><div class="db"><div class="sub">Chỉ cấp cho tài khoản quản lý. Nhân viên, chỉ xem và API đối tác không bao giờ thấy mục tiêu.</div>'
+   +(M.length?M.map(p=>'<label class="chk" style="margin-top:6px"><input type="checkbox" class="gAc" value="'+esc(p.id)+'"'+(on.has(p.id)?" checked":"")+'><span>'+esc(p.name||p.email)+'</span></label>').join(""):'<div class="empty">Chưa có tài khoản quản lý.</div>')+'</div>');
+  document.querySelectorAll(".gAc").forEach(c=>c.addEventListener("change",async()=>{ c.disabled=true; const ok=await goalAccSet(c.value,c.checked); c.disabled=false; if(!ok) c.checked=!c.checked; else toast(c.checked?"Đã cấp quyền":"Đã bỏ quyền"); })); }
+
 const stamp=()=>({updatedAt:new Date().toISOString(),updatedBy:me||""});
 
 /* ---------- ô nhập nhiều dòng tự giãn theo nội dung ---------- */
@@ -1700,9 +1804,9 @@ document.addEventListener("toggle",e=>taFitIn(e.target),true);
 window.addEventListener("resize",()=>document.querySelectorAll("textarea").forEach(taFit));
 new MutationObserver(ms=>{ ms.forEach(m=>m.addedNodes.forEach(taFitIn)); }).observe(document.documentElement,{childList:true,subtree:true});
 /* ---------- shell ---------- */
-const NAV=[["g-tq","Tổng quan","Tổng",["tong-quan","doi-soat","thu-chi"]],["g-viec","Công việc","Việc",["cong-viec","ke-hoach","lich","ho-tro"]],["g-bc","Báo cáo","Báo cáo",["bao-cao","thong-ke"]],["g-vung","Vùng, khách hàng","Vùng",["vung","vung-fb","ho-so","hop-dong","cong-ty","nhu-cau"]],["g-doi","Đội ngũ","Đội ngũ",["nhan-su","lien-he"]],["g-tg","Trợ giúp","Trợ giúp",["huong-dan","faq"]],["g-qt","Quản trị","Quản trị",["tai-khoan","nhat-ky","api"]]];
-const VLAB={"vung-fb":"Vùng FarmBase","nhu-cau":"Sales","doi-soat":"Đối soát việc","thu-chi":"Thu chi","tai-khoan":"Tài khoản","nhat-ky":"Nhật ký","api":"API đối tác"}; const GICON={"g-qt":'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'};
-function navOk(v){ if(v==="ke-hoach") return canPlan(); if(v==="thu-chi") return typeof canExpView==="function"&&canExpView(); if(v==="doi-soat") return typeof canRecon==="function"&&canRecon(); if(v==="nhu-cau") return typeof sdOk==="function"&&sdOk(); if(v==="vung-fb") return typeof canManage==="function"&&canManage(); if(v==="tai-khoan"||v==="nhat-ky"||v==="api") return typeof isOwner==="function"&&isOwner(); return VIEWS.some(x=>x[0]===v); }
+const NAV=[["g-tq","Tổng quan","Tổng",["tong-quan","muc-tieu","doi-soat","thu-chi"]],["g-viec","Công việc","Việc",["cong-viec","ke-hoach","lich","ho-tro"]],["g-bc","Báo cáo","Báo cáo",["bao-cao","thong-ke"]],["g-vung","Vùng, khách hàng","Vùng",["vung","vung-fb","ho-so","hop-dong","cong-ty","nhu-cau"]],["g-doi","Đội ngũ","Đội ngũ",["nhan-su","lien-he"]],["g-tg","Trợ giúp","Trợ giúp",["huong-dan","faq"]],["g-qt","Quản trị","Quản trị",["tai-khoan","nhat-ky","api"]]];
+const VLAB={"muc-tieu":"Mục tiêu","vung-fb":"Vùng FarmBase","nhu-cau":"Sales","doi-soat":"Đối soát việc","thu-chi":"Thu chi","tai-khoan":"Tài khoản","nhat-ky":"Nhật ký","api":"API đối tác"}; const GICON={"g-qt":'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'};
+function navOk(v){ if(v==="ke-hoach") return canPlan(); if(v==="thu-chi") return typeof canExpView==="function"&&canExpView(); if(v==="doi-soat") return typeof canRecon==="function"&&canRecon(); if(v==="nhu-cau") return typeof sdOk==="function"&&sdOk(); if(v==="vung-fb") return typeof canManage==="function"&&canManage(); if(v==="muc-tieu") return typeof canGoals==="function"&&canGoals(); if(v==="tai-khoan"||v==="nhat-ky"||v==="api") return typeof isOwner==="function"&&isOwner(); return VIEWS.some(x=>x[0]===v); }
 function navGroup(v){ v=v==="khach"?"cong-ty":v; return NAV.find(g=>g[3].includes(v))||NAV[0]; }
 function navLabel(v){ return VLAB[v]||(VIEWS.find(x=>x[0]===v)||[,v])[1]; }
 function renderNav(){ ui.navLast=ui.navLast||{}; const cur=ui.view==="khach"?"cong-ty":ui.view, G=navGroup(cur); ui.navLast[G[0]]=cur;
@@ -1717,7 +1821,7 @@ function renderShell(){
 }
 function route(){
   const h=(location.hash||"").replace("#","");
-  ui.view=VIEWS.some(v=>v[0]===h)||h==="khach"||h==="tai-khoan"||h==="nhat-ky"||h==="api"||h==="thu-chi"||h==="doi-soat"||h==="nhu-cau"||h==="vung-fb"?h:"tong-quan";
+  ui.view=VIEWS.some(v=>v[0]===h)||h==="khach"||h==="tai-khoan"||h==="nhat-ky"||h==="api"||h==="thu-chi"||h==="doi-soat"||h==="nhu-cau"||h==="vung-fb"||h==="muc-tieu"?h:"tong-quan";
   renderNav();
   if(ready) render();
 }
@@ -1752,6 +1856,7 @@ function render(){
   else if(v==="doi-soat") el.innerHTML=vRecon();
   else if(v==="nhu-cau") el.innerHTML=vSales();
   else if(v==="vung-fb") el.innerHTML=vFbUnits();
+  else if(v==="muc-tieu") el.innerHTML=vGoals();
   bindView(); if(v==="ho-so") bindHs(el);
   if(ui.drawer) ui.drawer();
 }
@@ -2490,7 +2595,7 @@ async function loadHist(col,id){ const box=$("#histLog"); if(!box||!canManage())
   }catch(e){ box.innerHTML='<div class="sub">Không đọc được nhật ký.</div>'; } }
 function openTask(id,preset){ ui.drawer=()=>drawTask(id,preset); drawTask(id,preset); }
 function drawTask(id,preset){
-  const t=id?S.tasks[id]:{kind:preset.kind,parent:preset.parent||null,zone:preset.zone||null,prio:(preset.parent&&S.tasks[preset.parent]?.prio)||"",title:"",status:"todo",R:me||"",A:"",C:[],I:[],due:"",team:"",smart:{}};
+  const t=id?S.tasks[id]:{kind:preset.kind,goal:preset.goal||null,parent:preset.parent||null,zone:preset.zone||null,prio:(preset.parent&&S.tasks[preset.parent]?.prio)||"",title:"",status:"todo",R:me||"",A:"",C:[],I:[],due:"",team:"",smart:{}};
   if(!t){closeDrawer();return;}
   const ppl=Object.entries(S.people).sort((a,b)=>a[1].name.localeCompare(b[1].name,"vi"));
   const kindL={epic:"Epic",task:"Công việc",sub:"Việc con"}[t.kind];
@@ -2534,7 +2639,7 @@ function drawTask(id,preset){
   $("#tAi")?.addEventListener("click",()=>aiReviewTask(readT()));
   $("#tform").addEventListener("submit",async e=>{ e.preventDefault();
     const pick=n=>[...document.querySelectorAll('input[name="'+n+'"]:checked')].map(x=>x.value);
-    const data={kind:t.kind,parent:t.parent||null,title:$("#tt").value.trim(),status:$("#tstat").value,due:$("#tdue").value||"",team:$("#tteamf").value,zone:$("#tzone").value||null,
+    const data={kind:t.kind,goal:t.goal||null,parent:t.parent||null,title:$("#tt").value.trim(),status:$("#tstat").value,due:$("#tdue").value||"",team:$("#tteamf").value,zone:$("#tzone").value||null,
       R:$("#tR").value,A:$("#tA").value,C:pick("tC"),I:pick("tI"),smart:{s:$("#sS").value.trim(),m:$("#sM").value.trim(),a:$("#sA").value.trim(),r:$("#sR").value.trim()},note:$("#tnote").value.trim(),party:$("#tparty").value.trim(),prio:$("#tprio").value,...stamp()};
     if(!data.title){ $("#tmsg").textContent="Nhập tên việc."; return; }
     if(!data.A){ $("#tmsg").textContent="Chọn một người A (chịu trách nhiệm cuối)."; return; }
@@ -4390,6 +4495,7 @@ function bindView(){
   if(ui.view==="nhat-ky") bindLog(A);
   if(ui.view==="api") bindApi(A);
   if(ui.view==="vung-fb") bindFbUnits(A);
+  if(ui.view==="muc-tieu") bindGoals(A);
   if(ui.view==="thu-chi") bindExp(A);
   if(ui.view==="doi-soat") bindRecon(A);
   if(ui.view==="nhu-cau") bindSales(A);
