@@ -43,14 +43,41 @@
   .b-none { background: #f3f4f6; color: var(--mut); } .b-chg { background: #fef3c7; color: #92400e; }
   .b-ok { background: #dcfce7; color: var(--g); } .b-um { background: #ffedd5; color: #9a3412; } .b-err { background: #fee2e2; color: var(--r); }
   td.bv { white-space: normal; min-width: 150px; }
+  td.dp { white-space: normal; min-width: 170px; }
+  .lnk { border: 0; padding: 0; background: none; color: var(--g); text-decoration: underline; cursor: pointer; }
+  .scope { background: #fff; border: 1px solid var(--bd); border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; }
+  .scope .row { display: flex; gap: 8px 16px; flex-wrap: wrap; align-items: center; }
+  .scope .vl { max-height: 160px; overflow: auto; border: 1px solid var(--bd); border-radius: 6px; padding: 6px 8px; margin-top: 6px; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 2px 12px; }
+  .scope .err, .err { color: var(--r); } .ok { color: var(--g); }
+  .kpi.warn b { color: var(--r); }
+  dialog { width: min(1100px, 96vw); border: 1px solid var(--bd); border-radius: 10px; padding: 14px; }
+  dialog .dh { display: flex; justify-content: space-between; gap: 10px; align-items: center; margin-bottom: 10px; }
+  dialog table { margin-bottom: 10px; } dialog h3 { font-size: 13px; margin: 12px 0 6px; } dialog td { white-space: normal; }
 </style>
 </head>
 <body>
 <header>
   <h1>Báo cáo hồ sơ vùng trồng</h1>
   <span id="ran"></span>
+  <span id="prog"></span>
 </header>
 <main>
+  <section class="scope">
+    <div class="row"><b>Phạm vi lấy dữ liệu</b>
+      <span>Trạng thái vùng:</span>
+      <label><input type="checkbox" data-st="ACTIVE"> Đang hoạt động</label>
+      <label><input type="checkbox" data-st="PENDING"> Chờ duyệt</label>
+      <label><input type="checkbox" data-st="INACTIVE"> Đã ngừng</label>
+      <label title="Đọc từng vùng: CCCD, ảnh CCCD nông hộ; ảnh bìa, số tờ, số thửa, số cây, diện tích của lô; trùng thửa"><input type="checkbox" id="scDeep"> Kiểm tra nông hộ và lô (chậm hơn)</label>
+    </div>
+    <div class="row" style="margin-top:8px"><span>Tổ chức:</span> <b id="scVsum"></b>
+      <input id="scVq" placeholder="Tìm tổ chức…" style="min-width:220px">
+      <button id="scVload">Tải danh sách tổ chức</button><button id="scAll">Chọn tất cả tổ chức</button>
+      <span style="flex:1"></span><button id="scSave">Lưu phạm vi</button><button class="primary" id="scRun">Lưu và chạy ngay</button>
+    </div>
+    <div class="vl" id="scVlist"></div>
+    <div id="scMsg" class="muted" style="margin-top:4px"></div>
+  </section>
   <div class="kpis" id="kpis"></div>
   <section class="bvi" id="bvi">
     <div class="row">
@@ -74,6 +101,8 @@
     <select id="fProv"><option value="">Tất cả tỉnh</option></select>
     <select id="fVendor"><option value="">Tất cả doanh nghiệp</option></select>
     <select id="fCrit"><option value="">Mọi tiêu chí</option></select>
+    <select id="fStatus"><option value="">Mọi trạng thái vùng</option><option value="ACTIVE">Đang hoạt động</option><option value="PENDING">Chờ duyệt</option><option value="INACTIVE">Đã ngừng</option></select>
+    <select id="fDeep"><option value="">Nông hộ, lô: tất cả</option><option value="missing">Nông hộ, lô: còn thiếu</option><option value="ok">Nông hộ, lô: đủ</option><option value="error">Nông hộ, lô: lỗi đọc</option><option value="none">Nông hộ, lô: chưa kiểm tra</option></select>
     <select id="fBvi"><option value="">Mọi trạng thái BVI</option></select>
     <select id="fState">
       <option value="">Mọi trạng thái</option>
@@ -93,6 +122,7 @@
   <div class="wrap" style="max-height:300px"><table id="hist"></table></div>
   <p class="muted">"Chưa kiểm tra" = vùng trồng chưa từng bấm kiểm tra hồ sơ trên FarmBase nên không biết tình trạng 5 loại ảnh vùng trồng. Với vùng đã kiểm tra, kết quả lấy theo lần kiểm tra hồ sơ gần nhất (cột "Ngày KT").</p>
 </main>
+<dialog id="dlg"><div id="dlgBody"></div></dialog>
 <script src="lib.js"></script>
 <script src="report.js"></script>
 </body>

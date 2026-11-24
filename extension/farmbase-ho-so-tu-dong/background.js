@@ -2,12 +2,15 @@ importScripts('lib.js');
 
 const ADMIN_URL = 'https://admin.farmbase.vn/dashboard';
 const ALARM = 'fb-auto-check';
-const DEFAULTS = { freq: 'daily', weekday: 1, time: '07:00', autoDownload: false, notify: true };
+const DEFAULT_SCOPE = { statuses: ['ACTIVE', 'PENDING'], vendors: [], vendorNames: [], deep: true };
+const DEFAULTS = { freq: 'daily', weekday: 1, time: '07:00', autoDownload: false, notify: true, scope: DEFAULT_SCOPE };
 const HISTORY_MAX = 90;
 
 async function getSettings() {
   const { settings } = await chrome.storage.local.get('settings');
-  return { ...DEFAULTS, ...(settings || {}) };
+  const s = { ...DEFAULTS, ...(settings || {}) };
+  s.scope = { ...DEFAULT_SCOPE, ...(s.scope || {}) };
+  return s;
 }
 
 function nextRunTime(s) {
@@ -46,7 +49,7 @@ function waitForLoad(tabId, timeoutMs = 60000) {
   });
 }
 
-async function collectInTab() {
+async function inAdminTab(method, arg) {
   // Mở một tab nền mới mỗi lần để tránh tab cũ bị Chrome "ngủ" (discarded); đóng lại sau khi xong.
   const tab = await chrome.tabs.create({ url: ADMIN_URL, active: false });
   try {
@@ -54,8 +57,9 @@ async function collectInTab() {
     await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['check.js'] });
     const [{ result }] = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      func: async () => {
-        try { return { ok: true, data: await window.FBCheck.collect() }; }
+      args: [method, arg ?? null],
+      func: async (m, a) => {
+        try { return { ok: true, data: await window.FBCheck[m](a || undefined) }; }
         catch (e) { return { ok: false, error: String(e?.message || e) }; }
       },
     });
@@ -76,7 +80,7 @@ async function doRun(source) {
   const s = await getSettings();
   await chrome.storage.local.set({ status: { running: true, since: new Date().toISOString() } });
   try {
-    const data = await collectInTab();
+    const data = await inAdminTab('collect', s.scope);
     const summary = FB.summarize(data.rows);
     const { latest, history = [] } = await chrome.storage.local.get(['latest', 'history']);
 
@@ -91,7 +95,7 @@ async function doRun(source) {
       };
     }
 
-    const entry = { ranAt: data.ranAt, source, ...summary };
+    const entry = { ranAt: data.ranAt, source, scope: data.scope, ...summary };
     await chrome.storage.local.set({
       latest: { ...data, summary, changes },
       previousSummary: latest?.summary || null,
@@ -106,7 +110,7 @@ async function doRun(source) {
       chrome.notifications.create('fb-done-' + Date.now(), {
         type: 'basic', iconUrl: 'icon128.png',
         title: `Hồ sơ vùng trồng: ${summary.complete}/${summary.total} vùng đủ`,
-        message: top + (changes ? `\n${changes.improved.length} vùng cải thiện, ${changes.worse.length} vùng thiếu thêm` : ''),
+        message: top + (summary.deep ? `\nNông hộ, lô: ${summary.deep.ok}/${summary.deep.checked} vùng đủ` : '') + (changes ? `\n${changes.improved.length} vùng cải thiện, ${changes.worse.length} vùng thiếu thêm` : ''),
       });
     }
     return { ok: true, summary };
@@ -132,6 +136,16 @@ async function downloadCSV(data) {
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   (async () => {
     if (msg.type === 'runNow') return runCheck('manual');
+    if (msg.type === 'progress') {
+      const { status } = await chrome.storage.local.get('status');
+      if (status?.running) await chrome.storage.local.set({ status: { ...status, progress: { done: msg.done, total: msg.total } } });
+      return { ok: true };
+    }
+    if (msg.type === 'loadVendors') {
+      try { const list = await inAdminTab('vendors'); await chrome.storage.local.set({ vendors: { at: new Date().toISOString(), list } }); return { ok: true, list }; }
+      catch (e) { return { ok: false, error: String(e?.message || e) }; }
+    }
+    if (msg.type === 'getSettings') return getSettings();
     if (msg.type === 'downloadCSV') return downloadCSV();
     if (msg.type === 'saveSettings') {
       await chrome.storage.local.set({ settings: { ...(await getSettings()), ...msg.settings } });

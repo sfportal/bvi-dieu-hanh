@@ -138,6 +138,9 @@ Một chiều, thủ công, chỉ owner: extension `extension/farmbase-ho-so-tu-
 - Máy chủ ghép vùng theo `fbId` đã lưu, rồi mã vùng, rồi `fbName`, rồi tên cùng xã. Chỉ ghi `zones.data.fbId` và `zones.data.fbs` (`ranAt`, `syncedAt`, `checkedAt`, `flags` 12 số 1 thiếu, 0 đủ, -1 chưa kiểm tra, `missing`). Không đụng bước, hồ sơ cứng, ô F. Bản gửi có `ranAt` cũ hơn bản đang lưu thì bỏ qua.
 - Vùng chưa ghép lưu ở `app_secrets` khóa `fbsync:last`; owner ghép tay trong trang API (hàm `api/admin`, action `fb_status`, `fb_pair`).
 - Trang Đối soát báo `zone_fb` khi ô F của Flycam, Kho bẫy lệch với FarmBase. Chi tiết hồ sơ vùng hiện dòng "FarmBase (extension)".
+- Phạm vi lấy dữ liệu (trên trang báo cáo của extension, lịch tự động dùng chung): trạng thái vùng Đang hoạt động, Chờ duyệt, Đã ngừng (chọn nhiều), tổ chức (chọn nhiều, trống là tất cả).
+- Kiểm tra nông hộ và lô (bật/tắt): nông hộ thiếu số CCCD, ảnh CCCD; lô thiếu ảnh bìa sổ đỏ, số tờ, số thửa, số cây, diện tích; cảnh báo diện tích bằng 0 và trùng tờ + thửa trong cùng vùng. Chi tiết từng nông hộ, lô chỉ nằm trong extension; sang app chỉ gửi số đếm và mã lô trùng (không tên nông hộ, số CCCD, số tờ, số thửa).
+- Trang **Vùng FarmBase** (`#vung-fb`, owner và quản lý): mọi vùng đã đồng bộ, kể cả chưa ghép, lưu ở `app_secrets` khóa `fbsync:units`, đọc qua `POST /api/fb` (JWT).
 - Cài extension: Chrome › Tiện ích › Chế độ nhà phát triển › Tải tiện ích đã giải nén › chọn thư mục extension.
 
 Lịch (`events`): `status` là draft (nháp, tự tạo từ công việc), plan (đã duyệt), done, cancel. Gắn vùng qua `zoneId`, `unitId` hoặc `taskIds`.

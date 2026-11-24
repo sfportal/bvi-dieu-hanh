@@ -1053,3 +1053,75 @@ function bindFbs(A){
     if(!zone){ toast("Chọn vùng trên app trước"); return; } b.disabled=true;
     const r=await callApiAdmin({action:"fb_pair",fbId:id,zone}); if(r.error){ b.disabled=false; toast(r.error); return; }
     toast("Đã ghép với "+(S.zones[zone]?.name||zone)); FBS=null; render(); })); }
+
+/* ---------- Trang "Vùng FarmBase": mọi vùng FarmBase đồng bộ từ extension (owner, quản lý xem) ---------- */
+const FB_STL={ACTIVE:["Đang hoạt động","good"],PENDING:["Chờ duyệt","warn"],INACTIVE:["Đã ngừng",""]};
+const FB_DP=[["fNoId","Nông hộ thiếu số CCCD","Thiếu số CCCD"],["fNoImg","Nông hộ thiếu ảnh CCCD","Thiếu ảnh CCCD"],["pNoImg","Lô thiếu ảnh bìa sổ đỏ","Lô thiếu ảnh bìa"],["pNoPage","Lô thiếu số tờ bản đồ","Lô thiếu số tờ"],["pNoPlot","Lô thiếu số thửa","Lô thiếu số thửa"],["pNoTrees","Lô thiếu số cây","Lô thiếu số cây"],["pNoArea","Lô thiếu diện tích","Lô thiếu diện tích"],["pZero","Lô diện tích bằng 0","Diện tích = 0"],["dup","Trùng tờ, thửa trong vùng","Trùng thửa"]];
+let FBU=null, FBUERR="", FBUL=false;
+let FBF={q:"",st:"",ven:"",hs:"",dp:"",link:"",crit:"",n:60};
+async function loadFbu(){ if(FBUL) return; FBUL=true;
+  try{ const {data}=await SB.auth.getSession(); const res=await fetch(SB_URL+"/functions/v1/api/fb",{method:"POST",headers:{"Content-Type":"application/json",apikey:SB_KEY,Authorization:"Bearer "+(data.session?.access_token||"")},body:"{}"});
+    const j=await res.json().catch(()=>null); if(!j||j.error){ FBUERR=String(j?.error||("Lỗi "+res.status)); FBU={units:[]}; } else { FBUERR=""; FBU=j; } }
+  catch(e){ FBUERR="Không kết nối được máy chủ"; FBU={units:[]}; }
+  FBUL=false; if(ui.view==="vung-fb") render(); }
+const fbDeepOk=u=>u.deep&&!u.deep.error&&!(u.deep.issues>0);
+function fbuList(){ const F=FBF, n=norm(F.q||"");
+  return (FBU?.units||[]).filter(u=>(!n||norm([u.name,u.code,u.vendor,u.ward,u.province].join(" ")).includes(n))
+    &&(!F.st||u.status===F.st)&&(!F.ven||u.vendor===F.ven)
+    &&(!F.hs||(F.hs==="ok"?u.missing===0&&(u.flags||[]).every(x=>x===0):F.hs==="miss"?u.missing>0:!(u.flags||[]).length||(u.flags||[]).some(x=>x===-1)))
+    &&(!F.dp||(F.dp==="ok"?fbDeepOk(u):F.dp==="miss"?u.deep&&!u.deep.error&&u.deep.issues>0:F.dp==="err"?u.deep?.error:!u.deep))
+    &&(!F.link||(F.link==="y"?!!u.zone:!u.zone))
+    &&(!F.crit||(F.crit.startsWith("d:")?(u.deep?.[F.crit.slice(2)]||0)>0:(u.flags||[])[+F.crit]===1)))
+   .sort((a,b)=>((b.missing||0)+(b.deep?.issues||0))-((a.missing||0)+(a.deep?.issues||0))||String(a.name).localeCompare(String(b.name),"vi")); }
+function vFbUnits(){
+  if(!canManage()) return '<div class="alert bad">Chỉ owner, quản lý xem trang này.</div>';
+  if(FBU===null){ loadFbu(); return '<div class="empty">Đang tải vùng FarmBase…</div>'; }
+  const U=FBU.units||[], L=fbuList(), F=FBF;
+  const dk=U.filter(u=>u.deep&&!u.deep.error), cnt=f=>U.filter(f).length, sum=k=>dk.reduce((s,u)=>s+(u.deep[k]||0),0);
+  const old=FBU.syncedAt?fbDays(FBU.syncedAt):null;
+  let h='<div class="row between" style="gap:8px;flex-wrap:wrap;align-items:flex-end"><div style="min-width:0"><h1>Vùng FarmBase</h1><div class="sub">Danh sách vùng trồng trên FarmBase do owner đồng bộ từ extension (một chiều). Chỉ có số đếm đủ/thiếu, không có CCCD, số tờ, số thửa. Chi tiết từng nông hộ, lô xem trên extension.</div></div><div class="row" style="gap:6px"><button class="btn" id="fbuRe">Tải lại</button><button class="btn" id="fbuCsv">Tải CSV</button></div></div>';
+  if(FBUERR) h+='<div class="alert bad" style="margin-top:8px">'+esc(FBUERR)+'</div>';
+  h+='<div class="sub" style="margin-top:6px">Đồng bộ gần nhất: <b>'+(FBU.syncedAt?fbWhen(FBU.syncedAt):"chưa có")+'</b>'+(old>FBS_OLD?' <span style="color:var(--warn)">(đã '+old+' ngày)</span>':'')+(FBU.last?.unmatched?' · '+FBU.last.unmatched+' vùng chưa ghép với vùng trên app'+(isOwner()?' (ghép ở trang API)':''):'')+'</div>';
+  if(!U.length) return h+'<div class="empty" style="margin-top:12px">Chưa có dữ liệu. Owner mở extension FarmBase, bấm "Đồng bộ lên BVI".</div>';
+  const tile=(v,l,k,warn)=>'<button class="panel" data-fbk="'+k+'" style="text-align:left;padding:8px 10px;cursor:pointer;min-width:0'+(F.crit===k&&k?';outline:2px solid var(--brand)':'')+'"><b style="font-size:18px'+(warn&&v?';color:var(--bad)':'')+'">'+v+'</b><div class="sub" style="font-size:12px">'+esc(l)+'</div></button>';
+  h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:10px">'
+   +tile(U.length,"Vùng FarmBase","")+tile(cnt(u=>u.status==="ACTIVE"),"Đang hoạt động","")+tile(cnt(u=>u.status==="PENDING"),"Chờ duyệt","")+tile(cnt(u=>u.status==="INACTIVE"),"Đã ngừng","")
+   +tile(cnt(u=>u.missing===0&&(u.flags||[]).every(x=>x===0)),"Đủ 12 mục hồ sơ","")+tile(cnt(fbDeepOk)+"/"+dk.length,"Đủ nông hộ, lô","")+tile(sum("f"),"Nông hộ","")+tile(sum("p"),"Lô","")
+   +FB_DP.map(([k,l])=>tile(cnt(u=>(u.deep?.[k]||0)>0),l+" ("+sum(k)+")","d:"+k,true)).join("")
+   +'</div><details style="margin-top:8px"'+(/^\d+$/.test(F.crit)?" open":"")+'><summary style="cursor:pointer" class="sub">Chi tiết 12 mục hồ sơ vùng</summary><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:6px">'
+   +FB12.map((l,i)=>tile(cnt(u=>(u.flags||[])[i]===1),l,String(i),true)).join("")+'</div></details>';
+  const vens=[...new Set(U.map(u=>u.vendor).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"vi"));
+  const sel=(id,opts,v)=>'<select id="'+id+'" style="min-width:0;max-width:100%">'+opts.map(([k,l])=>'<option value="'+esc(k)+'"'+(k===v?" selected":"")+'>'+esc(l)+'</option>').join("")+'</select>';
+  h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px;margin-top:10px"><input id="fbuQ" placeholder="Tìm tên, mã, tổ chức, xã" value="'+esc(F.q)+'" style="min-width:0">'
+   +sel("fbuSt",[["","Mọi trạng thái"],["ACTIVE","Đang hoạt động"],["PENDING","Chờ duyệt"],["INACTIVE","Đã ngừng"]],F.st)
+   +sel("fbuVen",[["","Mọi tổ chức"],...vens.map(v=>[v,v])],F.ven)
+   +sel("fbuHs",[["","Hồ sơ 12 mục: tất cả"],["miss","Hồ sơ còn thiếu"],["ok","Hồ sơ đủ"],["unk","Có mục chưa kiểm tra"]],F.hs)
+   +sel("fbuDp",[["","Nông hộ, lô: tất cả"],["miss","Nông hộ, lô còn thiếu"],["ok","Nông hộ, lô đủ"],["err","Lỗi đọc"],["none","Chưa kiểm tra"]],F.dp)
+   +sel("fbuLink",[["","Ghép với app: tất cả"],["y","Đã ghép vùng trên app"],["n","Chưa ghép"]],F.link)+'</div>';
+  h+='<div class="sub" style="margin:8px 0">'+L.length+' vùng'+(F.crit?' · đang lọc theo "'+esc(F.crit.startsWith("d:")?(FB_DP.find(x=>x[0]===F.crit.slice(2))||[])[1]:FB12[+F.crit])+'" <button class="btn sm" id="fbuNoCrit">Bỏ lọc</button>':'')+'</div>';
+  h+='<div style="display:grid;gap:8px">'+L.slice(0,F.n).map(u=>{ const st=FB_STL[u.status]||[u.status||"?",""], z=u.zone&&S.zones[u.zone];
+    const miss=(u.flags||[]).map((x,i)=>x===1?FB12[i]:"").filter(Boolean), d=u.deep;
+    const dl=d&&!d.error?FB_DP.filter(([k])=>d[k]>0):[];
+    return '<div class="panel" style="padding:10px 12px;min-width:0"><div class="row between" style="gap:6px;align-items:flex-start;flex-wrap:nowrap"><div style="min-width:0;overflow-wrap:anywhere"><b>'+esc(u.name||u.id)+'</b><div class="sub">'+esc([u.code,u.vendor,u.ward,u.province].filter(Boolean).join(" · "))+'</div></div><span class="pill '+st[1]+'" style="white-space:nowrap">'+esc(st[0])+'</span></div>'
+     +'<div class="row" style="gap:4px 8px;flex-wrap:wrap;margin-top:6px;font-size:13px">'
+     +'<span class="pill '+(miss.length?"warn":(u.flags||[]).some(x=>x===-1)?"":"good")+'">Hồ sơ '+(miss.length?"thiếu "+miss.length+"/12":(u.flags||[]).some(x=>x===-1)?"chưa kiểm tra đủ":"đủ 12 mục")+'</span>'
+     +(d?(d.error?'<span class="pill bad">Lỗi đọc nông hộ, lô</span>':'<span class="pill '+(dl.length?"warn":"good")+'">'+d.f+' nông hộ · '+d.p+' lô'+(dl.length?'':' · đủ')+'</span>'):'<span class="pill">Chưa kiểm tra nông hộ, lô</span>')
+     +(u.areaM2!=null?'<span class="sub">'+fmtHa(u.areaM2/10000)+' ha</span>':'')+'</div>'
+     +(miss.length?'<div class="sub" style="margin-top:4px">Thiếu: '+esc(miss.join(", "))+'</div>':'')
+     +(dl.length?'<div class="row" style="gap:4px;flex-wrap:wrap;margin-top:4px">'+dl.map(([k,,sh])=>'<span class="pill '+(k==="dup"||k==="pZero"?"bad":"warn")+'" style="font-size:12px">'+esc(sh)+' '+d[k]+'</span>').join("")+'</div>'+(d.dupPlots?.length?'<div class="sub" style="font-size:12px;margin-top:2px">Lô trùng thửa: '+esc(d.dupPlots.join(", "))+'</div>':''):'')
+     +'<div class="sub" style="font-size:12px;margin-top:4px">'+(z?'Vùng trên app: <a href="#vung" data-fbz="'+esc(u.zone)+'" style="color:var(--brand)">'+esc(z.name)+'</a>':'Chưa ghép với vùng trên app')+' · đồng bộ '+fbWhen(u.syncedAt)+(u.checkedAt?' · KT hồ sơ '+dm(u.checkedAt.slice(0,10)):'')+'</div></div>'; }).join("")+'</div>';
+  if(L.length>F.n) h+='<div class="row" style="margin-top:8px"><button class="btn" id="fbuMore">Xem thêm ('+(L.length-F.n)+' vùng)</button></div>';
+  return h; }
+function bindFbUnits(A){
+  $("#fbuRe")?.addEventListener("click",()=>{ FBU=null; render(); });
+  const set=(id,k,ev)=>$(id)?.addEventListener(ev||"change",e=>{ FBF[k]=e.target.value; FBF.n=60; if(ev==="input"){ clearTimeout(set.t); set.t=setTimeout(()=>{ render(); const q=$("#fbuQ"); if(q){ q.focus(); q.setSelectionRange(q.value.length,q.value.length); } },250); } else render(); });
+  set("#fbuQ","q","input"); set("#fbuSt","st"); set("#fbuVen","ven"); set("#fbuHs","hs"); set("#fbuDp","dp"); set("#fbuLink","link");
+  A.querySelectorAll("[data-fbk]").forEach(b=>b.addEventListener("click",()=>{ const k=b.dataset.fbk; FBF.crit=FBF.crit===k?"":k; FBF.n=60; render(); }));
+  $("#fbuNoCrit")?.addEventListener("click",()=>{ FBF.crit=""; render(); });
+  $("#fbuMore")?.addEventListener("click",()=>{ FBF.n+=100; render(); });
+  A.querySelectorAll("[data-fbz]").forEach(a=>a.addEventListener("click",e=>{ e.preventDefault(); if(typeof openZone==="function") openZone(a.dataset.fbz); else location.hash="#vung"; }));
+  $("#fbuCsv")?.addEventListener("click",()=>{ const L=fbuList(), q=v=>'"'+String(v??"").replace(/"/g,'""')+'"';
+    const head=["Tên vùng","Mã","Trạng thái","Tổ chức","Xã","Tỉnh","Diện tích (ha)","Số mục hồ sơ thiếu",...FB12,"Số nông hộ","Số lô",...FB_DP.map(x=>x[1]),"Lô trùng thửa","Vùng trên app","Đồng bộ lúc"];
+    const rows=L.map(u=>[u.name,u.code,(FB_STL[u.status]||[u.status])[0],u.vendor,u.ward,u.province,u.areaM2!=null?(u.areaM2/10000).toFixed(2):"",u.missing,...(u.flags||[]).map(x=>x===1?"Thiếu":x===0?"Đủ":"Chưa kiểm tra"),u.deep?.f??"",u.deep?.p??"",...FB_DP.map(([k])=>u.deep?.error?"Lỗi":u.deep?.[k]??""),(u.deep?.dupPlots||[]).join(" "),u.zone&&S.zones[u.zone]?S.zones[u.zone].name:"",u.syncedAt]);
+    const blob=new Blob(["﻿"+[head,...rows].map(r=>r.map(q).join(",")).join("\r\n")],{type:"text/csv;charset=utf-8"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="vung-farmbase_"+todayStr()+".csv"; a.click(); });
+}
