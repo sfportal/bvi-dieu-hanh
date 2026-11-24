@@ -198,6 +198,84 @@ async function handleFbView(req: Request) {
   return json({ syncedAt: U.syncedAt || null, units: Object.values(U.units || {}), notes: n1 ? JSON.parse(n1.v as string) : {}, last: L ? { ranAt: L.ranAt, syncedAt: L.syncedAt, sent: L.sent, counts: L.counts, unmatched: (L.unmatched || []).length } : null });
 }
 
+// ---- trang "Mục tiêu công ty": chỉ owner và quản lý được owner cấp quyền xem; quản lý ghi nhận, phân công ----
+// Lưu ở app_secrets (không có policy, chỉ service role đọc) nên nhân viên, chỉ xem, API đối tác không bao giờ đọc được.
+// goals:data = { items: [{ id, title, detail, period, due, kpi, prio, status, to[], acks{uid:{at,name,note}}, createdAt, updatedAt }] }
+// goals:access = { users: [uid quản lý được xem] }
+const GOALS = "goals:data";
+const GOALS_ACC = "goals:access";
+const G_PRIO = ["high", "mid", "low"];
+const G_STATUS = ["open", "done", "pause"];
+async function handleGoals(req: Request) {
+  if (req.method !== "POST") return json({ error: "method" }, 405);
+  const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+  const { data: who } = await db.auth.getUser(token);
+  if (!who?.user) return json({ error: "not_signed_in" }, 401);
+  const { data: me } = await db.from("profiles").select("id,email,name,role,active").eq("id", who.user.id).single();
+  if (!me || !me.active) return json({ error: "no_access" }, 403);
+  const read = async (k: string, d: any) => { const { data } = await db.from("app_secrets").select("v").eq("k", k).maybeSingle(); try { return data ? JSON.parse(data.v as string) : d; } catch { return d; } };
+  const A = await read(GOALS_ACC, { users: [] });
+  const granted: string[] = Array.isArray(A.users) ? A.users : [];
+  const owner = me.role === "owner";
+  if (!owner && !(me.role === "manager" && granted.includes(me.id))) return json({ error: "no_access" }, 403);
+  const body = await req.json().catch(() => ({}));
+  const act = String(body?.action || "list");
+  const log = async (action: string, summary: string, id: string) => {
+    // không ghi nội dung mục tiêu vào nhật ký
+    try { await db.from("activity_log").insert({ user_id: me.id, email: me.email, name: me.name || me.email, action, col: "goals", doc_id: id, title: "Mục tiêu công ty", summary }); } catch (_) { /* không chặn */ }
+  };
+  const mask = (t: string) => t.replace(/\d{9,}/g, (x) => "*".repeat(x.length));
+  const txt = (v: unknown, n: number) => mask(String(v ?? "").replace(/\u0000/g, "").trim().slice(0, n));
+  const day = (v: unknown) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || "")) ? String(v) : "");
+  const G = await read(GOALS, { items: [] });
+  const items: any[] = Array.isArray(G.items) ? G.items : [];
+  const save = async () => { await db.from("app_secrets").upsert({ k: GOALS, v: JSON.stringify({ items }) }); };
+  // danh sách tài khoản quản lý đang hoạt động; chỉ người được cấp quyền mới hiện trong mục tiêu, được giao
+  const managers = async () => { const { data } = await db.from("profiles").select("id,name,email,role,active").in("role", ["manager"]); return (data || []).filter((p: any) => p.active).map((p: any) => ({ id: p.id, name: p.name || p.email })); };
+  if (act === "list") {
+    const M = await managers();
+    return json({ items, me: { id: me.id, owner }, managers: M.filter((p) => granted.includes(p.id)), access: owner ? granted : undefined });
+  }
+  if (act === "ack") {
+    const g = items.find((x) => x.id === body.id); if (!g) return json({ error: "Không thấy mục tiêu" }, 404);
+    g.acks = g.acks && typeof g.acks === "object" ? g.acks : {};
+    g.acks[me.id] = { at: new Date().toISOString(), name: me.name || me.email, note: txt(body.note, 2000) };
+    await save(); await log("goal_ack", "ghi nhận mục tiêu", g.id);
+    return json({ ok: true, goal: g });
+  }
+  if (!owner) return json({ error: "Chỉ owner sửa mục tiêu" }, 403);
+  if (act === "save") {
+    const d = body.data || {}; const title = txt(d.title, 200); if (!title) return json({ error: "Nhập tên mục tiêu" }, 400);
+    const M = await managers(); const ok = new Set(M.filter((p) => granted.includes(p.id)).map((p) => p.id));
+    const now = new Date().toISOString();
+    let g = body.id ? items.find((x) => x.id === body.id) : null;
+    if (body.id && !g) return json({ error: "Không thấy mục tiêu" }, 404);
+    if (!g) { if (items.length >= 300) return json({ error: "Tối đa 300 mục tiêu" }, 400); g = { id: "g" + crypto.randomUUID().replace(/-/g, "").slice(0, 12), createdAt: now, acks: {} }; items.push(g); }
+    Object.assign(g, { title, detail: txt(d.detail, 4000), period: txt(d.period, 60), due: day(d.due), kpi: txt(d.kpi, 1000),
+      prio: G_PRIO.includes(d.prio) ? d.prio : "mid", status: G_STATUS.includes(d.status) ? d.status : "open",
+      to: (Array.isArray(d.to) ? d.to : []).filter((x: unknown) => typeof x === "string" && ok.has(x)).slice(0, 50), updatedAt: now });
+    if (d.reack && g.acks) g.acks = {}; // nội dung đổi nhiều: yêu cầu quản lý ghi nhận lại
+    await save(); await log(body.id ? "update" : "create", body.id ? "sửa mục tiêu" : "thêm mục tiêu", g.id);
+    return json({ ok: true, goal: g });
+  }
+  if (act === "delete") {
+    const i = items.findIndex((x) => x.id === body.id); if (i < 0) return json({ error: "Không thấy mục tiêu" }, 404);
+    items.splice(i, 1); await save(); await log("delete", "xóa mục tiêu", String(body.id));
+    return json({ ok: true });
+  }
+  if (act === "access") {
+    // cấp hoặc bỏ quyền xem cho một quản lý: {user, on}
+    const M = await managers(); const uid = String(body.user || "");
+    if (!M.some((p) => p.id === uid)) return json({ error: "Chỉ cấp cho tài khoản quản lý" }, 400);
+    const set = new Set(granted.filter((x) => M.some((p) => p.id === x)));
+    if (body.on) set.add(uid); else set.delete(uid);
+    await db.from("app_secrets").upsert({ k: GOALS_ACC, v: JSON.stringify({ users: [...set] }) });
+    await log("update", (body.on ? "cấp" : "bỏ") + " quyền xem mục tiêu cho " + ((M.find((p) => p.id === uid) || {}).name || ""), uid);
+    return json({ ok: true, access: [...set] });
+  }
+  return json({ error: "unknown_action" }, 400);
+}
+
 // ---- xác thực khóa (dùng chung cho REST và MCP) ----
 async function authKey(req: Request, override: string | null): Promise<{ m: any } | { resp: Response }> {
   const raw = override || req.headers.get("x-api-key") || (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
@@ -633,6 +711,7 @@ Deno.serve(async (req) => {
     const i = p.indexOf("api"); const rest = i >= 0 ? p.slice(i + 1) : p;
     if (rest[0] === "admin") return await handleAdmin(req);
     if (rest[0] === "fb") return await handleFbView(req);
+    if (rest[0] === "goals") return await handleGoals(req);
     if (rest[0] === "v1") return await handleData(req, rest.slice(1));
     if (rest[0] === "mcp") return await handleMcp(req, rest[1] || null);
     return json({ name: "BVI Điều hành API", docs: "Dùng /v1 với header X-API-Key" });
