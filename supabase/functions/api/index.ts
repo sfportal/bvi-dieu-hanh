@@ -263,7 +263,7 @@ function needKeys(arr: string[]): string[] {
 }
 
 // ---- đồng bộ một chiều từ extension FarmBase (12 tiêu chí hồ sơ vùng) ----
-// Chỉ ghi danh sách Vùng FarmBase (app_secrets fbsync:units), không ghép, không sửa vùng trồng trên app. Không nhận CCCD, SĐT, tên nông hộ.
+// Chỉ ghi danh sách Vùng FarmBase (app_secrets fbsync:units), không ghép, không sửa vùng trồng trên app. Không nhận số CCCD, SĐT, số tờ, số thửa; có tên nông hộ, mã lô kèm cờ thiếu (chỉ owner, quản lý xem).
 const FBS_LAST = "fbsync:last";
 const FB_N = 12;
 const FBS_NOTES = "fbsync:notes"; // ghi chú, ngày vụ, bước tiếp theo, tiến độ hồ sơ giấy theo id vùng FarmBase
@@ -278,12 +278,18 @@ function fbRow(x: any) {
   const flags = Array.isArray(x.flags) ? x.flags.slice(0, FB_N).map((f: unknown) => (f === 1 || f === 0 || f === -1 ? f : -1)) : [];
   if (flags.length !== FB_N) return null;
   const num = (v: unknown) => (v === null || v === undefined || v === "" || !isFinite(Number(v)) ? null : Math.max(0, Math.round(Number(v) * 100) / 100));
-  // kiểm tra nông hộ và lô: chỉ nhận số đếm và mã lô trùng (không tên nông hộ, số CCCD, số tờ, số thửa)
+  // kiểm tra nông hộ và lô: số đếm, mã lô trùng, danh sách hộ, lô còn thiếu (không số CCCD, số tờ, số thửa)
   let deep: any = null;
   if (x.deep && typeof x.deep === "object") {
     if (x.deep.error) deep = { error: true };
     else { deep = {}; for (const k of FB_DEEP) deep[k] = Math.max(0, Math.floor(Number(x.deep[k]) || 0));
-      deep.dupPlots = Array.isArray(x.deep.dupPlots) ? x.deep.dupPlots.slice(0, 30).map((c: unknown) => fbStr(c, 60)).filter(Boolean) : []; }
+      deep.dupPlots = Array.isArray(x.deep.dupPlots) ? x.deep.dupPlots.slice(0, 30).map((c: unknown) => fbStr(c, 60)).filter(Boolean) : [];
+      // chi tiết: tên nông hộ, mã lô, cờ thiếu (0/1), số cây, diện tích; che chuỗi số dài phòng khi lẫn CCCD
+      const b = (v: unknown) => (v ? 1 : 0), nm = (v: unknown) => fbStr(v, 120).replace(/\d{9,}/g, "•••");
+      const n0 = (v: unknown) => (v === null || v === undefined || v === "" || !isFinite(Number(v)) ? null : Math.round(Number(v) * 100) / 100);
+      if (Array.isArray(x.deep.farmers)) deep.farmers = x.deep.farmers.slice(0, 300).map((f: any) => ({ n: nm(f?.n), i: b(f?.i), f: b(f?.f), b: b(f?.b) }));
+      if (Array.isArray(x.deep.plots)) deep.plots = x.deep.plots.slice(0, 300).map((p: any) => ({ c: fbStr(p?.c, 60), o: nm(p?.o), img: b(p?.img), pg: b(p?.pg), pl: b(p?.pl), t: b(p?.t), a: b(p?.a), z: b(p?.z), d: b(p?.d), trees: n0(p?.trees), area: n0(p?.area) }));
+      if (Array.isArray(x.deep.dupG)) deep.dupG = x.deep.dupG.slice(0, 50).map((g: unknown) => (Array.isArray(g) ? g.slice(0, 20).map((c: unknown) => fbStr(c, 60)).filter(Boolean) : [])).filter((g: string[]) => g.length > 1); }
   }
   return { id, code: fbStr(x.code, 60), name: fbStr(x.name, 160), province: fbStr(x.province, 80), ward: fbStr(x.ward, 80), vendor: fbStr(x.vendor, 160),
     vendorId: fbStr(x.vendorId, 64), status: FB_STATUS.includes(x.status) ? x.status : "", crop: fbStr(x.crop, 80),
