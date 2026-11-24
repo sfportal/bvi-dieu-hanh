@@ -12,7 +12,7 @@ const FB = (() => {
   // Kiểm tra nông hộ và lô: [khóa, nhãn, nhãn ngắn]
   const DEEP = [
     ['fNoId', 'Nông hộ thiếu số CCCD', 'NH: số CCCD'], ['fNoImg', 'Nông hộ thiếu ảnh CCCD', 'NH: ảnh CCCD'],
-    ['pNoImg', 'Lô thiếu ảnh bìa sổ đỏ', 'Lô: ảnh bìa'], ['pNoPage', 'Lô thiếu số tờ bản đồ', 'Lô: số tờ'], ['pNoPlot', 'Lô thiếu số thửa', 'Lô: số thửa'],
+    ['pNoImg', 'Lô thiếu ảnh sổ đỏ', 'Lô: ảnh sổ đỏ'], ['pNoPage', 'Lô thiếu số tờ bản đồ', 'Lô: số tờ'], ['pNoPlot', 'Lô thiếu số thửa', 'Lô: số thửa'],
     ['pNoTrees', 'Lô thiếu số cây', 'Lô: số cây'], ['pNoArea', 'Lô thiếu diện tích', 'Lô: diện tích'], ['pZero', 'Lô diện tích bằng 0', 'Lô: DT = 0'], ['dup', 'Trùng tờ, thửa trong vùng', 'Trùng thửa'],
   ];
   // Doanh nghiệp mặc định (so khớp theo tên, không dấu)

@@ -16,19 +16,19 @@
     ['UNIT_IMAGE_MISSING|INSECT_TRAP', null],
     ['VENDOR_IMAGE_MISSING|representativeIdCardFrontImage', p => empty(p.ownerVendor?.representativeIdCardFrontImage)],
     ['VENDOR_IMAGE_MISSING|representativeIdCardBackImage', p => empty(p.ownerVendor?.representativeIdCardBackImage)],
-    ['VENDOR_IMAGE_MISSING|businessLicenseImages', p => empty(p.ownerVendor?.businessLicenseImages)],
+    ['VENDOR_IMAGE_MISSING|businessLicenseImages', p => !(p.ownerVendor?.businessLicenseImages?.medias?.length)],
   ];
   const STATUSES = ['ACTIVE', 'PENDING', 'INACTIVE'];
   const Q = `query ($query: ProductionUnitPaginatedQueryInput!) { productionUnitList(query: $query) { edges { node {
     id code name status documentCheckedAt location targetMarket appliedStandard representativeFarmer { id }
     totalFarmerCount totalPlotCount totalAreaM2
     crop { name } province { name } ward { name }
-    ownerVendor { id name businessLicenseImages { id } representativeIdCardFrontImage { id } representativeIdCardBackImage { id } }
+    ownerVendor { id name businessLicenseImages { id medias { id } } representativeIdCardFrontImage { id } representativeIdCardBackImage { id } }
     documentWarnings { code field } } } pageInfo { endCursor hasNextPage } } }`;
   const QV = `query ($query: VendorPaginatedQueryInput!) { vendorList(query: $query) { edges { node { id name enabled } } pageInfo { endCursor hasNextPage } } }`;
   const QF = `query ($pu: ID!) { puFarmerAll(productionUnit: $pu) { id fullName idCardNumber idCardFrontImage { id } idCardBackImage { id } } }`;
   const QP = `query ($pu: ID!, $query: PlotPaginatedQueryInput!) { puPlotList(productionUnit: $pu, query: $query) { edges { node {
-    id code areaM2 cropCount cadastrePage cadastrePlot cadastreImage { id } farmer { id fullName } } } pageInfo { endCursor hasNextPage } } }`;
+    id code areaM2 cropCount cadastrePage cadastrePlot legalImages { id medias { id } } farmer { id fullName } } } pageInfo { endCursor hasNextPage } } }`;
 
   // Thư viện vùng (mọi nhóm ảnh, tài liệu, gồm nhóm "Khác"): tìm file tên chứa "scan_hoso"
   const QM = `query ($id: ID!) { productionUnit(id: $id) { id medias { id content medias { id fileName createdAt } } } }`;
@@ -88,7 +88,7 @@
     const plots = (P || []).map(p => ({
       id: p.id, code: p.code || '', farmer: p.farmer?.fullName || '', page: String(p.cadastrePage ?? '').trim(), plot: String(p.cadastrePlot ?? '').trim(),
       area: p.areaM2 == null ? null : Number(p.areaM2), trees: p.cropCount == null ? null : Number(p.cropCount),
-      noImg: !p.cadastreImage, noPage: empty(String(p.cadastrePage ?? '').trim()), noPlot: empty(String(p.cadastrePlot ?? '').trim()),
+      noImg: !(p.legalImages?.medias?.length), noPage: empty(String(p.cadastrePage ?? '').trim()), noPlot: empty(String(p.cadastrePlot ?? '').trim()),
       noTrees: p.cropCount == null || Number(p.cropCount) <= 0, noArea: p.areaM2 == null || p.areaM2 === '', zero: p.areaM2 != null && p.areaM2 !== '' && Number(p.areaM2) === 0,
     }));
     // trùng tờ + thửa trên cùng một vùng
