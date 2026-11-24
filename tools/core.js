@@ -1227,7 +1227,23 @@ function vFbUnits(){
      +'<div class="sub" style="font-size:12px;margin-top:4px">Đồng bộ '+fbWhen(u.syncedAt)+(u.checkedAt?' · KT hồ sơ '+dm(u.checkedAt.slice(0,10)):'')+'</div></div>'; }).join("")+'</div>';
   if(L.length>F.n) h+='<div class="row" style="margin-top:8px"><button class="btn" id="fbuMore">Xem thêm ('+(L.length-F.n)+' vùng)</button></div>';
   return h; }
+// Ghim hàng tiêu đề của bảng Vùng FarmBase khi cuộn trang (bảng cuộn ngang nên position:sticky không bám theo trang được)
+function fbStickyHead(A){
+  document.getElementById("fbtFloat")?.remove(); if(fbStickyHead.off) fbStickyHead.off();
+  const box=A.querySelector(".fbt"), tbl=box?.querySelector("table"), hr=tbl?.rows[0]; if(!hr) return;
+  const fl=document.createElement("div"); fl.id="fbtFloat"; fl.className="fbt"; fl.style.cssText="position:fixed;z-index:15;overflow:hidden;display:none;margin:0;border-top:0;border-radius:0;box-shadow:0 3px 6px rgba(0,0,0,.08)";
+  const t2=document.createElement("table"); t2.style.tableLayout="fixed"; const r2=hr.cloneNode(true); t2.appendChild(r2); fl.appendChild(t2); document.body.appendChild(fl);
+  const size=()=>{ t2.style.width=tbl.offsetWidth+"px"; [...hr.cells].forEach((c,i)=>{ const w=c.getBoundingClientRect().width+"px", x=r2.cells[i]; x.style.width=x.style.minWidth=x.style.maxWidth=w; x.style.boxSizing="border-box"; x.style.height=c.getBoundingClientRect().height+"px"; }); };
+  const upd=()=>{ if(!document.body.contains(box)){ off(); return; }
+    const top=document.querySelector("header.top")?.getBoundingClientRect().bottom||0, b=box.getBoundingClientRect(), hh=hr.getBoundingClientRect().height;
+    const show=b.top<top&&b.bottom>top+hh*1.5; fl.style.display=show?"block":"none";
+    if(show){ fl.style.top=top+"px"; fl.style.left=b.left+"px"; fl.style.width=box.clientWidth+"px"; t2.style.transform="translateX("+(-box.scrollLeft)+"px)"; } };
+  const rs=()=>{ size(); upd(); };
+  const off=()=>{ removeEventListener("scroll",upd); removeEventListener("resize",rs); box.removeEventListener("scroll",upd); fl.remove(); fbStickyHead.off=null; };
+  fbStickyHead.off=off; size(); addEventListener("scroll",upd,{passive:true}); addEventListener("resize",rs); box.addEventListener("scroll",upd,{passive:true}); upd();
+  r2.querySelectorAll("[data-fbn],[data-fbd]").forEach(x=>x.removeAttribute("data-fbn")); }
 function bindFbUnits(A){
+  setTimeout(()=>fbStickyHead(A),0);
   $("#fbuRe")?.addEventListener("click",()=>{ FBU=null; render(); });
   const set=(id,k,ev)=>$(id)?.addEventListener(ev||"change",e=>{ FBF[k]=e.target.value; FBF.n=60; if(ev==="input"){ clearTimeout(set.t); set.t=setTimeout(()=>{ render(); const q=$("#fbuQ"); if(q){ q.focus(); q.setSelectionRange(q.value.length,q.value.length); } },250); } else render(); });
   set("#fbuQ","q","input"); set("#fbuSt","st"); set("#fbuVen","ven"); set("#fbuHs","hs"); set("#fbuDp","dp");
