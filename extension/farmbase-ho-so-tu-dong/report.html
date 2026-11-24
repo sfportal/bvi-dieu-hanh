@@ -122,6 +122,14 @@
         <button id="bviSave">Lưu</button><button id="bviTest">Kiểm tra kết nối</button><button id="bviDel">Xóa khóa</button>
       </div>
     </details>
+    <details id="bakCfg" style="margin-top:6px"><summary>Sao lưu thiết lập <span class="muted">(dùng khi cài lại, chuyển máy)</span></summary>
+      <div class="row" style="margin-top:6px">
+        <button id="bakOut">Tải file thiết lập</button>
+        <label><input type="checkbox" id="bakKey"> Kèm khóa API (giữ file kín)</label>
+        <button id="bakIn">Khôi phục từ file</button><input type="file" id="bakFile" accept=".json,application/json" hidden>
+      </div>
+      <div class="muted" style="margin-top:4px">Cập nhật bản mới: giải nén đè vào đúng thư mục cũ rồi bấm ↻ Tải lại ở chrome://extensions, không cần gỡ ra. Thiết lập, kết quả, khóa API được giữ nguyên.</div>
+    </details>
     <div id="bviMsg" style="margin-top:6px"></div>
   </section>
   <div class="wrap"><table id="tbl"></table></div>

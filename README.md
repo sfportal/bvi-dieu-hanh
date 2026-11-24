@@ -145,6 +145,7 @@ Một chiều, thủ công, chỉ owner: extension `extension/farmbase-ho-so-tu-
 - `prog` là tiến độ hồ sơ giấy nhập một lần từ file tổng hợp của Trinh (MVT TIẾN ĐỘ, 24/11/2026, 24 vùng khớp), hiện ở cột "Hồ sơ giấy" và trong bảng chi tiết. Lưu ghi chú không làm mất `prog`.
 - Extension 2.4.0 kiểm tra thư viện vùng (mọi nhóm, kể cả "Khác") có file tên chứa `scan_hoso` (bản scan hồ sơ đã có chữ ký dân và doanh nghiệp), gửi số file trong trường `scan` (-1 lỗi đọc, null chưa kiểm tra).
 - Cài extension: Chrome › Tiện ích › Chế độ nhà phát triển › Tải tiện ích đã giải nén › chọn thư mục extension.
+- Từ 2.5.0 manifest có `key` cố định nên ID extension luôn là `fljcbcpllohbmamllhknegagekhlocao`, dù giải nén ở thư mục nào. Cập nhật: giải nén đè vào thư mục cũ rồi bấm Tải lại, không gỡ ra; thiết lập và khóa API giữ nguyên. Thiết lập (lịch, phạm vi, bộ lọc, địa chỉ API, không có khóa) còn bản sao trong `chrome.storage.sync`, tự lấy lại khi cài lại. Trang báo cáo có "Sao lưu thiết lập" để tải file JSON và khôi phục (tùy chọn kèm khóa API).
 
 Lịch (`events`): `status` là draft (nháp, tự tạo từ công việc), plan (đã duyệt), done, cancel. Gắn vùng qua `zoneId`, `unitId` hoặc `taskIds`.
 

@@ -33,8 +33,30 @@ async function schedule() {
   return when;
 }
 
-chrome.runtime.onInstalled.addListener(schedule);
+// Thiết lập (lịch, phạm vi, bộ lọc, địa chỉ API) có bản sao trong chrome.storage.sync.
+// Gỡ rồi cài lại, hoặc cài trên máy khác cùng tài khoản Chrome: tự lấy lại nếu máy này chưa có. Khóa API chỉ lưu trên máy này.
+const KEEP = ['settings', 'filt', 'bviUrl'];
+async function mirrorToSync() {
+  try {
+    const { settings, filt, bvi } = await chrome.storage.local.get(['settings', 'filt', 'bvi']);
+    const o = {}; if (settings) o.settings = settings; if (filt) o.filt = filt; if (bvi?.url) o.bviUrl = bvi.url;
+    if (Object.keys(o).length) await chrome.storage.sync.set(o);
+  } catch (_) { /* hết hạn mức sync: bỏ qua */ }
+}
+async function restoreFromSync() {
+  try {
+    const L = await chrome.storage.local.get(['settings', 'filt', 'bvi']), S = await chrome.storage.sync.get(KEEP), o = {};
+    if (!L.settings && S.settings) o.settings = S.settings;
+    if (!L.filt && S.filt) o.filt = S.filt;
+    if (!L.bvi?.url && S.bviUrl) o.bvi = { ...(L.bvi || {}), url: S.bviUrl };
+    if (Object.keys(o).length) await chrome.storage.local.set(o);
+    return Object.keys(o);
+  } catch (_) { return []; }
+}
+chrome.storage.onChanged.addListener((ch, area) => { if (area === 'local' && (ch.settings || ch.filt || ch.bvi)) mirrorToSync(); });
+chrome.runtime.onInstalled.addListener(async () => { await restoreFromSync(); await mirrorToSync(); await schedule(); });
 chrome.runtime.onStartup.addListener(async () => {
+  await restoreFromSync();
   if (!(await chrome.alarms.get(ALARM))) await schedule();
 });
 chrome.alarms.onAlarm.addListener(a => { if (a.name === ALARM) runCheck('auto'); });
