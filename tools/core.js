@@ -1187,7 +1187,7 @@ function vFbUnits(){
   const U=FBU.units||[], L=fbuList(), F=FBF;
   const dk=U.filter(u=>u.deep&&!u.deep.error), cnt=f=>U.filter(f).length, sum=k=>dk.reduce((s,u)=>s+(u.deep[k]||0),0);
   const old=FBU.syncedAt?fbDays(FBU.syncedAt):null;
-  let h='<div class="row between" style="gap:8px;flex-wrap:wrap;align-items:flex-end"><div style="min-width:0"><h1>Vùng FarmBase</h1><div class="sub">Danh sách vùng trồng trên FarmBase do owner đồng bộ từ extension (một chiều), độc lập với danh sách Vùng trồng. Chỉ có số đếm đủ/thiếu, không có CCCD, số tờ, số thửa. Chi tiết từng nông hộ, lô xem trên extension.</div></div><div class="row" style="gap:6px"><button class="btn" id="fbuRe">Tải lại</button><button class="btn" id="fbuCsv">Tải CSV</button></div></div>';
+  let h='<div class="row between" style="gap:8px;flex-wrap:wrap;align-items:flex-end"><div style="min-width:0"><h1>Vùng FarmBase</h1><div class="sub">Danh sách vùng trồng trên FarmBase do owner đồng bộ từ extension (một chiều), độc lập với danh sách Vùng trồng. Chỉ có số đếm đủ/thiếu, không có CCCD, số tờ, số thửa. Chi tiết từng nông hộ, lô xem trên extension.</div></div><div class="row" style="gap:6px"><button class="btn" id="fbuHelp">Hướng dẫn</button><button class="btn" id="fbuRe">Tải lại</button><button class="btn" id="fbuCsv">Tải CSV</button></div></div>';
   if(FBUERR) h+='<div class="alert bad" style="margin-top:8px">'+esc(FBUERR)+'</div>';
   h+='<div class="sub" style="margin-top:6px">Đồng bộ gần nhất: <b>'+(FBU.syncedAt?fbWhen(FBU.syncedAt):"chưa có")+'</b>'+(old>FBS_OLD?' <span style="color:var(--warn)">(đã '+old+' ngày)</span>':'')+'</div>';
   if(!U.length) return h+'<div class="empty" style="margin-top:12px">Chưa có dữ liệu. Owner mở extension FarmBase, bấm "Đồng bộ lên BVI".</div>';
@@ -1245,6 +1245,7 @@ function fbStickyHead(A){
 function bindFbUnits(A){
   setTimeout(()=>fbStickyHead(A),0);
   $("#fbuRe")?.addEventListener("click",()=>{ FBU=null; render(); });
+  $("#fbuHelp")?.addEventListener("click",()=>{ ui.gd=ui.gd||{tab:"me",who:"",open:{}}; ui.gd.tab="all"; ui.gd.open.vungfb=true; location.hash="huong-dan"; });
   const set=(id,k,ev)=>$(id)?.addEventListener(ev||"change",e=>{ FBF[k]=e.target.value; FBF.n=60; if(ev==="input"){ clearTimeout(set.t); set.t=setTimeout(()=>{ render(); const q=$("#fbuQ"); if(q){ q.focus(); q.setSelectionRange(q.value.length,q.value.length); } },250); } else render(); });
   set("#fbuQ","q","input"); set("#fbuSt","st"); set("#fbuVen","ven"); set("#fbuHs","hs"); set("#fbuDp","dp");
   A.querySelectorAll("[data-fbk]").forEach(b=>b.addEventListener("click",()=>{ const k=b.dataset.fbk; FBF.crit=FBF.crit===k?"":k; FBF.n=60; render(); }));
