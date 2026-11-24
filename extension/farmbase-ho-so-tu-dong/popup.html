@@ -63,10 +63,11 @@
   <details>
     <summary>Lịch tự động</summary>
     <div class="row"><label>Tần suất</label>
-      <select id="freq"><option value="daily">Hằng ngày</option><option value="weekly">Hằng tuần</option><option value="off">Tắt</option></select></div>
+      <select id="freq"><option value="m30">Mỗi 30 phút</option><option value="h1">Mỗi giờ</option><option value="daily">Hằng ngày</option><option value="weekly">Hằng tuần</option><option value="off">Tắt</option></select></div>
     <div class="row" id="wd-row"><label>Thứ</label>
       <select id="weekday"><option value="1">Thứ Hai</option><option value="2">Thứ Ba</option><option value="3">Thứ Tư</option><option value="4">Thứ Năm</option><option value="5">Thứ Sáu</option><option value="6">Thứ Bảy</option><option value="0">Chủ nhật</option></select></div>
-    <div class="row"><label>Giờ chạy</label><input type="time" id="time"></div>
+    <div class="row" id="tm-row"><label>Giờ chạy</label><input type="time" id="time"></div>
+    <div class="row"><label></label><label style="width:auto;color:inherit"><input type="checkbox" id="autoSync"> Tự đồng bộ sang BVI sau mỗi lần chạy</label></div>
     <div class="row"><label></label><label style="width:auto;color:inherit"><input type="checkbox" id="notify"> Hiện thông báo</label></div>
     <div class="row"><label></label><label style="width:auto;color:inherit"><input type="checkbox" id="autoDownload"> Tự tải CSV vào Downloads/FarmBase</label></div>
     <div class="row"><label></label><button id="save" style="flex:0 0 auto">Lưu lịch</button></div>

@@ -68,6 +68,38 @@ const FB = (() => {
     return BVI_ST[st.status] ? st.status : 'error';
   }
 
-  return { LABELS, SHORT, FLAG_TEXT, STATUS, DEEP, DEFAULT_VENDOR_KEYS, vendorMatch, deepOk, scanState, summarize, toCSV, fmtTime, dateStamp, BVI_URL, BVI_ST, sig, bviState };
+  // Gửi kết quả sang BVI Điều hành (dùng chung cho trang báo cáo và lịch tự động). Chỉ gửi số đếm, cờ đủ/thiếu; không tên nông hộ, CCCD, tờ, thửa.
+  async function bviPush(data, rows) {
+    const { bvi, bviSync, bviHist = [] } = await chrome.storage.local.get(['bvi', 'bviSync', 'bviHist']);
+    if (!bvi?.key) throw new Error('Chưa có khóa API BVI');
+    const URL_SYNC = (bvi.url || BVI_URL).replace(/\/+$/, '') + '/farmbase-sync';
+    const map = { ...(bviSync?.map || {}) }, counts = { updated: 0, same: 0, old: 0, unmatched: 0, invalid: 0 };
+    let error = null, sent = 0;
+    try {
+      for (let i = 0; i < rows.length; i += 1000) {
+        const part = rows.slice(i, i + 1000);
+        const payload = { ranAt: data.ranAt, criteria: LABELS, rows: part.map(r => ({ id: r.id, code: r.code, name: r.name, status: r.status, crop: r.crop, province: r.province, ward: r.ward, vendor: r.vendor, vendorId: r.vendorId,
+          farmerCount: r.farmerCount, plotCount: r.plotCount, areaM2: r.areaM2, checkedAt: r.checkedAt, flags: r.flags,
+          scan: r.scan ? (r.scan.error ? -1 : r.scan.n) : null,
+          deep: r.deep?.sum ? { ...r.deep.sum, dupPlots: r.deep.dups.flatMap(d => d.plots).slice(0, 30) } : r.deep?.error ? { error: true } : null })) };
+        const res = await fetch(URL_SYNC, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-API-Key': bvi.key }, body: JSON.stringify(payload) });
+        let j = null; try { j = await res.json(); } catch {}
+        if (!res.ok || !j?.ok) {
+          const code = j?.error || 'http_' + res.status;
+          throw new Error({ invalid_api_key: 'Khóa không đúng', revoked_api_key: 'Khóa đã bị thu hồi', expired_api_key: 'Khóa đã hết hạn', forbidden_resource: 'Khóa không có quyền đồng bộ FarmBase', rate_limited: 'Gửi quá nhanh, thử lại sau 1 phút' }[code] || j?.message || code);
+        }
+        Object.keys(counts).forEach(k => counts[k] += j.counts?.[k] || 0);
+        const byId = new Map(part.map(r => [r.id, r]));
+        (j.results || []).forEach(x => { if (!x.id || !byId.has(x.id)) return;
+          map[x.id] = { status: x.status, zone: x.zone || null, zoneName: x.zoneName || '', sig: sig(byId.get(x.id)), at: j.syncedAt, msg: x.message || x.reason || '' }; });
+        sent += part.length;
+      }
+    } catch (e) { error = String(e?.message || e); }
+    const last = { at: new Date().toISOString(), ranAt: data.ranAt, sent, counts, error };
+    const SYNC = { map, last }, hist = [last, ...bviHist].slice(0, 50);
+    await chrome.storage.local.set({ bviSync: SYNC, bviHist: hist });
+    return { SYNC, hist };
+  }
+  return { bviPush, LABELS, SHORT, FLAG_TEXT, STATUS, DEEP, DEFAULT_VENDOR_KEYS, vendorMatch, deepOk, scanState, summarize, toCSV, fmtTime, dateStamp, BVI_URL, BVI_ST, sig, bviState };
 })();
 if (typeof self !== 'undefined') self.FB = FB;
