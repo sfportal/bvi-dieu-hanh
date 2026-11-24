@@ -1208,7 +1208,7 @@ function vFbUnits(){
    +sel("fbuDp",[["","Nông hộ, lô: tất cả"],["miss","Nông hộ, lô còn thiếu"],["ok","Nông hộ, lô đủ"],["err","Lỗi đọc"],["none","Chưa kiểm tra"]],F.dp)
    +(()=>{ const o=(k,l,c)=>'<option value="'+esc(k)+'"'+(k===F.crit?" selected":"")+'>'+esc(l)+(c!=null?" ("+c+")":"")+'</option>';
      return '<select id="fbuCrit" style="min-width:0;max-width:100%">'+o("","Thiếu gì: tất cả")
-      +'<optgroup label="Hồ sơ vùng">'+FB12.map((l,i)=>o(String(i),"Thiếu "+l,cnt(u=>(u.flags||[])[i]===1))).join("")+o("s:0","Chưa có file scan",cnt(u=>u.scan===0))+'</optgroup>'
+      +'<optgroup label="Hồ sơ vùng">'+FB12.map((l,i)=>o(String(i),l,cnt(u=>(u.flags||[])[i]===1))).join("")+o("s:0","Chưa có file scan",cnt(u=>u.scan===0))+'</optgroup>'
       +'<optgroup label="Nông hộ, lô">'+FB_DP.map(([k,l])=>o("d:"+k,l,cnt(u=>(u.deep?.[k]||0)>0))).join("")+'</optgroup></select>'; })()
 +'</div>';
   const view=F.view||(innerWidth>=760?"tbl":"card");
@@ -1270,7 +1270,7 @@ function fbPdf(L){
   const dk=L.filter(u=>u.deep&&!u.deep.error), c=(v,l,w)=>'<div class="t"><b'+(w&&v?' class="b"':'')+'>'+v+'</b><span>'+l+'</span></div>';
   const ov='<h2>1. Tổng quan</h2><div class="ts">'+c(L.length,"Vùng")+c(L.length-fn.length,"Vùng còn thiếu",1)+c(fn.length,"Vùng đủ hết")
    +c(L.filter(u=>(u.flags||[]).length&&u.missing===0).length+"/"+L.length,"Đủ 12 mục hồ sơ")+c(L.filter(u=>u.scan>0).length+"/"+L.length,"Có file scan")+c(dk.filter(u=>!u.deep.issues).length+"/"+dk.length,"Đủ nông hộ, lô")+'</div>'
-   +(has.length?'<table class="ov"><thead><tr><th>Mục thiếu</th><th class="n">Số vùng</th><th>Vùng thiếu</th></tr></thead><tbody>'+has.map(r=>'<tr><td><b>'+e(r[1])+'</b>'+(r[3]?' <span class="m">('+r[3]+(r[1].startsWith("Nông hộ")?" hộ":" lô")+')</span>':'')+'</td><td class="n"><b class="b">'+r[2]+'</b></td><td>'+r[4].join(", ")+'</td></tr>').join("")+'</tbody></table>':'')
+   +(has.length?'<table class="ov"><thead><tr><th>Mục thiếu</th><th class="n">Số vùng</th><th>Vùng thiếu</th></tr></thead><tbody>'+has.map(r=>'<tr><td><b>'+e(r[1])+'</b>'+(r[3]?' <span class="m">('+r[3]+(r[1].startsWith("Nông hộ")?" hộ":r[1].startsWith("Trùng")?" nhóm":" lô")+')</span>':'')+'</td><td class="n"><b class="b">'+r[2]+'</b></td><td>'+r[4].join(", ")+'</td></tr>').join("")+'</tbody></table>':'')
    +(none.length?'<p class="ok"><b>Không vùng nào thiếu:</b> '+e(none.map(r=>r[1]).join(", "))+'</p>':'');
   const f=FBF, fl=[f.q&&'tìm "'+f.q+'"',f.st&&(FB_STL[f.st]||[f.st])[0],f.ven,f.crit&&"lọc: "+(f.crit==="s:1"?"Có file scan":f.crit==="s:0"?"Chưa có file scan":f.crit.startsWith("d:")?(FB_DP.find(x=>x[0]===f.crit.slice(2))||[])[1]:FB12[+f.crit])].filter(Boolean).join(", ");
   const html='<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Vùng FarmBase còn thiếu '+td+'</title><style>body{font:13px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#1f2937;margin:24px;max-width:900px}h1{font-size:20px;margin:0 0 4px}h3{font-size:14px;margin:0 0 2px}.s{color:#6b7280}section{border-top:1px solid #e5e7eb;padding:8px 0;break-inside:avoid}.m{color:#6b7280;font-size:12px}ul{margin:4px 0 0;padding-left:18px}li{margin:2px 0}.ok{margin-top:10px;color:#15803d}h2{font-size:16px;margin:16px 0 8px}.b{color:#b91c1c}.g{color:#15803d}.st{font-size:12px;margin-top:2px}.ts{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px;margin-bottom:10px}.t{border:1px solid #e5e7eb;border-radius:8px;padding:6px 8px}.t b{display:block;font-size:17px}.t span{font-size:12px;color:#6b7280}table.ov{border-collapse:collapse;width:100%}.ov th,.ov td{border-top:1px solid #e5e7eb;padding:3px 6px;text-align:left;vertical-align:top}.ov th{font-size:12px;color:#6b7280;border-top:0}.ov td:first-child{width:34%}.ov .n{text-align:center;width:56px}.ov tr{break-inside:avoid}.dt{break-before:page}.bar{position:sticky;top:0;background:#fff;padding:8px 0;margin-bottom:6px}.bar button{font:inherit;padding:6px 12px;border:1px solid #d1d5db;border-radius:8px;background:#1f5135;color:#fff}@media print{.bar{display:none}body{margin:12mm}}</style></head><body>'
@@ -1283,7 +1283,7 @@ function bindFbUnits(A){
   $("#fbuPdf")?.addEventListener("click",()=>fbPdf(fbuList()));
   setTimeout(()=>fbStickyHead(A),0);
   $("#fbuRe")?.addEventListener("click",()=>{ FBU=null; render(); });
-  $("#fbuHelp")?.addEventListener("click",()=>{ ui.gd=ui.gd||{tab:"me",who:"",open:{}}; ui.gd.tab="all"; ui.gd.open.vungfb=true; location.hash="huong-dan"; });
+  $("#fbuHelp")?.addEventListener("click",()=>{ window.open("huong-dan/vung-farmbase.html","_blank"); });
   const set=(id,k,ev)=>$(id)?.addEventListener(ev||"change",e=>{ FBF[k]=e.target.value; FBF.n=60; if(ev==="input"){ clearTimeout(set.t); set.t=setTimeout(()=>{ render(); const q=$("#fbuQ"); if(q){ q.focus(); q.setSelectionRange(q.value.length,q.value.length); } },250); } else render(); });
   set("#fbuQ","q","input"); set("#fbuSt","st"); set("#fbuVen","ven"); set("#fbuHs","hs"); set("#fbuDp","dp"); set("#fbuCrit","crit");
   A.querySelectorAll("[data-fbk]").forEach(b=>b.addEventListener("click",()=>{ const k=b.dataset.fbk; FBF.crit=FBF.crit===k?"":k; FBF.n=60; render(); }));
