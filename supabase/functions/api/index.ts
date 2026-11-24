@@ -117,6 +117,8 @@ async function handleAdmin(req: Request) {
     const { error } = await db.from("docs").update({ data: nd }).eq("col", "zones").eq("id", zid);
     if (error) return json({ error: "Chưa lưu được" }, 500);
     last.unmatched = last.unmatched.filter((x: any) => x.id !== fbId);
+    try { const { data: u0 } = await db.from("app_secrets").select("v").eq("k", FBS_UNITS).maybeSingle();
+      if (u0) { const U = JSON.parse(u0.v as string); if (U.units?.[fbId]) { U.units[fbId].zone = zid; await db.from("app_secrets").upsert({ k: FBS_UNITS, v: JSON.stringify(U) }); } } } catch (_) { /* */ }
     await db.from("app_secrets").upsert({ k: FBS_LAST, v: JSON.stringify(last) });
     await log("fb_pair", d.name || zid, "ghép vùng FarmBase " + (row.name || fbId) + " với vùng " + (d.name || zid), zid);
     return json({ ok: true, unmatched: last.unmatched.length });
@@ -165,6 +167,20 @@ async function handleAdmin(req: Request) {
   return json({ error: "unknown_action" }, 400);
 }
 
+
+// ---- trang "Vùng FarmBase" trong app: owner, quản lý xem danh sách vùng FarmBase đã đồng bộ ----
+async function handleFbView(req: Request) {
+  if (req.method !== "POST") return json({ error: "method" }, 405);
+  const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+  const { data: who } = await db.auth.getUser(token);
+  if (!who?.user) return json({ error: "not_signed_in" }, 401);
+  const { data: me } = await db.from("profiles").select("role,active").eq("id", who.user.id).single();
+  if (!me || !me.active || !["owner", "manager"].includes(me.role)) return json({ error: "Chỉ owner, quản lý xem được" }, 403);
+  const { data: u0 } = await db.from("app_secrets").select("v").eq("k", FBS_UNITS).maybeSingle();
+  const { data: l0 } = await db.from("app_secrets").select("v").eq("k", FBS_LAST).maybeSingle();
+  const U = u0 ? JSON.parse(u0.v as string) : { units: {} }, L = l0 ? JSON.parse(l0.v as string) : null;
+  return json({ syncedAt: U.syncedAt || null, units: Object.values(U.units || {}), last: L ? { ranAt: L.ranAt, syncedAt: L.syncedAt, sent: L.sent, counts: L.counts, unmatched: (L.unmatched || []).length } : null });
+}
 
 // ---- xác thực khóa (dùng chung cho REST và MCP) ----
 async function authKey(req: Request, override: string | null): Promise<{ m: any } | { resp: Response }> {
@@ -234,6 +250,9 @@ function needKeys(arr: string[]): string[] {
 // Chỉ ghi data.fbId và data.fbs của vùng; không đụng bước, hồ sơ cứng, ô F. Không nhận CCCD, SĐT, tên nông hộ.
 const FBS_LAST = "fbsync:last";
 const FB_N = 12;
+const FBS_UNITS = "fbsync:units"; // toàn bộ vùng FarmBase đã đồng bộ (trang "Vùng FarmBase")
+const FB_STATUS = ["ACTIVE", "PENDING", "INACTIVE"];
+const FB_DEEP = ["f", "fNoId", "fNoImg", "p", "pNoImg", "pNoPage", "pNoPlot", "pNoTrees", "pNoArea", "pZero", "dup", "issues"];
 const fbStr = (v: unknown, n = 160) => (v === undefined || v === null ? "" : String(v)).replace(/[\u0000-\u001f]+/g, " ").trim().slice(0, n);
 const fbIso = (v: unknown) => { const d = new Date(String(v || "")); return v && !isNaN(+d) ? d.toISOString() : null; };
 const fbKey = (s: unknown) => norm(s).replace(/^(xa|phuong|thi tran)\s+/, "").replace(/^(vung trong sau rieng|vung trong|vung sau rieng|vung)\s+/, "").replace(/[^a-z0-9]+/g, " ").trim();
@@ -242,11 +261,21 @@ function fbRow(x: any) {
   const id = fbStr(x.id, 64); if (!id) return null;
   const flags = Array.isArray(x.flags) ? x.flags.slice(0, FB_N).map((f: unknown) => (f === 1 || f === 0 || f === -1 ? f : -1)) : [];
   if (flags.length !== FB_N) return null;
+  const num = (v: unknown) => (v === null || v === undefined || v === "" || !isFinite(Number(v)) ? null : Math.max(0, Math.round(Number(v) * 100) / 100));
+  // kiểm tra nông hộ và lô: chỉ nhận số đếm và mã lô trùng (không tên nông hộ, số CCCD, số tờ, số thửa)
+  let deep: any = null;
+  if (x.deep && typeof x.deep === "object") {
+    if (x.deep.error) deep = { error: true };
+    else { deep = {}; for (const k of FB_DEEP) deep[k] = Math.max(0, Math.floor(Number(x.deep[k]) || 0));
+      deep.dupPlots = Array.isArray(x.deep.dupPlots) ? x.deep.dupPlots.slice(0, 30).map((c: unknown) => fbStr(c, 60)).filter(Boolean) : []; }
+  }
   return { id, code: fbStr(x.code, 60), name: fbStr(x.name, 160), province: fbStr(x.province, 80), ward: fbStr(x.ward, 80), vendor: fbStr(x.vendor, 160),
-    checkedAt: fbIso(x.checkedAt), flags, missing: flags.filter((f: number) => f === 1).length };
+    vendorId: fbStr(x.vendorId, 64), status: FB_STATUS.includes(x.status) ? x.status : "", crop: fbStr(x.crop, 80),
+    farmerCount: num(x.farmerCount), plotCount: num(x.plotCount), areaM2: num(x.areaM2),
+    checkedAt: fbIso(x.checkedAt), flags, missing: flags.filter((f: number) => f === 1).length, deep };
 }
 function fbSnap(r: any, ranAt: string, syncedAt: string, by: string) {
-  return { ranAt, syncedAt, by, checkedAt: r.checkedAt, flags: r.flags, missing: r.missing, code: r.code, name: r.name };
+  return { ranAt, syncedAt, by, checkedAt: r.checkedAt, flags: r.flags, missing: r.missing, code: r.code, name: r.name, status: r.status || undefined, deep: r.deep || undefined };
 }
 async function farmbaseSync(body: any, m: any) {
   const ranAt = fbIso(body?.ranAt);
@@ -292,6 +321,16 @@ async function farmbaseSync(body: any, m: any) {
     if (same) cnt.same++; else cnt.updated++;
     results.push({ id: r.id, status: same ? "same" : "updated", zone: zid, zoneName: name, matchedBy: how });
   }
+  // danh sách mọi vùng FarmBase đã gửi (kể cả chưa ghép) cho trang "Vùng FarmBase"
+  try {
+    const { data: u0 } = await db.from("app_secrets").select("v").eq("k", FBS_UNITS).maybeSingle();
+    const U = u0 ? JSON.parse(u0.v as string) : { units: {} };
+    const res = new Map(results.filter((x) => x.id).map((x) => [x.id, x]));
+    rows.forEach((r: any) => { if (!r) return; const prev = U.units[r.id]; if (prev?.ranAt && prev.ranAt > ranAt) return;
+      const x = res.get(r.id); U.units[r.id] = { ...r, ranAt, syncedAt, zone: x && x.zone && x.status !== "old" ? x.zone : (prev?.zone || null) }; });
+    U.syncedAt = syncedAt;
+    await db.from("app_secrets").upsert({ k: FBS_UNITS, v: JSON.stringify(U) });
+  } catch (_) { /* không chặn đồng bộ */ }
   // vùng chưa ghép: lưu lại để owner ghép tay trong app (chỉ tên, mã, địa bàn, cờ đủ/thiếu)
   const { data: r0 } = await db.from("app_secrets").select("v").eq("k", FBS_LAST).maybeSingle();
   const last0 = r0 ? JSON.parse(r0.v as string) : null;
@@ -604,6 +643,7 @@ Deno.serve(async (req) => {
     const p = new globalThis.URL(req.url).pathname.split("/").filter(Boolean);
     const i = p.indexOf("api"); const rest = i >= 0 ? p.slice(i + 1) : p;
     if (rest[0] === "admin") return await handleAdmin(req);
+    if (rest[0] === "fb") return await handleFbView(req);
     if (rest[0] === "v1") return await handleData(req, rest.slice(1));
     if (rest[0] === "mcp") return await handleMcp(req, rest[1] || null);
     return json({ name: "BVI Điều hành API", docs: "Dùng /v1 với header X-API-Key" });

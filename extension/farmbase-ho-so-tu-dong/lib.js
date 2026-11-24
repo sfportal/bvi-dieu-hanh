@@ -8,6 +8,14 @@ const FB = (() => {
   const SHORT = ['Địa chỉ', 'Thị trường', 'Tiêu chuẩn', 'ND đại diện', 'Ảnh bảng tên', 'Ảnh flycam', 'Ảnh kho thuốc',
     'Ảnh thu hoạch', 'Ảnh bẫy côn trùng', 'DN: CCCD trước', 'DN: CCCD sau', 'DN: GPKD'];
   const FLAG_TEXT = { 1: 'Thiếu', 0: 'Đủ', '-1': 'Chưa kiểm tra' };
+  const STATUS = { ACTIVE: 'Đang hoạt động', PENDING: 'Chờ duyệt', INACTIVE: 'Đã ngừng' };
+  // Kiểm tra nông hộ và lô: [khóa, nhãn, nhãn ngắn]
+  const DEEP = [
+    ['fNoId', 'Nông hộ thiếu số CCCD', 'NH: số CCCD'], ['fNoImg', 'Nông hộ thiếu ảnh CCCD', 'NH: ảnh CCCD'],
+    ['pNoImg', 'Lô thiếu ảnh bìa sổ đỏ', 'Lô: ảnh bìa'], ['pNoPage', 'Lô thiếu số tờ bản đồ', 'Lô: số tờ'], ['pNoPlot', 'Lô thiếu số thửa', 'Lô: số thửa'],
+    ['pNoTrees', 'Lô thiếu số cây', 'Lô: số cây'], ['pNoArea', 'Lô thiếu diện tích', 'Lô: diện tích'], ['pZero', 'Lô diện tích bằng 0', 'Lô: DT = 0'], ['dup', 'Trùng tờ, thửa trong vùng', 'Trùng thửa'],
+  ];
+  const deepOk = r => r.deep && !r.deep.error && r.deep.sum.issues === 0;
 
   function summarize(rows) {
     return {
@@ -15,15 +23,22 @@ const FB = (() => {
       complete: rows.filter(r => r.missing === 0 && r.flags.every(f => f === 0)).length,
       unchecked: rows.filter(r => !r.checkedAt).length,
       counts: LABELS.map((_, i) => rows.filter(r => r.flags[i] === 1).length),
+      deep: rows.some(r => r.deep) ? {
+        checked: rows.filter(r => r.deep && !r.deep.error).length, ok: rows.filter(deepOk).length, error: rows.filter(r => r.deep?.error).length,
+        farmers: rows.reduce((n, r) => n + (r.deep?.sum?.f || 0), 0), plots: rows.reduce((n, r) => n + (r.deep?.sum?.p || 0), 0),
+        units: DEEP.map(([k]) => rows.filter(r => (r.deep?.sum?.[k] || 0) > 0).length),
+        totals: DEEP.map(([k]) => rows.reduce((n, r) => n + (r.deep?.sum?.[k] || 0), 0)),
+      } : null,
     };
   }
 
   function toCSV(rows) {
-    const head = ['Tên vùng trồng', 'Mã', 'Cây trồng', 'Tỉnh', 'Xã/Phường', 'Doanh nghiệp', 'Ngày kiểm tra hồ sơ', 'Số mục thiếu', ...LABELS, 'ID'];
+    const head = ['Tên vùng trồng', 'Mã', 'Trạng thái', 'Cây trồng', 'Tỉnh', 'Xã/Phường', 'Doanh nghiệp', 'Ngày kiểm tra hồ sơ', 'Số mục thiếu', ...LABELS, 'Số nông hộ', 'Số lô', ...DEEP.map(d => d[1]), 'ID'];
     const esc = s => '"' + String(s ?? '').replace(/"/g, '""') + '"';
     const lines = rows.map(r => [
-      r.name, r.code, r.crop, r.province, r.ward, r.vendor,
-      r.checkedAt ? r.checkedAt.slice(0, 10) : 'Chưa kiểm tra', r.missing, ...r.flags.map(f => FLAG_TEXT[f]), r.id,
+      r.name, r.code, STATUS[r.status] || r.status || '', r.crop, r.province, r.ward, r.vendor,
+      r.checkedAt ? r.checkedAt.slice(0, 10) : 'Chưa kiểm tra', r.missing, ...r.flags.map(f => FLAG_TEXT[f]),
+      r.deep?.sum ? r.deep.sum.f : '', r.deep?.sum ? r.deep.sum.p : '', ...DEEP.map(([k]) => r.deep?.sum ? r.deep.sum[k] : (r.deep?.error ? 'Lỗi' : '')), r.id,
     ].map(esc).join(','));
     return '﻿' + [head.map(esc).join(','), ...lines].join('\r\n');
   }
@@ -33,7 +48,7 @@ const FB = (() => {
 
   // Đồng bộ một chiều sang BVI Điều hành (chỉ owner có khóa)
   const BVI_URL = 'https://pkckduidwfcncipwzdxa.supabase.co/functions/v1/api/v1/farmbase-sync';
-  const sig = r => (r.checkedAt || '') + '|' + r.flags.join(',');
+  const sig = r => (r.checkedAt || '') + '|' + r.flags.join(',') + '|' + (r.status || '') + '|' + (r.deep?.sum ? DEEP.map(([k]) => r.deep.sum[k]).join(',') + ',' + r.deep.sum.f + ',' + r.deep.sum.p : '');
   const BVI_ST = {
     none: ['Chưa gửi', 'b-none'], changed: ['Có thay đổi, chưa gửi', 'b-chg'], ok: ['Đã khớp', 'b-ok'],
     unmatched: ['Chưa ghép vùng trên BVI', 'b-um'], old: ['BVI có bản mới hơn', 'b-um'], error: ['Lỗi khi gửi', 'b-err'], invalid: ['Dữ liệu không hợp lệ', 'b-err'],
@@ -46,6 +61,6 @@ const FB = (() => {
     return BVI_ST[st.status] ? st.status : 'error';
   }
 
-  return { LABELS, SHORT, FLAG_TEXT, summarize, toCSV, fmtTime, dateStamp, BVI_URL, BVI_ST, sig, bviState };
+  return { LABELS, SHORT, FLAG_TEXT, STATUS, DEEP, deepOk, summarize, toCSV, fmtTime, dateStamp, BVI_URL, BVI_ST, sig, bviState };
 })();
 if (typeof self !== 'undefined') self.FB = FB;

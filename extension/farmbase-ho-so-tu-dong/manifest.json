@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "FarmBase - Tổng hợp hồ sơ vùng trồng",
-  "version": "2.1.0",
-  "description": "Tự động kiểm tra vùng trồng thiếu thông tin, ảnh, giấy tờ doanh nghiệp theo lịch; lưu lịch sử, báo cáo, xuất CSV; owner đồng bộ một chiều sang BVI Điều hành.",
+  "version": "2.2.0",
+  "description": "Kiểm tra hồ sơ vùng trồng, nông hộ, lô trên admin.farmbase.vn theo trạng thái và tổ chức; báo cáo, xuất CSV; owner đồng bộ một chiều sang BVI Điều hành.",
   "icons": {
     "16": "icon16.png",
     "48": "icon48.png",
@@ -24,7 +24,8 @@
     "scripting",
     "tabs",
     "notifications",
-    "downloads"
+    "downloads",
+    "unlimitedStorage"
   ],
   "host_permissions": [
     "https://admin.farmbase.vn/*",
