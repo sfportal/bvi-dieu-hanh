@@ -2,7 +2,7 @@ importScripts('lib.js');
 
 const ADMIN_URL = 'https://admin.farmbase.vn/dashboard';
 const ALARM = 'fb-auto-check';
-const DEFAULT_SCOPE = { statuses: ['ACTIVE', 'PENDING'], vendors: [], vendorNames: [], deep: true };
+const DEFAULT_SCOPE = { statuses: ['ACTIVE'], vendors: [], vendorNames: [], vendorKeys: FB.DEFAULT_VENDOR_KEYS, deep: true };
 const DEFAULTS = { freq: 'daily', weekday: 1, time: '07:00', autoDownload: false, notify: true, scope: DEFAULT_SCOPE };
 const HISTORY_MAX = 90;
 

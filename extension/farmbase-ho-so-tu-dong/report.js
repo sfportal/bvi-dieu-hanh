@@ -2,6 +2,8 @@ const $ = id => document.getElementById(id);
 let DATA = null;
 let SYNC = { map: {}, last: null };
 let PICK = new Set();
+// bộ lọc chọn nhiều: doanh nghiệp (null = tất cả), trạng thái vùng
+let FILT = { vendors: null, statuses: ['ACTIVE'], init: false };
 let SENDING = false;
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -16,12 +18,11 @@ function fillSelect(sel, values) {
 function filtered() {
   if (!DATA) return [];
   const q = $('q').value.trim().toLowerCase();
-  const prov = $('fProv').value, ven = $('fVendor').value, crit = $('fCrit').value, st = $('fState').value, bv = $('fBvi').value, us = $('fStatus').value, dp = $('fDeep').value;
+  const prov = $('fProv').value, ven = FILT.vendors ? new Set(FILT.vendors) : null, sts = new Set(FILT.statuses), crit = $('fCrit').value, st = $('fState').value, bv = $('fBvi').value, dp = $('fDeep').value;
   return DATA.rows.filter(r =>
     (!q || [r.name, r.code, r.vendor, r.ward].join(' ').toLowerCase().includes(q)) &&
-    (!prov || r.province === prov) && (!ven || r.vendor === ven) &&
+    (!prov || r.province === prov) && (!ven || ven.has(r.vendor)) && (!sts.size || !r.status || sts.has(r.status)) &&
     (crit === '' || (crit.startsWith('d:') ? (r.deep?.sum?.[crit.slice(2)] || 0) > 0 : r.flags[Number(crit)] === 1)) &&
-    (!us || r.status === us) &&
     (!dp || (dp === 'ok' && FB.deepOk(r)) || (dp === 'missing' && r.deep?.sum?.issues > 0) || (dp === 'error' && r.deep?.error) || (dp === 'none' && !r.deep)) &&
     (!bv || FB.bviState(r, SYNC.map) === bv) &&
     (!st || (st === 'missing' && r.missing > 0) || (st === 'complete' && r.flags.every(f => f === 0)) || (st === 'unchecked' && !r.checkedAt)));
@@ -81,14 +82,19 @@ function renderScope() {
   if (!SCOPE) return;
   document.querySelectorAll('[data-st]').forEach(c => c.checked = SCOPE.statuses.includes(c.dataset.st));
   $('scDeep').checked = SCOPE.deep !== false;
+  // phạm vi mặc định theo tên: khi đã có danh sách tổ chức thì đổi thành chọn cụ thể
+  if (!SCOPE.vendors.length && SCOPE.vendorKeys?.length && VENDORS.length) {
+    const M = VENDORS.filter(v => FB.vendorMatch(v.name, SCOPE.vendorKeys)); SCOPE.vendors = M.map(v => v.id); SCOPE.vendorNames = M.map(v => v.name); SCOPE.vendorKeys = [];
+  }
   const q = $('scVq').value.trim().toLowerCase(), sel = new Set(SCOPE.vendors);
   const L = VENDORS.length ? VENDORS : SCOPE.vendors.map((id, i) => ({ id, name: SCOPE.vendorNames[i] || id }));
   $('scVlist').innerHTML = L.filter(v => !q || v.name.toLowerCase().includes(q) || sel.has(v.id))
     .sort((a, b) => (sel.has(b.id) - sel.has(a.id)) || a.name.localeCompare(b.name, 'vi'))
     .map(v => `<label><input type="checkbox" data-ven="${esc(v.id)}"${sel.has(v.id) ? ' checked' : ''}> ${esc(v.name)}</label>`).join('') || '<span class="muted">Bấm "Tải danh sách tổ chức" để chọn.</span>';
-  $('scVsum').textContent = SCOPE.vendors.length ? `Đã chọn ${SCOPE.vendors.length} tổ chức` : 'Tất cả tổ chức';
+  $('scVsum').textContent = SCOPE.vendors.length ? `Đã chọn ${SCOPE.vendors.length} tổ chức` : SCOPE.vendorKeys?.length ? 'Mặc định: Song Toàn Phát, Quyết Tiến, Diệp Minh Anh, Yanning, 37, Greens, Hồng Thuận, Mai Anh Tuấn' : 'Tất cả tổ chức';
   $('scVlist').querySelectorAll('[data-ven]').forEach(c => c.onchange = () => {
     const v = L.find(x => x.id === c.dataset.ven);
+    SCOPE.vendorKeys = [];
     if (c.checked) { SCOPE.vendors.push(v.id); SCOPE.vendorNames.push(v.name); }
     else { const i = SCOPE.vendors.indexOf(v.id); SCOPE.vendors.splice(i, 1); SCOPE.vendorNames.splice(i, 1); }
     renderScope();
@@ -96,7 +102,7 @@ function renderScope() {
 }
 function scopeText(sc) {
   if (!sc) return '';
-  return (sc.statuses || []).map(s => FB.STATUS[s]).join(', ') + ' · ' + (sc.vendors?.length ? sc.vendors.length + ' tổ chức' : 'tất cả tổ chức') + (sc.deep === false ? ' · không kiểm tra nông hộ, lô' : '');
+  return (sc.statuses || []).map(s => FB.STATUS[s]).join(', ') + ' · ' + (sc.vendors?.length ? sc.vendors.length + ' tổ chức' : sc.vendorKeys?.length ? 'doanh nghiệp mặc định' : 'tất cả tổ chức') + (sc.deep === false ? ' · không kiểm tra nông hộ, lô' : '');
 }
 async function saveScope(run) {
   const statuses = [...document.querySelectorAll('[data-st]')].filter(c => c.checked).map(c => c.dataset.st);
@@ -107,15 +113,45 @@ async function saveScope(run) {
   if (run) $('run').click();
 }
 
+// ---------- Bộ lọc chọn nhiều: doanh nghiệp, trạng thái vùng ----------
+const allVendors = () => [...new Set((DATA?.rows || []).map(r => r.vendor).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi'));
+function defaultVendors() { const d = allVendors().filter(v => FB.vendorMatch(v)); return d.length ? d : null; }
+async function initFilt() {
+  const { filt } = await chrome.storage.local.get('filt');
+  FILT = { vendors: filt ? filt.vendors : defaultVendors(), statuses: filt?.statuses || ['ACTIVE'], init: true };
+  renderMs(); pickFiltered(); if (DATA) renderKpis(); renderTable(); renderBvi();
+}
+function saveFilt() { chrome.storage.local.set({ filt: { vendors: FILT.vendors, statuses: FILT.statuses } }); }
+function pickFiltered() { PICK = new Set(filtered().map(r => r.id)); }
+function onFilter() { pickFiltered(); if (DATA) renderKpis(); renderTable(); renderBvi(); }
+function renderMs() {
+  const V = allVendors(), sel = FILT.vendors ? new Set(FILT.vendors) : null, q = ($('msVenQ').value || '').trim().toLowerCase();
+  $('msVenS').textContent = !sel ? 'Tất cả doanh nghiệp' : sel.size === 1 ? [...sel][0] : `${sel.size} doanh nghiệp`;
+  $('msVenL').innerHTML = V.filter(v => !q || v.toLowerCase().includes(q)).map(v => `<label><input type="checkbox" data-fven="${esc(v)}"${!sel || sel.has(v) ? ' checked' : ''}> ${esc(v)}</label>`).join('') || '<span class="muted">Không có</span>';
+  $('msVenL').querySelectorAll('[data-fven]').forEach(c => c.onchange = () => {
+    const s = new Set(FILT.vendors || V); c.checked ? s.add(c.dataset.fven) : s.delete(c.dataset.fven);
+    FILT.vendors = s.size === V.length ? null : [...s]; saveFilt(); renderMs(); onFilter();
+  });
+  document.querySelectorAll('[data-fst]').forEach(c => c.checked = FILT.statuses.includes(c.dataset.fst));
+  $('msStS').textContent = FILT.statuses.length === 3 || !FILT.statuses.length ? 'Mọi trạng thái vùng' : FILT.statuses.map(s => FB.STATUS[s]).join(', ');
+}
+$('msVenQ').oninput = renderMs;
+$('msVenDef').onclick = () => { FILT.vendors = defaultVendors(); saveFilt(); renderMs(); onFilter(); };
+$('msVenAll').onclick = () => { FILT.vendors = null; saveFilt(); renderMs(); onFilter(); };
+$('msVenNone').onclick = () => { FILT.vendors = []; saveFilt(); renderMs(); onFilter(); };
+document.querySelectorAll('[data-fst]').forEach(c => c.onchange = () => { FILT.statuses = [...document.querySelectorAll('[data-fst]')].filter(x => x.checked).map(x => x.dataset.fst); saveFilt(); renderMs(); onFilter(); });
+document.addEventListener('click', e => document.querySelectorAll('details.ms[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; }));
+
 // ---------- Đồng bộ một chiều sang BVI Điều hành ----------
 const needSend = r => !['ok', 'old'].includes(FB.bviState(r, SYNC.map));
 function renderBvi(extra) {
   chrome.storage.local.get('bvi').then(({ bvi }) => {
     const has = !!bvi?.key;
-    $('bviNoKey').hidden = has; $('bviHasKey').hidden = !has;
-    if (has) $('bviPfx').textContent = bvi.key.slice(0, 10) + '…';
-    $('bviGo').disabled = SENDING || !DATA || !PICK.size;
-    $('bviGo').textContent = SENDING ? 'Đang gửi…' : `Đồng bộ lên BVI (${PICK.size} vùng)`;
+    $('bviPfx').textContent = has ? '· đã lưu khóa ' + bvi.key.slice(0, 10) + '…' : '· chưa có khóa';
+    if (!has) $('bviCfg').open = true;
+    if (document.activeElement !== $('bviUrl')) $('bviUrl').value = bvi?.url || FB.BVI_URL;
+    $('bviGo').disabled = SENDING || !DATA || !PICK.size || !has;
+    $('bviGo').textContent = SENDING ? 'Đang gửi…' : `Đồng bộ ${PICK.size} vùng sang BVI`;
     const L = SYNC.last, rows = DATA?.rows || [];
     const cnt = k => rows.filter(r => FB.bviState(r, SYNC.map) === k).length;
     let h = '';
@@ -128,6 +164,7 @@ function renderBvi(extra) {
 async function bviSend() {
   const { bvi } = await chrome.storage.local.get('bvi');
   if (!bvi?.key || !DATA || !PICK.size || SENDING) return;
+  const URL_SYNC = (bvi.url || FB.BVI_URL).replace(/\/+$/, '') + '/farmbase-sync';
   SENDING = true; renderBvi();
   const rows = DATA.rows.filter(r => PICK.has(r.id));
   const map = { ...SYNC.map }, counts = { updated: 0, same: 0, old: 0, unmatched: 0, invalid: 0 };
@@ -140,7 +177,7 @@ async function bviSend() {
         farmerCount: r.farmerCount, plotCount: r.plotCount, areaM2: r.areaM2, checkedAt: r.checkedAt, flags: r.flags,
         // chỉ gửi số đếm và mã lô trùng; không gửi tên nông hộ, số CCCD, số tờ, số thửa
         deep: r.deep?.sum ? { ...r.deep.sum, dupPlots: r.deep.dups.flatMap(d => d.plots).slice(0, 30) } : r.deep?.error ? { error: true } : null })) };
-      const res = await fetch(FB.BVI_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-API-Key': bvi.key }, body: JSON.stringify(payload) });
+      const res = await fetch(URL_SYNC, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-API-Key': bvi.key }, body: JSON.stringify(payload) });
       let j = null; try { j = await res.json(); } catch {}
       if (!res.ok || !j?.ok) {
         const code = j?.error || 'http_' + res.status;
@@ -158,7 +195,7 @@ async function bviSend() {
   SYNC = { map, last };
   await chrome.storage.local.set({ bviSync: SYNC, bviHist: [last, ...bviHist].slice(0, 50) });
   SENDING = false;
-  if (!error) PICK = new Set(DATA.rows.filter(needSend).map(r => r.id));
+
   renderTable(); renderBvi(); renderSyncHist([last, ...bviHist]);
 }
 function renderSyncHist(list) {
@@ -167,7 +204,8 @@ function renderSyncHist(list) {
 }
 
 function renderKpis() {
-  const s = DATA.summary;
+  // tổng quan theo bộ lọc doanh nghiệp, trạng thái đang chọn
+  const s = FB.summarize(DATA.rows.filter(r => (!FILT.vendors || FILT.vendors.includes(r.vendor)) && (!FILT.statuses.length || !r.status || FILT.statuses.includes(r.status))));
   const items = [['', s.total, 'Vùng trồng'], ['complete', s.complete, 'Đủ 12 mục'], ['unchecked', s.unchecked, 'Chưa kiểm tra HS'],
     ...FB.LABELS.map((l, i) => ['c' + i, s.counts[i], l])];
   if (s.deep) items.push(['dok', s.deep.ok, `Đủ nông hộ, lô (/${s.deep.checked})`], ['', s.deep.farmers, 'Nông hộ'], ['', s.deep.plots, 'Lô'],
@@ -195,25 +233,37 @@ async function load() {
   if (DATA && !DATA.summary) DATA.summary = FB.summarize(DATA.rows);
   SYNC = bviSync || { map: {}, last: null };
   renderSyncHist(bviHist);
-  if (DATA && DATA.ranAt !== prevRan) PICK = new Set(DATA.rows.filter(needSend).map(r => r.id));
+  if (DATA && !FILT.init) initFilt();
+  if (DATA && DATA.ranAt !== prevRan) pickFiltered();
   renderBvi();
   if (!DATA) { $('ran').textContent = 'Chưa có dữ liệu — bấm "Chạy lại ngay".'; $('tbl').innerHTML = ''; renderHistory(history); return; }
   $('ran').textContent = 'Cập nhật: ' + FB.fmtTime(DATA.ranAt) + (DATA.scope ? ' · ' + scopeText(DATA.scope) : '');
   fillSelect($('fProv'), [...new Set(DATA.rows.map(r => r.province).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi')));
-  fillSelect($('fVendor'), [...new Set(DATA.rows.map(r => r.vendor).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi')));
+  renderMs();
   if ($('fBvi').length === 1) Object.entries(FB.BVI_ST).filter(([k]) => k !== 'invalid').forEach(([k, [l]]) => { const o = document.createElement('option'); o.value = k; o.textContent = l; $('fBvi').appendChild(o); });
   if ($('fCrit').length === 1) [...FB.LABELS.map((l, i) => [i, l]), ...FB.DEEP.map(([k, l]) => ['d:' + k, l])].forEach(([v, l]) => { const o = document.createElement('option'); o.value = v; o.textContent = l; $('fCrit').appendChild(o); });
   renderKpis(); renderTable(); renderHistory(history);
 }
 
 $('bviSave').onclick = async () => {
-  const k = $('bviKey').value.trim();
-  if (!/^bvi_[A-Za-z0-9]{40}$/.test(k)) { renderBvi('<span class="err">Khóa không đúng dạng bvi_… (44 ký tự)</span>'); return; }
-  await chrome.storage.local.set({ bvi: { key: k } }); $('bviKey').value = ''; renderBvi('<span class="ok">Đã lưu khóa trên máy này.</span>');
+  const { bvi = {} } = await chrome.storage.local.get('bvi');
+  const k = $('bviKey').value.trim(), u = $('bviUrl').value.trim().replace(/\/+$/, '') || FB.BVI_URL;
+  if (k && !/^bvi_[A-Za-z0-9]{40}$/.test(k)) { renderBvi('<span class="err">Khóa không đúng dạng bvi_… (44 ký tự)</span>'); return; }
+  if (!/^https:\/\/[^\s]+$/.test(u)) { renderBvi('<span class="err">Địa chỉ API phải bắt đầu bằng https://</span>'); return; }
+  await chrome.storage.local.set({ bvi: { ...bvi, url: u, ...(k ? { key: k } : {}) } }); $('bviKey').value = ''; renderBvi('<span class="ok">Đã lưu cài đặt API trên máy này.</span>');
 };
-$('bviDel').onclick = async () => { await chrome.storage.local.remove('bvi'); renderBvi('Đã xóa khóa khỏi extension.'); };
-$('bviPick').onclick = () => { if (!DATA) return; PICK = new Set(DATA.rows.filter(needSend).map(r => r.id)); renderTable(); renderBvi(); };
-$('bviNone').onclick = () => { PICK = new Set(); renderTable(); renderBvi(); };
+$('bviTest').onclick = async () => {
+  const { bvi } = await chrome.storage.local.get('bvi');
+  if (!bvi?.key) { renderBvi('<span class="err">Chưa có khóa API.</span>'); return; }
+  try {
+    const r = await fetch((bvi.url || FB.BVI_URL).replace(/\/+$/, ''), { headers: { 'X-API-Key': bvi.key } }); const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.message || j.error || 'HTTP ' + r.status);
+    const ok = (j.write || []).some(w => w.id === 'farmbase_sync');
+    renderBvi(ok ? `<span class="ok">Kết nối được. Khóa "${esc(j.key)}" có quyền đồng bộ FarmBase.</span>` : `<span class="err">Kết nối được nhưng khóa "${esc(j.key)}" chưa có quyền đồng bộ FarmBase.</span>`);
+  } catch (e) { renderBvi('<span class="err">Không kết nối được: ' + esc(e.message || e) + '</span>'); }
+};
+$('bviDel').onclick = async () => { const { bvi = {} } = await chrome.storage.local.get('bvi'); delete bvi.key; await chrome.storage.local.set({ bvi }); renderBvi('Đã xóa khóa khỏi extension.'); };
+$('bviPick').onclick = () => { pickFiltered(); renderTable(); renderBvi(); };
 $('bviGo').onclick = bviSend;
 $('scVq').oninput = renderScope;
 $('scVload').onclick = async () => {
@@ -223,16 +273,17 @@ $('scVload').onclick = async () => {
   if (r?.ok) { VENDORS = r.list; renderScope(); $('scMsg').textContent = `Có ${r.list.length} tổ chức.`; }
   else $('scMsg').innerHTML = '<span class="err">' + esc(String(r?.error || '').startsWith('AUTH:') ? 'Hãy đăng nhập admin.farmbase.vn trên Chrome rồi thử lại.' : 'Không tải được: ' + (r?.error || '')) + '</span>';
 };
-$('scAll').onclick = () => { SCOPE.vendors = []; SCOPE.vendorNames = []; renderScope(); };
+$('scAll').onclick = () => { SCOPE.vendors = []; SCOPE.vendorNames = []; SCOPE.vendorKeys = []; renderScope(); };
+$('scDef').onclick = () => { SCOPE.vendors = []; SCOPE.vendorNames = []; SCOPE.vendorKeys = FB.DEFAULT_VENDOR_KEYS.slice(); renderScope(); };
 $('scSave').onclick = () => saveScope(false);
 $('scRun').onclick = () => saveScope(true);
 (async () => {
   const st = await chrome.runtime.sendMessage({ type: 'getSettings' });
-  SCOPE = JSON.parse(JSON.stringify(st?.scope || { statuses: ['ACTIVE', 'PENDING'], vendors: [], vendorNames: [], deep: true }));
+  SCOPE = JSON.parse(JSON.stringify(st?.scope || { statuses: ['ACTIVE'], vendors: [], vendorNames: [], vendorKeys: FB.DEFAULT_VENDOR_KEYS, deep: true }));
   const { vendors } = await chrome.storage.local.get('vendors'); VENDORS = vendors?.list || [];
   renderScope();
 })();
-['q', 'fProv', 'fVendor', 'fCrit', 'fState', 'fBvi', 'fStatus', 'fDeep'].forEach(id => $(id).addEventListener('input', renderTable));
+['q', 'fProv', 'fCrit', 'fState', 'fBvi', 'fDeep'].forEach(id => $(id).addEventListener('input', onFilter));
 $('csv').onclick = () => {
   const blob = new Blob([FB.toCSV(filtered())], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
