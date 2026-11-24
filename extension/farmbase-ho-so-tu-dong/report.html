@@ -73,7 +73,7 @@
       <label><input type="checkbox" data-st="ACTIVE"> Đang hoạt động</label>
       <label><input type="checkbox" data-st="PENDING"> Chờ duyệt</label>
       <label><input type="checkbox" data-st="INACTIVE"> Đã ngừng</label>
-      <label title="Đọc từng vùng: CCCD, ảnh CCCD nông hộ; ảnh bìa, số tờ, số thửa, số cây, diện tích của lô; trùng thửa"><input type="checkbox" id="scDeep"> Kiểm tra nông hộ và lô (chậm hơn)</label>
+      <label title="Đọc từng vùng: CCCD, ảnh CCCD nông hộ; ảnh bìa, số tờ, số thửa, số cây, diện tích của lô; trùng thửa"><input type="checkbox" id="scDeep"> Kiểm tra nông hộ và lô (chậm hơn)</label> <span class="muted">Luôn kiểm tra file scan hồ sơ: tên chứa <b>scan_hoso</b> trong thư viện vùng (nhóm Khác).</span>
     </div>
     <div class="row" style="margin-top:8px"><span>Tổ chức:</span> <b id="scVsum"></b>
       <input id="scVq" placeholder="Tìm tổ chức…" style="min-width:220px">
@@ -94,6 +94,7 @@
     <details class="ms" id="msSt"><summary id="msStS">Trạng thái vùng</summary><div class="msp"><div class="msl" id="msStL">
       <label><input type="checkbox" data-fst="ACTIVE"> Đang hoạt động</label><label><input type="checkbox" data-fst="PENDING"> Chờ duyệt</label><label><input type="checkbox" data-fst="INACTIVE"> Đã ngừng</label></div></div></details>
     <select id="fDeep"><option value="">Nông hộ, lô: tất cả</option><option value="missing">Nông hộ, lô: còn thiếu</option><option value="ok">Nông hộ, lô: đủ</option><option value="error">Nông hộ, lô: lỗi đọc</option><option value="none">Nông hộ, lô: chưa kiểm tra</option></select>
+    <select id="fScan" title="File tên chứa scan_hoso trong thư viện vùng"><option value="">Scan hồ sơ: tất cả</option><option value="1">Có file scan hồ sơ</option><option value="0">Chưa có file scan hồ sơ</option><option value="-1">Lỗi đọc thư viện</option></select>
     <select id="fBvi"><option value="">Mọi trạng thái BVI</option></select>
     <select id="fState">
       <option value="">Mọi trạng thái</option>

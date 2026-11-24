@@ -18,20 +18,21 @@ function fillSelect(sel, values) {
 function filtered() {
   if (!DATA) return [];
   const q = $('q').value.trim().toLowerCase();
-  const prov = $('fProv').value, ven = FILT.vendors ? new Set(FILT.vendors) : null, sts = new Set(FILT.statuses), crit = $('fCrit').value, st = $('fState').value, bv = $('fBvi').value, dp = $('fDeep').value;
+  const prov = $('fProv').value, ven = FILT.vendors ? new Set(FILT.vendors) : null, sts = new Set(FILT.statuses), crit = $('fCrit').value, st = $('fState').value, bv = $('fBvi').value, dp = $('fDeep').value, sc = $('fScan').value;
   return DATA.rows.filter(r =>
     (!q || [r.name, r.code, r.vendor, r.ward].join(' ').toLowerCase().includes(q)) &&
     (!prov || r.province === prov) && (!ven || ven.has(r.vendor)) && (!sts.size || !r.status || sts.has(r.status)) &&
     (crit === '' || (crit.startsWith('d:') ? (r.deep?.sum?.[crit.slice(2)] || 0) > 0 : r.flags[Number(crit)] === 1)) &&
     (!dp || (dp === 'ok' && FB.deepOk(r)) || (dp === 'missing' && r.deep?.sum?.issues > 0) || (dp === 'error' && r.deep?.error) || (dp === 'none' && !r.deep)) &&
     (!bv || FB.bviState(r, SYNC.map) === bv) &&
+    (!sc || String(FB.scanState(r)) === sc) &&
     (!st || (st === 'missing' && r.missing > 0) || (st === 'complete' && r.flags.every(f => f === 0)) || (st === 'unchecked' && !r.checkedAt)));
 }
 
 function renderTable() {
   const rows = filtered();
   $('count').textContent = `${rows.length} vùng`;
-  const head = `<tr><th><input type="checkbox" id="pickAll" title="Chọn tất cả vùng đang lọc"></th><th>#</th><th>Tên vùng trồng</th><th>Doanh nghiệp</th><th>Tỉnh / Xã</th><th>Trạng thái</th><th>Ngày KT</th><th>Thiếu</th><th>Nông hộ, lô</th><th>BVI</th>${FB.SHORT.map((l, i) => `<th class="c" title="${esc(FB.LABELS[i])}">${esc(l)}</th>`).join('')}</tr>`;
+  const head = `<tr><th><input type="checkbox" id="pickAll" title="Chọn tất cả vùng đang lọc"></th><th>#</th><th>Tên vùng trồng</th><th>Doanh nghiệp</th><th>Tỉnh / Xã</th><th>Trạng thái</th><th>Ngày KT</th><th>Thiếu</th><th>Nông hộ, lô</th><th title="File tên chứa scan_hoso trong thư viện vùng">Scan hồ sơ</th><th>BVI</th>${FB.SHORT.map((l, i) => `<th class="c" title="${esc(FB.LABELS[i])}">${esc(l)}</th>`).join('')}</tr>`;
   const cell = f => f === 1 ? '<span class="f1">Thiếu</span>' : f === 0 ? '<span class="f0">✓</span>' : '<span class="fn">?</span>';
   const bvCell = r => {
     const k = FB.bviState(r, SYNC.map), st = SYNC.map[r.id] || {}, [l, c] = FB.BVI_ST[k];
@@ -47,13 +48,29 @@ function renderTable() {
     <td>${r.checkedAt ? r.checkedAt.slice(0, 10) : '<span class="fn">Chưa kiểm tra</span>'}</td>
     <td class="miss">${r.missing}</td>
     <td class="dp">${deepCell(r)}</td>
+    <td>${scanCell(r)}</td>
     <td class="bv">${bvCell(r)}</td>
     ${r.flags.map(f => `<td class="c">${cell(f)}</td>`).join('')}
   </tr>`).join('');
   $('tbl').querySelectorAll('[data-deep]').forEach(b => b.onclick = () => openDeep(b.dataset.deep));
+  $('tbl').querySelectorAll('[data-scan]').forEach(b => b.onclick = () => openScan(b.dataset.scan));
   $('tbl').querySelectorAll('[data-pick]').forEach(c => c.onchange = () => { c.checked ? PICK.add(c.dataset.pick) : PICK.delete(c.dataset.pick); renderBvi(); });
   const all = $('pickAll');
   if (all) { all.checked = rows.length > 0 && rows.every(r => PICK.has(r.id)); all.onchange = () => { rows.forEach(r => all.checked ? PICK.add(r.id) : PICK.delete(r.id)); renderTable(); renderBvi(); }; }
+}
+
+// ---------- File scan hồ sơ ----------
+function scanCell(r) {
+  const s = FB.scanState(r);
+  if (s === null) return '<span class="fn">Chưa kiểm tra</span>';
+  if (s === -1) return `<span class="b b-err" title="${esc(r.scan.error)}">Lỗi đọc</span>`;
+  return s ? `<button class="lnk" data-scan="${esc(r.id)}">Có ${r.scan.n} file</button>` : '<span class="f1">Chưa có</span>';
+}
+function openScan(id) {
+  const r = DATA?.rows.find(x => x.id === id); if (!r?.scan?.files) return;
+  $('dlgBody').innerHTML = `<div class="dh"><div><b>${esc(r.name)}</b> <span class="muted">File scan hồ sơ (tên chứa scan_hoso)</span></div><button id="dlgX">Đóng</button></div>` +
+    `<table><tr><th>Tên file</th><th>Nhóm trong thư viện</th><th>Ngày tải lên</th></tr>${r.scan.files.map(f => `<tr><td>${esc(f.name)}</td><td>${esc(f.set)}</td><td>${f.at ? FB.fmtTime(f.at) : ''}</td></tr>`).join('')}</table>`;
+  $('dlg').showModal(); $('dlgX').onclick = () => $('dlg').close();
 }
 
 // ---------- Nông hộ và lô ----------
@@ -176,6 +193,7 @@ async function bviSend() {
       const payload = { ranAt: DATA.ranAt, criteria: FB.LABELS, rows: part.map(r => ({ id: r.id, code: r.code, name: r.name, status: r.status, crop: r.crop, province: r.province, ward: r.ward, vendor: r.vendor, vendorId: r.vendorId,
         farmerCount: r.farmerCount, plotCount: r.plotCount, areaM2: r.areaM2, checkedAt: r.checkedAt, flags: r.flags,
         // chỉ gửi số đếm và mã lô trùng; không gửi tên nông hộ, số CCCD, số tờ, số thửa
+        scan: r.scan ? (r.scan.error ? -1 : r.scan.n) : null,
         deep: r.deep?.sum ? { ...r.deep.sum, dupPlots: r.deep.dups.flatMap(d => d.plots).slice(0, 30) } : r.deep?.error ? { error: true } : null })) };
       const res = await fetch(URL_SYNC, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-API-Key': bvi.key }, body: JSON.stringify(payload) });
       let j = null; try { j = await res.json(); } catch {}
@@ -210,12 +228,14 @@ function renderKpis() {
     ...FB.LABELS.map((l, i) => ['c' + i, s.counts[i], l])];
   if (s.deep) items.push(['dok', s.deep.ok, `Đủ nông hộ, lô (/${s.deep.checked})`], ['', s.deep.farmers, 'Nông hộ'], ['', s.deep.plots, 'Lô'],
     ...FB.DEEP.map(([k, l], i) => ['cd:' + k, s.deep.units[i], `${l} (${s.deep.totals[i]})`]));
+  if (s.scan) items.push(['s:1', s.scan.has, 'Có file scan hồ sơ'], ['s:0', s.scan.none, 'Chưa có file scan hồ sơ']);
   $('kpis').innerHTML = items.map(([k, v, l]) => `<div class="kpi" data-k="${k}"><b>${v}</b><span>${esc(l)}</span></div>`).join('');
   $('kpis').querySelectorAll('.kpi').forEach(el => el.onclick = () => {
     const k = el.dataset.k;
-    $('fCrit').value = k.startsWith('cd:') ? 'd:' + k.slice(3) : k.startsWith('c') ? k.slice(1) : '';
+    $('fCrit').value = k.startsWith('cd:') ? 'd:' + k.slice(3) : /^c\d/.test(k) ? k.slice(1) : '';
     $('fState').value = k === 'complete' || k === 'unchecked' ? k : '';
     $('fDeep').value = k === 'dok' ? 'ok' : '';
+    $('fScan').value = k.startsWith('s:') ? k.slice(2) : '';
     $('kpis').querySelectorAll('.kpi').forEach(x => x.classList.toggle('active', x === el && k !== ''));
     renderTable();
   });
@@ -283,7 +303,7 @@ $('scRun').onclick = () => saveScope(true);
   const { vendors } = await chrome.storage.local.get('vendors'); VENDORS = vendors?.list || [];
   renderScope();
 })();
-['q', 'fProv', 'fCrit', 'fState', 'fBvi', 'fDeep'].forEach(id => $(id).addEventListener('input', onFilter));
+['q', 'fProv', 'fCrit', 'fState', 'fBvi', 'fDeep', 'fScan'].forEach(id => $(id).addEventListener('input', onFilter));
 $('csv').onclick = () => {
   const blob = new Blob([FB.toCSV(filtered())], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
@@ -299,6 +319,6 @@ $('run').onclick = async () => {
 };
 chrome.storage.onChanged.addListener(ch => {
   if (ch.latest || ch.history) load();
-  if (ch.status) { const s = ch.status.newValue || {}; $('prog').textContent = s.running ? 'Đang kiểm tra' + (s.progress ? ` nông hộ, lô: ${s.progress.done}/${s.progress.total} vùng` : '…') : ''; }
+  if (ch.status) { const s = ch.status.newValue || {}; $('prog').textContent = s.running ? 'Đang kiểm tra' + (s.progress ? ` từng vùng: ${s.progress.done}/${s.progress.total}` : '…') : ''; }
 });
 load();
