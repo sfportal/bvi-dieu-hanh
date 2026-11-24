@@ -54,7 +54,7 @@ const FB = (() => {
   const BVI_URL = 'https://pkckduidwfcncipwzdxa.supabase.co/functions/v1/api/v1'; // địa chỉ gốc API, owner sửa được trong cài đặt
   const sig = r => (r.checkedAt || '') + '|' + r.flags.join(',') + '|' + (r.status || '') + '|' + (r.deep?.sum ? DEEP.map(([k]) => r.deep.sum[k]).join(',') + ',' + r.deep.sum.f + ',' + r.deep.sum.p : '');
   const BVI_ST = {
-    none: ['Chưa gửi', 'b-none'], changed: ['Có thay đổi, chưa gửi', 'b-chg'], ok: ['Đã khớp', 'b-ok'],
+    none: ['Chưa gửi', 'b-none'], changed: ['Có thay đổi, chưa gửi', 'b-chg'], ok: ['Đã gửi, khớp', 'b-ok'],
     unmatched: ['Chưa ghép vùng trên BVI', 'b-um'], old: ['BVI có bản mới hơn', 'b-um'], error: ['Lỗi khi gửi', 'b-err'], invalid: ['Dữ liệu không hợp lệ', 'b-err'],
   };
   function bviState(r, map) {
