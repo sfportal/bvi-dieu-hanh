@@ -176,10 +176,26 @@ async function handleFbView(req: Request) {
   if (!who?.user) return json({ error: "not_signed_in" }, 401);
   const { data: me } = await db.from("profiles").select("role,active").eq("id", who.user.id).single();
   if (!me || !me.active || !["owner", "manager"].includes(me.role)) return json({ error: "Chỉ owner, quản lý xem được" }, 403);
+  const body = await req.json().catch(() => ({}));
+  if (body && body.action === "note") {
+    // ghi chú, ngày vụ, bước tiếp theo của một vùng FarmBase (lưu ở app_secrets fbsync:notes), giữ nguyên tiến độ hồ sơ giấy (prog)
+    const id = fbStr(body.id, 64); if (!id) return json({ error: "Thiếu id vùng" }, 400);
+    const d = body.data || {};
+    const mask = (t: string) => t.replace(/\d{9,}/g, (x) => "*".repeat(x.length));
+    const day = (v: unknown) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || "")) ? String(v) : "");
+    const steps = (Array.isArray(d.steps) ? d.steps : []).slice(0, 60).map((x: any) => ({ d: day(x?.d), act: mask(fbStr(x?.act, 300)), res: mask(fbStr(x?.res, 300)), done: !!x?.done })).filter((x: any) => x.act || x.res);
+    const { data: n0 } = await db.from("app_secrets").select("v").eq("k", FBS_NOTES).maybeSingle();
+    const N = n0 ? JSON.parse(n0.v as string) : {};
+    const cur = N[id] || {};
+    N[id] = { ...cur, harvest: day(d.harvest), seasonEnd: day(d.seasonEnd), note: mask(String(d.note ?? "").replace(/\u0000/g, "").slice(0, 2000)), steps, name: fbStr(d.name, 160) || cur.name || "", updatedAt: new Date().toISOString(), updatedBy: who.user.id };
+    await db.from("app_secrets").upsert({ k: FBS_NOTES, v: JSON.stringify(N) });
+    return json({ ok: true, note: N[id] });
+  }
   const { data: u0 } = await db.from("app_secrets").select("v").eq("k", FBS_UNITS).maybeSingle();
+  const { data: n1 } = await db.from("app_secrets").select("v").eq("k", FBS_NOTES).maybeSingle();
   const { data: l0 } = await db.from("app_secrets").select("v").eq("k", FBS_LAST).maybeSingle();
   const U = u0 ? JSON.parse(u0.v as string) : { units: {} }, L = l0 ? JSON.parse(l0.v as string) : null;
-  return json({ syncedAt: U.syncedAt || null, units: Object.values(U.units || {}), last: L ? { ranAt: L.ranAt, syncedAt: L.syncedAt, sent: L.sent, counts: L.counts, unmatched: (L.unmatched || []).length } : null });
+  return json({ syncedAt: U.syncedAt || null, units: Object.values(U.units || {}), notes: n1 ? JSON.parse(n1.v as string) : {}, last: L ? { ranAt: L.ranAt, syncedAt: L.syncedAt, sent: L.sent, counts: L.counts, unmatched: (L.unmatched || []).length } : null });
 }
 
 // ---- xác thực khóa (dùng chung cho REST và MCP) ----
@@ -250,6 +266,7 @@ function needKeys(arr: string[]): string[] {
 // Chỉ ghi danh sách Vùng FarmBase (app_secrets fbsync:units), không ghép, không sửa vùng trồng trên app. Không nhận CCCD, SĐT, tên nông hộ.
 const FBS_LAST = "fbsync:last";
 const FB_N = 12;
+const FBS_NOTES = "fbsync:notes"; // ghi chú, ngày vụ, bước tiếp theo, tiến độ hồ sơ giấy theo id vùng FarmBase
 const FBS_UNITS = "fbsync:units"; // toàn bộ vùng FarmBase đã đồng bộ (trang "Vùng FarmBase")
 const FB_STATUS = ["ACTIVE", "PENDING", "INACTIVE"];
 const FB_DEEP = ["f", "fNoId", "fNoImg", "p", "pNoImg", "pNoPage", "pNoPlot", "pNoTrees", "pNoArea", "pZero", "dup", "issues"];
@@ -271,7 +288,9 @@ function fbRow(x: any) {
   return { id, code: fbStr(x.code, 60), name: fbStr(x.name, 160), province: fbStr(x.province, 80), ward: fbStr(x.ward, 80), vendor: fbStr(x.vendor, 160),
     vendorId: fbStr(x.vendorId, 64), status: FB_STATUS.includes(x.status) ? x.status : "", crop: fbStr(x.crop, 80),
     farmerCount: num(x.farmerCount), plotCount: num(x.plotCount), areaM2: num(x.areaM2),
-    checkedAt: fbIso(x.checkedAt), flags, missing: flags.filter((f: number) => f === 1).length, deep };
+    checkedAt: fbIso(x.checkedAt), flags, missing: flags.filter((f: number) => f === 1).length, deep,
+    // số file scan hồ sơ (tên chứa "scan_hoso" trong thư viện vùng): -1 lỗi đọc, null chưa kiểm tra
+    scan: x.scan === null || x.scan === undefined || !isFinite(Number(x.scan)) ? null : Math.max(-1, Math.min(999, Math.floor(Number(x.scan)))) };
 }
 function fbSnap(r: any, ranAt: string, syncedAt: string, by: string) {
   return { ranAt, syncedAt, by, checkedAt: r.checkedAt, flags: r.flags, missing: r.missing, code: r.code, name: r.name, status: r.status || undefined, deep: r.deep || undefined };
@@ -289,7 +308,7 @@ async function farmbaseSync(body: any, m: any) {
   const { data: u0 } = await db.from("app_secrets").select("v").eq("k", FBS_UNITS).maybeSingle();
   const U = u0 ? JSON.parse(u0.v as string) : { units: {} };
   U.units ||= {};
-  const sigOf = (r: any) => JSON.stringify([r.status, r.checkedAt, r.flags, r.deep, r.farmerCount, r.plotCount, r.areaM2, r.name, r.code, r.vendor]);
+  const sigOf = (r: any) => JSON.stringify([r.status, r.checkedAt, r.flags, r.deep, r.farmerCount, r.plotCount, r.areaM2, r.name, r.code, r.vendor, r.scan ?? null]);
   rows.forEach((r: any, i: number) => {
     if (!r) { cnt.invalid++; results.push({ i, status: "invalid" }); return; }
     const prev = U.units[r.id];
