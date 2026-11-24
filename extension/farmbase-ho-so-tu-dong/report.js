@@ -155,8 +155,8 @@ function renderBvi(extra) {
     const L = SYNC.last, rows = DATA?.rows || [];
     const cnt = k => rows.filter(r => FB.bviState(r, SYNC.map) === k).length;
     let h = '';
-    if (L) h += `<span class="${L.error ? 'err' : 'ok'}">Lần đồng bộ gần nhất: ${FB.fmtTime(L.at)}${L.error ? ' — lỗi: ' + esc(L.error) : `, gửi ${L.sent} vùng: cập nhật ${L.counts.updated || 0}, giữ nguyên ${L.counts.same || 0}, chưa ghép ${L.counts.unmatched || 0}${L.counts.old ? ', BVI có bản mới hơn ' + L.counts.old : ''}`}</span><br>`;
-    if (rows.length) h += `<span class="muted">Trạng thái hiện tại: ${cnt('ok')} đã khớp · ${cnt('changed') + cnt('none')} chưa gửi · ${cnt('unmatched')} chưa ghép (owner ghép trong app BVI, trang API, rồi gửi lại)</span>`;
+    if (L) h += `<span class="${L.error ? 'err' : 'ok'}">Lần đồng bộ gần nhất: ${FB.fmtTime(L.at)}${L.error ? ' — lỗi: ' + esc(L.error) : `, gửi ${L.sent} vùng: cập nhật ${L.counts.updated || 0}, giữ nguyên ${L.counts.same || 0}${L.counts.old ? ', BVI có bản mới hơn ' + L.counts.old : ''}`}</span><br>`;
+    if (rows.length) h += `<span class="muted">Trạng thái hiện tại: ${cnt('ok')} đã gửi, khớp · ${cnt('changed') + cnt('none')} chưa gửi hoặc có thay đổi</span>`;
     if (extra) h += '<br>' + extra;
     $('bviMsg').innerHTML = h;
   });
@@ -199,8 +199,8 @@ async function bviSend() {
   renderTable(); renderBvi(); renderSyncHist([last, ...bviHist]);
 }
 function renderSyncHist(list) {
-  $('shist').innerHTML = '<tr><th>Thời điểm</th><th>Dữ liệu lấy lúc</th><th>Gửi</th><th>Cập nhật</th><th>Giữ nguyên</th><th>Chưa ghép</th><th>Kết quả</th></tr>' +
-    (list || []).map(h => `<tr><td>${FB.fmtTime(h.at)}</td><td>${FB.fmtTime(h.ranAt)}</td><td>${h.sent}</td><td>${h.counts.updated || 0}</td><td>${h.counts.same || 0}</td><td>${h.counts.unmatched || 0}</td><td>${h.error ? '<span class="b b-err">' + esc(h.error) + '</span>' : '<span class="b b-ok">Xong</span>'}</td></tr>`).join('');
+  $('shist').innerHTML = '<tr><th>Thời điểm</th><th>Dữ liệu lấy lúc</th><th>Gửi</th><th>Cập nhật</th><th>Giữ nguyên</th><th>Kết quả</th></tr>' +
+    (list || []).map(h => `<tr><td>${FB.fmtTime(h.at)}</td><td>${FB.fmtTime(h.ranAt)}</td><td>${h.sent}</td><td>${h.counts.updated || 0}</td><td>${h.counts.same || 0}</td><td>${h.error ? '<span class="b b-err">' + esc(h.error) + '</span>' : '<span class="b b-ok">Xong</span>'}</td></tr>`).join('');
 }
 
 function renderKpis() {
