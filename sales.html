@@ -102,6 +102,18 @@ textarea.in{min-height:64px;resize:vertical}
 .ltab tbody tr{cursor:pointer}.ltab tbody tr:hover{background:var(--chip)}
 .ltab td a{text-decoration:none;font-weight:600}.ltab .sub{font-size:12px}
 .topnav{display:none}
+.vbar{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 2px 6px}.vbar .btn{padding:6px 10px;font-size:13px}
+.shw{overflow:auto;max-height:calc(100vh - 230px);min-height:260px;border:1px solid var(--line);border-radius:12px;background:var(--surface);-webkit-overflow-scrolling:touch}
+.sht{border-collapse:separate;border-spacing:0;font-size:13px;min-width:100%}
+.sht th{position:sticky;top:0;z-index:2;background:var(--sunk);text-align:left;font-size:12px;font-weight:600;color:var(--muted);padding:7px 8px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);white-space:nowrap}
+.sht td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:0;background:var(--surface);vertical-align:middle}
+.sht th:first-child,.sht td:first-child{position:sticky;left:0;z-index:1;box-shadow:1px 0 0 var(--line)}.sht th:first-child{z-index:3}
+.sht .cx{display:block;width:100%;min-width:var(--w,120px);border:0;background:transparent;color:inherit;font:inherit;padding:7px 8px;outline:none;border-radius:0}
+.sht .cx:focus{background:rgba(31,91,60,.08);box-shadow:inset 0 0 0 2px var(--brand)}
+.sht td.ok{animation:okf 1.2s}.sht td.err{background:rgba(184,58,46,.12)}.sht td.busy .cx{opacity:.5}
+@keyframes okf{from{background:rgba(47,125,79,.25)}to{background:var(--surface)}}
+@media (max-width:600px){.sht td:first-child .cx{min-width:128px!important;width:128px}.sht{font-size:12.5px}}
+.sht .ro{padding:7px 8px;white-space:nowrap;color:var(--muted)}.sht .nm{display:flex;align-items:center}.sht .nm a{padding:0 8px;text-decoration:none;font-size:15px}
 @media (min-width:900px){
  main{padding:18px}main.wide{max-width:1280px}.ov button{min-width:150px;padding:9px 12px}
  body{padding-bottom:0}.bot{display:none!important}
@@ -129,7 +141,7 @@ textarea.in{min-height:64px;resize:vertical}
 <script src="sales-core.js"></script>
 <script>
 const SB_URL="https://pkckduidwfcncipwzdxa.supabase.co", SB_KEY="sb_publishable_ZHvz0flMvyIsxmT-tKS_Hw_q_Vz_7RF";
-let SB, ME=null, LEADS=[], MYACTS=[], PEOPLE={}, PROLE={}, TAB="mine", Q="", STF="", F={prov:"",pri:"",seg:"",ct:"",own:"",cs:"",src:"",sort:"next"}, LIMIT=150, CALL=null, SH=null, REMIND=null;
+let SB, ME=null, LEADS=[], MYACTS=[], PEOPLE={}, PROLE={}, TAB="mine", Q="", STF="", F={prov:"",pri:"",seg:"",ct:"",own:"",cs:"",src:"",sort:"next"}, LIMIT=150, CALL=null, SH=null, REMIND=null, SHEET=(()=>{ try{ return localStorage.getItem("sl_sheet")==="1"; }catch(e){ return false; } })();
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const isStaff=()=>ME&&["owner","manager","staff"].includes(ME.role);
@@ -304,6 +316,7 @@ function drawList(){
  const show=arr.slice(0,LIMIT), ownCol=TAB!=="mine";
  let body;
  if(!arr.length) body='<div class="empty">Không có lead phù hợp</div>';
+ else if(SHEET) body=sheetHtml(show,ownCol);
  else if(WIDE.matches) body='<table class="ltab"><thead><tr><th>Tên</th><th>Tỉnh</th><th>Nhóm khách</th><th>Giai đoạn</th><th>Ưu tiên</th><th>Liên hệ</th><th>Bước tiếp</th><th>Liên hệ gần nhất</th>'+(ownCol?'<th>Phụ trách</th>':'')+'</tr></thead><tbody>'
   +show.map(l=>{ const od=l.next_at&&l.next_at<td; return '<tr data-id="'+esc(l.id)+'"><td><a href="#lead/'+encodeURIComponent(l.id)+'">'+esc(l.name)+'</a>'+(l.contact_name?'<div class="sub">'+esc([l.contact_name,l.contact_title].filter(Boolean).join(", "))+'</div>':'')+'</td>'
    +'<td>'+esc(SC.provKey(l.province))+'</td><td>'+esc(l.segment||"")+'</td><td>'+esc(SC.lab(SC.STAGES,l.stage))+'</td>'
@@ -312,9 +325,43 @@ function drawList(){
    +'<td>'+csHtml(l)+'<div class="sub">'+(l.touch_count||0)+' lần · '+esc(SC.ago(l.last_touch_at,new Date(Date.now())))+'</div></td>'
    +(ownCol?'<td>'+(l.owner_id?esc(pname(l.owner_id)):'<span class="sub">Kho chung</span>')+'</td>':'')+'</tr>'; }).join("")+'</tbody></table>';
  else body=show.map(l=>rowHtml(l,ownCol)).join("");
- $("#list").innerHTML='<div class="sub" style="margin:0 2px 6px">'+arr.length+' lead'+(arr.length>LIMIT?', đang hiện '+LIMIT:'')+'</div>'+body+(arr.length>LIMIT?'<button class="btn full" id="bMore" style="margin-top:8px">Xem thêm</button>':'');
+ $("#list").innerHTML='<div class="vbar"><span class="sub">'+arr.length+' lead'+(arr.length>LIMIT?', đang hiện '+LIMIT:'')+(SHEET?' · sửa thẳng trên ô, tự lưu':'')+'</span><button class="btn" id="bSheet" type="button">'+(SHEET?'☰ Dạng danh sách':'▦ Dạng bảng Excel')+'</button></div>'+body+(arr.length>LIMIT?'<button class="btn full" id="bMore" style="margin-top:8px">Xem thêm</button>':'');
  $$(".ltab tbody tr").forEach(tr=>tr.onclick=e=>{ if(e.target.closest("a")) return; location.hash="#lead/"+encodeURIComponent(tr.dataset.id); });
  if($("#bMore")) $("#bMore").onclick=()=>{ LIMIT+=150; drawList(); };
+ $("#bSheet").onclick=()=>{ SHEET=!SHEET; try{ localStorage.setItem("sl_sheet",SHEET?"1":"0"); }catch(e){} drawList(); };
+ if(SHEET) bindSheet();
+}
+// ---------- Dạng bảng Excel: sửa trên ô, rời ô là lưu ----------
+const SHC=[["name","Tên khách",200],["contact_name","Người liên hệ",140],["contact_title","Chức vụ",110],["contact_phone","SĐT người liên hệ",130],["org_phone","SĐT đơn vị",130],["contact_zalo","Zalo",110],["contact_email","Email",170],
+ ["province","Tỉnh",110],["address","Địa chỉ",200],["segment","Nhóm khách",120],["crops","Cây trồng",120],["scale","Quy mô",100],
+ ["stage","Giai đoạn",150,"sel"],["priority","Ưu tiên",95,"sel"],["next_type","Bước tiếp",125,"sel"],["next_at","Ngày hẹn",135,"date"],["next_note","Ghi chú bước tiếp",200],["need_note","Nhu cầu",180]];
+const canEditL=l=>!!ME&&(l.owner_id===ME.id||isStaff());
+function sheetHtml(show,ownCol){
+ const sopt=(k,v)=>{ const A=k==="stage"?SC.STAGES:k==="priority"?SC.PRIOS:SC.NEXT, cur=k==="priority"?SC.prioOf({priority:v})||"":String(v==null?"":v);
+  return (k==="stage"?'':'<option value="">—</option>')+A.map(([a,t])=>'<option value="'+esc(a)+'"'+(String(a)===cur?" selected":"")+'>'+esc(t)+'</option>').join(""); };
+ return '<div class="shw"><table class="sht"><thead><tr>'+SHC.map(c=>'<th>'+c[1]+'</th>').join("")+(ownCol?'<th>Phụ trách</th>':'')+'</tr></thead><tbody>'
+  +show.map(l=>{ const ed=canEditL(l); return '<tr data-sid="'+esc(l.id)+'">'+SHC.map(([k,t,w,ty])=>{ const v=l[k]==null?"":l[k], st=' style="--w:'+w+'px"';
+   let c=!ed?'<div class="ro"'+st+'>'+esc(ty==="sel"?(k==="stage"?SC.lab(SC.STAGES,v):k==="priority"?SC.lab(SC.PRIOS,SC.prioOf(l)):SC.lab(SC.NEXT,v)):ty==="date"&&v?dmy(v):String(v))+'</div>'
+    :ty==="sel"?'<select class="cx" data-k="'+k+'"'+st+' aria-label="'+t+'">'+sopt(k,v)+'</select>'
+    :'<input class="cx" data-k="'+k+'"'+(ty==="date"?' type="date"':'')+(k==="contact_phone"||k==="contact_zalo"||k==="org_phone"?' inputmode="tel"':'')+st+' value="'+esc(String(v))+'" aria-label="'+t+'">';
+   if(k==="name") c='<div class="nm">'+c+'<a href="#lead/'+encodeURIComponent(l.id)+'" title="Mở lead" aria-label="Mở lead">›</a></div>';
+   return '<td>'+c+'</td>'; }).join("")+(ownCol?'<td><div class="ro">'+(l.owner_id?esc(pname(l.owner_id)):'Kho chung')+'</div></td>':'')+'</tr>'; }).join("")+'</tbody></table></div>';
+}
+function bindSheet(){
+ const save=async el=>{ const tr=el.closest("tr"), td=el.closest("td"), l=lead(tr.dataset.sid), k=el.dataset.k; if(!l) return;
+  let v=el.value.trim(); if(k==="stage") v=v===""?l.stage:+v; else v=v||null;
+  const old=k==="priority"?SC.prioOf(l)||null:(l[k]==null?null:l[k]); if(String(old==null?"":old)===String(v==null?"":v)) return;
+  if(k==="name"&&!v){ el.value=l.name; td.classList.add("err"); toast("Tên khách không được để trống"); return; }
+  const p={[k]:v}; if(l.stage===0&&["contact_phone","contact_zalo","org_phone","contact_email"].includes(k)&&v&&(k==="contact_email"||SC.normPhones(v).length)) p.stage=1;
+  td.classList.remove("ok","err"); td.classList.add("busy");
+  const {error}=await SB.from("sales_leads").update(p).eq("id",l.id); td.classList.remove("busy");
+  if(error){ td.classList.add("err"); toast("Chưa lưu được: "+(error.message||"lỗi mạng")); return; }
+  Object.assign(l,p); void td.offsetWidth; td.classList.add("ok");
+  if(p.stage!=null&&k!=="stage"){ const s2=tr.querySelector('[data-k="stage"]'); if(s2) s2.value=String(p.stage); } };
+ $$(".sht .cx").forEach(el=>{ el.onchange=()=>save(el);
+  el.onkeydown=e=>{ if(e.key==="Enter"||e.key==="ArrowDown"||e.key==="ArrowUp"){ if(el.tagName==="SELECT"&&e.key!=="Enter") return; e.preventDefault();
+   const tr=el.closest("tr"), nx=(e.key==="ArrowUp"?tr.previousElementSibling:tr.nextElementSibling); const t=nx&&nx.querySelector('[data-k="'+el.dataset.k+'"]'); if(t){ t.focus(); if(t.select) t.select(); } else el.blur(); }
+   if(e.key==="Escape"){ const l=lead(el.closest("tr").dataset.sid); if(l&&el.tagName==="INPUT") el.value=l[el.dataset.k]==null?"":l[el.dataset.k]; el.blur(); } }; });
 }
 WIDE.addEventListener?.("change",()=>{ if(ME&&(location.hash||"").replace(/^#/,"")==="lead") vList(); });
 
