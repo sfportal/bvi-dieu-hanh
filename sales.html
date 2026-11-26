@@ -39,6 +39,9 @@ h2.bad{color:var(--bad)}
 .sub{color:var(--muted);font-size:12.5px}
 .lrow{display:block;text-decoration:none;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;min-width:0}
 .lrow .nm{font-weight:600;overflow-wrap:anywhere}
+.lw{position:relative}.lw .lrow{padding-right:92px}.lw .ug{position:absolute;top:8px;right:8px}
+.ug{border:1px solid var(--bad);color:var(--bad);background:var(--surface);border-radius:999px;padding:4px 10px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap}
+.ug:hover{background:rgba(184,58,46,.08)}.ug.on{background:var(--bad);color:#fff;cursor:default}.ug:disabled:not(.on){opacity:.6}
 .lrow .mt{display:flex;flex-wrap:wrap;gap:4px 8px;margin-top:3px;color:var(--muted);font-size:12.5px}
 .pill{display:inline-block;border-radius:999px;padding:1px 8px;font-size:12px;background:var(--chip);color:var(--fg);white-space:nowrap}
 .pill.hot{background:var(--hot);color:#fff}.pill.warm{background:var(--warm);color:#fff}.pill.cold{background:var(--cold);color:#fff}
@@ -223,9 +226,24 @@ function rowHtml(l,showOwner){
  if(l.last_result) bits.push(csHtml(l));
  bits.push('<span>'+esc(SC.ago(l.last_touch_at,new Date(Date.now())))+'</span>');
  if(showOwner&&l.owner_id!==ME.id) bits.push('<span>'+(l.owner_id?esc(pname(l.owner_id)):"Kho chung")+'</span>');
- return '<a class="lrow" href="#lead/'+encodeURIComponent(l.id)+'"><div class="nm">'+esc(l.name)+'</div><div class="mt">'+bits.join("")+'</div><div class="mt">'+ciHtml(l)+(l.province||l.segment?'<span>'+esc([SC.provKey(l.province),l.segment].filter(Boolean).join(" · "))+'</span>':'')+'</div></a>';
+ const ug=ugHtml(l); return (ug?'<div class="lw">':'')+'<a class="lrow" href="#lead/'+encodeURIComponent(l.id)+'"><div class="nm">'+esc(l.name)+'</div><div class="mt">'+bits.join("")+'</div><div class="mt">'+ciHtml(l)+(l.province||l.segment?'<span>'+esc([SC.provKey(l.province),l.segment].filter(Boolean).join(" · "))+'</span>':'')+'</div></a>'+(ug?ug+'</div>':'');
 }
 function csHtml(l){ const k=SC.contactState(l); return '<span class="pill'+(k==='reached'||k==='none'?'':' cs-bad')+'">'+esc(SC.lab(SC.CONTACT_STATES,k))+'</span>'; }
+// Ưu tiên xử lý ngay: ưu tiên High + hạn gọi N ngày (owner đặt, mặc định 5); lead kho chung thì nhận luôn
+const isUrgent=l=>SC.prioOf(l)==="A"&&l.next_type==="call"&&!!l.next_at&&l.next_at>=tday();
+const canUrgent=l=>!!ME&&![6,7].includes(Number(l.stage))&&(l.owner_id===ME.id||(!l.owner_id&&isStaff()));
+function ugHtml(l){ if(isUrgent(l)) return '<button type="button" class="ug on" data-ug="'+esc(l.id)+'" disabled title="Đang ưu tiên xử lý ngay">⚡ Gọi trước '+dmy(l.next_at)+'</button>';
+ return canUrgent(l)?'<button type="button" class="ug" data-ug="'+esc(l.id)+'" title="Ưu tiên High, hẹn gọi trong '+SC.remindDays(REMIND,{kind:"urgent"})+' ngày">⚡ Xử lý ngay</button>':''; }
+async function pickUrgent(id,btn){
+ const l=lead(id); if(!l||!canUrgent(l)) return false; const n=SC.remindDays(REMIND,{kind:"urgent"})||5, due=SC.addDays(tday(),n), pool=!l.owner_id;
+ const p={priority:"A",next_type:"call",next_at:due,next_note:l.next_note||"Ưu tiên xử lý ngay"}; if(pool) p.owner_id=ME.id;
+ if(btn){ btn.disabled=true; btn.textContent="Đang lưu…"; }
+ let q=SB.from("sales_leads").update(p).eq("id",l.id); if(pool) q=q.is("owner_id",null);
+ const {error}=await q;
+ if(error){ if(btn){ btn.disabled=false; btn.textContent="⚡ Xử lý ngay"; } toast("Chưa lưu được, thử lại"); return false; }
+ Object.assign(l,p); SB.from("sales_acts").insert({lead_id:l.id,kind:"note",note:"Chọn ưu tiên xử lý ngay"+(pool?", nhận từ kho chung":"")+". Hạn gọi "+dmy(due)+"/"+due.slice(0,4)+"."}).then(()=>{},()=>{});
+ toast((pool?"Đã nhận lead. ":"")+"Hạn gọi "+dmy(due)); return true; }
+function bindUrgent(root,after){ (root||document).querySelectorAll(".ug[data-ug]:not(.on)").forEach(b=>b.onclick=async e=>{ e.preventDefault(); e.stopPropagation(); if(await pickUrgent(b.dataset.ug,b)) (after||drawList)(); }); }
 function prHtml(l,pre){ const k=SC.prioOf(l); return k?'<span class="pill '+SC.PRIO_CLS[k]+'">'+(pre||"")+esc(SC.lab(SC.PRIOS,k))+'</span>':''; }
 function ciHtml(l){ const c=SC.contactOf(l); return '<span class="ci">'+[["ph","SĐT"],["em","Email"],["ad","Địa chỉ"]].map(([k,t])=>'<i class="'+(c[k]?"":"no")+'" title="'+(c[k]?"Có ":"Chưa có ")+t.toLowerCase()+'">'+t+'</i>').join("")+'</span>';
 }
@@ -241,7 +259,7 @@ function vToday(){
   h+=(k==="overdue"?'<div class="tdg">':'')+'<section data-bk="'+k+'"><h2 class="'+c+'">'+t+' <span class="n">'+arr.length+'</span></h2>'+(arr.length?shown.map(l=>rowHtml(l)).join("")+(shown.length<arr.length?'<a class="sub more" href="#lead">Xem tất cả trong Lead</a>':''):'<div class="empty">Không có</div>')+'</section>'; });
  h+='</div>';
  if(!mine.length) h+='<div class="card" style="margin-top:12px">Bạn chưa có lead nào. '+(isStaff()?'Vào <a href="#lead">Lead › Kho chung</a> để nhận, hoặc ':'')+'<a href="#them">thêm lead mới</a>.</div>';
- $("#app").innerHTML=h; $("#bCheckToday").onclick=openPicker;
+ $("#app").innerHTML=h; $("#bCheckToday").onclick=openPicker; bindUrgent($("#app"),()=>route());
 }
 function openPicker(){
  const sheet=$("#sheet");
@@ -317,17 +335,18 @@ function drawList(){
  let body;
  if(!arr.length) body='<div class="empty">Không có lead phù hợp</div>';
  else if(SHEET) body=sheetHtml(show,ownCol);
- else if(WIDE.matches) body='<table class="ltab"><thead><tr><th>Tên</th><th>Tỉnh</th><th>Nhóm khách</th><th>Giai đoạn</th><th>Ưu tiên</th><th>Liên hệ</th><th>Bước tiếp</th><th>Liên hệ gần nhất</th>'+(ownCol?'<th>Phụ trách</th>':'')+'</tr></thead><tbody>'
+ else if(WIDE.matches) body='<table class="ltab"><thead><tr><th>Tên</th><th>Tỉnh</th><th>Nhóm khách</th><th>Giai đoạn</th><th>Ưu tiên</th><th>Liên hệ</th><th>Bước tiếp</th><th>Liên hệ gần nhất</th>'+(ownCol?'<th>Phụ trách</th>':'')+'<th></th></tr></thead><tbody>'
   +show.map(l=>{ const od=l.next_at&&l.next_at<td; return '<tr data-id="'+esc(l.id)+'"><td><a href="#lead/'+encodeURIComponent(l.id)+'">'+esc(l.name)+'</a>'+(l.contact_name?'<div class="sub">'+esc([l.contact_name,l.contact_title].filter(Boolean).join(", "))+'</div>':'')+'</td>'
    +'<td>'+esc(SC.provKey(l.province))+'</td><td>'+esc(l.segment||"")+'</td><td>'+esc(SC.lab(SC.STAGES,l.stage))+'</td>'
    +'<td>'+prHtml(l)+'</td>'
    +'<td>'+ciHtml(l)+'</td><td'+(od?' style="color:var(--bad);font-weight:600"':'')+'>'+(l.next_at?esc(SC.lab(SC.NEXT,l.next_type)||"Hẹn")+' '+dmy(l.next_at):l.next_type?esc(SC.lab(SC.NEXT,l.next_type))+'<div class="sub">chưa hẹn ngày</div>':'<span class="sub">Chưa hẹn</span>')+'</td>'
    +'<td>'+csHtml(l)+'<div class="sub">'+(l.touch_count||0)+' lần · '+esc(SC.ago(l.last_touch_at,new Date(Date.now())))+'</div></td>'
-   +(ownCol?'<td>'+(l.owner_id?esc(pname(l.owner_id)):'<span class="sub">Kho chung</span>')+'</td>':'')+'</tr>'; }).join("")+'</tbody></table>';
+   +(ownCol?'<td>'+(l.owner_id?esc(pname(l.owner_id)):'<span class="sub">Kho chung</span>')+'</td>':'')+'<td>'+ugHtml(l)+'</td></tr>'; }).join("")+'</tbody></table>';
  else body=show.map(l=>rowHtml(l,ownCol)).join("");
  $("#list").innerHTML='<div class="vbar"><span class="sub">'+arr.length+' lead'+(arr.length>LIMIT?', đang hiện '+LIMIT:'')+(SHEET?' · sửa thẳng trên ô, tự lưu':'')+'</span><button class="btn" id="bSheet" type="button">'+(SHEET?'☰ Dạng danh sách':'▦ Dạng bảng Excel')+'</button></div>'+body+(arr.length>LIMIT?'<button class="btn full" id="bMore" style="margin-top:8px">Xem thêm</button>':'');
  $$(".ltab tbody tr").forEach(tr=>tr.onclick=e=>{ if(e.target.closest("a")) return; location.hash="#lead/"+encodeURIComponent(tr.dataset.id); });
  if($("#bMore")) $("#bMore").onclick=()=>{ LIMIT+=150; drawList(); };
+ bindUrgent($("#list"));
  $("#bSheet").onclick=()=>{ SHEET=!SHEET; try{ localStorage.setItem("sl_sheet",SHEET?"1":"0"); }catch(e){} drawList(); };
  if(SHEET) bindSheet();
 }
@@ -380,6 +399,7 @@ async function vDetail(id){
   +'<div class="chips" style="gap:4px"><span class="pill">'+esc(SC.lab(SC.STAGES,l.stage))+'</span>'+prHtml(l,"Ưu tiên ")+(l.fit?'<span class="pill">Tiềm năng '+esc(SC.lab(SC.FITS,l.fit).toLowerCase())+'</span>':'')+csHtml(l)+'<span class="pill">'+l.touch_count+' lần chạm · '+esc(SC.ago(l.last_touch_at,new Date(Date.now())))+'</span></div>'
   +'<div class="acts">'+btn("bCall","✆","Gọi",p0?SC.telHref(p0):"")+btn("bZalo","💬","Zalo",p0?SC.zaloHref(p0):"",1)+btn("bMail","✉","Email",email?"mailto:"+email:"")+btn("bDir","➤","Chỉ đường",dir,1)+'</div>'
   +(!l.owner_id&&isStaff()?'<button class="btn full" id="bTake" style="margin-bottom:8px">Nhận lead này</button>':'')
+  +(ugHtml(l)?'<div style="margin-bottom:8px" id="ugBox">'+ugHtml(l)+'</div>':'')
   +'<div class="row2"><button class="btn pri" id="bLog" style="flex:1">Ghi tương tác</button><button class="btn" id="bCheck" style="flex:1">📷 Check-in</button></div>'
   +(ME.role!=="viewer"&&(mine||["owner","manager"].includes(ME.role))?'<a class="btn full" id="bQuote" href="bao-gia.html#moi/'+encodeURIComponent(l.id)+'" style="margin-top:8px;text-decoration:none;text-align:center">📄 Tạo báo giá, hợp đồng</a>':'')
   +(mine||(["owner","manager"].includes(ME.role)&&l.owner_id)?'<button class="btn full" id="bMove" style="margin-top:8px">↪ Chuyển lead cho người khác</button>':'')
@@ -393,6 +413,7 @@ async function vDetail(id){
  if(p0){ $("#bCall").addEventListener("click",()=>{ CALL={lead:l.id,ch:"call",left:null}; }); $("#bZalo").addEventListener("click",()=>{ CALL={lead:l.id,ch:"zalo",left:null}; }); }
  $$('[aria-disabled=true]').forEach(a=>a.addEventListener("click",e=>{ e.preventDefault(); toast(a.id==="bCall"||a.id==="bZalo"?"Lead chưa có số điện thoại":a.id==="bMail"?"Lead chưa có email":"Lead chưa có địa chỉ"); }));
  $("#bLog").onclick=()=>openSheet(l.id,p0?{}:{ch:"search"}); $("#bCheck").onclick=()=>openSheet(l.id,{ch:"meet",checkin:true});
+ if($("#ugBox")) bindUrgent($("#ugBox"),()=>route());
  if($("#bTake")) $("#bTake").onclick=async()=>{ const {error}=await SB.from("sales_leads").update({owner_id:ME.id}).eq("id",l.id).is("owner_id",null); if(error){ toast("Chưa nhận được, thử lại"); return; } await refreshLead(l.id); toast("Đã nhận lead"); route(); };
  if($("#bEdit")) $("#bEdit").onclick=()=>editForm(l);
  if($("#bMove")) $("#bMove").onclick=()=>openMove(l);

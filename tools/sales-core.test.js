@@ -190,4 +190,8 @@ assert.strictEqual(SC.srcMatch({}, ""), true);
   eq(SC.remindAt(null, { result: "refused" }, "2026-11-21"), null);
   eq(Object.keys(SC.REMIND_KEYS).includes("letter"), true);
 }
+// Ưu tiên xử lý ngay: hạn gọi mặc định 5 ngày, owner sửa được
+eq(SC.remindDays(null, { kind: "urgent" }), 5);
+eq(SC.remindDays({ urgent: 3 }, { kind: "urgent" }), 3);
+assert.ok(SC.REMIND_KEYS.urgent);
 console.log("OK");

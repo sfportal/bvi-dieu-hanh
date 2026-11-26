@@ -42,8 +42,8 @@
   function nextPreset(k, today) { return addDays(today, { "1d": 1, "3d": 3, "1w": 7 }[k] || 0); }
   // Nhắc gọi lại: số ngày theo kết quả tương tác hoặc loại văn bản đã gửi. Owner sửa trong sales_settings (key 'remind'); 0 = không nhắc.
   const REMIND_KEYS = { talked: "Đã nói chuyện", interested: "Quan tâm", later: "Hẹn lại", sent: "Đã gửi tài liệu", noans: "Không nghe máy", unreach: "Không liên hệ được",
-    quote: "Sau khi gửi báo giá", contract: "Sau khi gửi hợp đồng", letter: "Sau khi gửi văn bản cho xã", stage9: "Khách chưa có nhu cầu", nofind: "Chưa tìm được liên hệ", wrong: "Sai số, sai người" };
-  const REMIND_DEF = { talked: 5, interested: 5, later: 5, sent: 5, noans: 2, unreach: 3, nofind: 0, wrong: 0, refused: 0, quote: 5, contract: 5, letter: 5, stage9: 30 };
+    quote: "Sau khi gửi báo giá", contract: "Sau khi gửi hợp đồng", letter: "Sau khi gửi văn bản cho xã", urgent: "Ưu tiên xử lý ngay (hạn gọi)", stage9: "Khách chưa có nhu cầu", nofind: "Chưa tìm được liên hệ", wrong: "Sai số, sai người" };
+  const REMIND_DEF = { talked: 5, interested: 5, later: 5, sent: 5, noans: 2, unreach: 3, nofind: 0, wrong: 0, refused: 0, quote: 5, contract: 5, letter: 5, urgent: 5, stage9: 30 };
   function remindDays(rules, c) {
     c = c || {}; const st = c.stage == null ? null : Number(c.stage);
     if (c.result === "refused" || st === 7 || st === 6) return 0;
