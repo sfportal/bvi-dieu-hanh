@@ -115,7 +115,11 @@ textarea.in{min-height:64px;resize:vertical}
 .sht .cx:focus{background:rgba(31,91,60,.08);box-shadow:inset 0 0 0 2px var(--brand)}
 .sht td.ok{animation:okf 1.2s}.sht td.err{background:rgba(184,58,46,.12)}.sht td.busy .cx{opacity:.5}
 @keyframes okf{from{background:rgba(47,125,79,.25)}to{background:var(--surface)}}
-@media (max-width:600px){.sht td:first-child .cx{min-width:128px!important;width:128px}.sht{font-size:12.5px}}
+@media (max-width:600px){.sht{font-size:12.5px}}
+.sht .cx,.sht .ro{width:var(--w,120px);min-width:var(--w,120px);max-width:var(--w,120px);overflow:hidden;text-overflow:ellipsis}
+.rz{position:absolute;top:0;right:0;bottom:0;width:10px;cursor:col-resize;touch-action:none;z-index:5}.rz::after{content:"";position:absolute;top:6px;bottom:6px;right:0;width:2px;border-radius:2px;background:var(--line)}.rz:hover::after,.rz.on::after{background:var(--brand);top:0;bottom:0}
+.shrz{cursor:col-resize;user-select:none}
+.sht .lst{white-space:nowrap}
 .sht .ro{padding:7px 8px;white-space:nowrap;color:var(--muted)}.sht .nm{display:flex;align-items:center}.sht .nm a{padding:0 8px;text-decoration:none;font-size:15px}
 @media (min-width:900px){
  main{padding:18px}main.wide{max-width:1280px}.ov button{min-width:150px;padding:9px 12px}
@@ -343,7 +347,7 @@ function drawList(){
    +'<td>'+csHtml(l)+'<div class="sub">'+(l.touch_count||0)+' lần · '+esc(SC.ago(l.last_touch_at,new Date(Date.now())))+'</div></td>'
    +(ownCol?'<td>'+(l.owner_id?esc(pname(l.owner_id)):'<span class="sub">Kho chung</span>')+'</td>':'')+'<td>'+ugHtml(l)+'</td></tr>'; }).join("")+'</tbody></table>';
  else body=show.map(l=>rowHtml(l,ownCol)).join("");
- $("#list").innerHTML='<div class="vbar"><span class="sub">'+arr.length+' lead'+(arr.length>LIMIT?', đang hiện '+LIMIT:'')+(SHEET?' · sửa thẳng trên ô, tự lưu':'')+'</span><button class="btn" id="bSheet" type="button">'+(SHEET?'☰ Dạng danh sách':'▦ Dạng bảng Excel')+'</button></div>'+body+(arr.length>LIMIT?'<button class="btn full" id="bMore" style="margin-top:8px">Xem thêm</button>':'');
+ $("#list").innerHTML='<div class="vbar"><span class="sub">'+arr.length+' lead'+(arr.length>LIMIT?', đang hiện '+LIMIT:'')+(SHEET?' · sửa thẳng trên ô, tự lưu':'')+'</span><span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">'+(SHEET?'<button class="btn" id="bColRs" type="button"'+(Object.keys(SHW).length?'':' style="display:none"')+'>Đặt lại độ rộng cột</button>':'')+'<button class="btn" id="bSheet" type="button">'+(SHEET?'☰ Dạng danh sách':'▦ Dạng bảng Excel')+'</button></span></div>'+body+(arr.length>LIMIT?'<button class="btn full" id="bMore" style="margin-top:8px">Xem thêm</button>':'');
  $$(".ltab tbody tr").forEach(tr=>tr.onclick=e=>{ if(e.target.closest("a")) return; location.hash="#lead/"+encodeURIComponent(tr.dataset.id); });
  if($("#bMore")) $("#bMore").onclick=()=>{ LIMIT+=150; drawList(); };
  bindUrgent($("#list"));
@@ -351,22 +355,52 @@ function drawList(){
  if(SHEET) bindSheet();
 }
 // ---------- Dạng bảng Excel: sửa trên ô, rời ô là lưu ----------
-const SHC=[["name","Tên khách",200],["contact_name","Người liên hệ",140],["contact_title","Chức vụ",110],["contact_phone","SĐT người liên hệ",130],["org_phone","SĐT đơn vị",130],["contact_zalo","Zalo",110],["contact_email","Email",170],
- ["province","Tỉnh",110],["address","Địa chỉ",200],["segment","Nhóm khách",120],["crops","Cây trồng",120],["scale","Quy mô",100],
- ["stage","Giai đoạn",150,"sel"],["priority","Ưu tiên",95,"sel"],["next_type","Bước tiếp",125,"sel"],["next_at","Ngày hẹn",135,"date"],["next_note","Ghi chú bước tiếp",200],["need_note","Nhu cầu",180]];
+const SHC_ALL=[["name","Tên khách",200],["rep_name","Người đại diện",150,"","rep"],["rep_title","Chức vụ đại diện",120,"","rep"],["org_phone","SĐT đơn vị",130],
+ ["province","Tỉnh",110],["address","Địa chỉ",200],["segment","Nhóm khách",120],["crops","Cây trồng",120],["scale","Quy mô",100],["need_note","Nhu cầu",180],
+ ["stage","Giai đoạn",150,"sel"],["priority","Ưu tiên",95,"sel"],["owner","Phụ trách",120,"own","own"],["last","Đã làm gần nhất",240,"last"],["next_type","Bước tiếp",125,"sel"],["next_at","Ngày hẹn",135,"date"],["next_note","Ghi chú bước tiếp",200],
+ ["contact_name","Người liên hệ",140],["contact_title","Chức vụ",110],["contact_phone","SĐT người liên hệ",130],["contact_zalo","Zalo",110],["contact_email","Email",170]];
+let SHC=SHC_ALL, SHLAST={};
+const hasRep=()=>LEADS.some(l=>"rep_name" in l);
+const lastTxt=l=>{ const n=SHLAST[l.id]; return [l.last_touch_at?dmy(String(l.last_touch_at).slice(0,10)):"",l.last_result?SC.lab(SC.RESULTS,l.last_result):"",n&&n.note?String(n.note).replace(/\s+/g," "):""].filter(Boolean).join(" · ")||"Chưa liên hệ"; };
+let SHW=(()=>{ try{ return JSON.parse(localStorage.getItem("sl_colw")||"{}")||{}; }catch(e){ return {}; } })();
+const colW=(k,d)=>SHW[k]||(k==="name"&&!WIDE.matches?130:d);
+const setColW=(k,w)=>document.querySelectorAll('.sht [data-k="'+k+'"],.sht [data-rk="'+k+'"]').forEach(e=>e.style.setProperty("--w",w+"px"));
 const canEditL=l=>!!ME&&(l.owner_id===ME.id||isStaff());
 function sheetHtml(show,ownCol){
+ const rp=hasRep(); SHC=SHC_ALL.filter(c=>(c[4]!=="rep"||rp)&&(c[4]!=="own"||ownCol));
  const sopt=(k,v)=>{ const A=k==="stage"?SC.STAGES:k==="priority"?SC.PRIOS:SC.NEXT, cur=k==="priority"?SC.prioOf({priority:v})||"":String(v==null?"":v);
   return (k==="stage"?'':'<option value="">—</option>')+A.map(([a,t])=>'<option value="'+esc(a)+'"'+(String(a)===cur?" selected":"")+'>'+esc(t)+'</option>').join(""); };
- return '<div class="shw"><table class="sht"><thead><tr>'+SHC.map(c=>'<th>'+c[1]+'</th>').join("")+(ownCol?'<th>Phụ trách</th>':'')+'</tr></thead><tbody>'
-  +show.map(l=>{ const ed=canEditL(l); return '<tr data-sid="'+esc(l.id)+'">'+SHC.map(([k,t,w,ty])=>{ const v=l[k]==null?"":l[k], st=' style="--w:'+w+'px"';
-   let c=!ed?'<div class="ro"'+st+'>'+esc(ty==="sel"?(k==="stage"?SC.lab(SC.STAGES,v):k==="priority"?SC.lab(SC.PRIOS,SC.prioOf(l)):SC.lab(SC.NEXT,v)):ty==="date"&&v?dmy(v):String(v))+'</div>'
+ return '<div class="shw"><table class="sht"><thead><tr>'+SHC.map(c=>'<th title="Kéo mép phải để giãn cột, nhấp đúp để vừa nội dung">'+c[1]+'<span class="rz" data-rz="'+c[0]+'" role="separator" aria-label="Giãn cột '+c[1]+'"></span></th>').join("")+'</tr></thead><tbody>'
+  +show.map(l=>{ const ed=canEditL(l); return '<tr data-sid="'+esc(l.id)+'">'+SHC.map(([k,t,w,ty])=>{ const v=l[k]==null?"":l[k], st=' style="--w:'+colW(k,w)+'px"';
+   if(ty==="own") return '<td><div class="ro" data-rk="'+k+'"'+st+'>'+(l.owner_id?esc(pname(l.owner_id)):'Kho chung')+'</div></td>';
+   if(ty==="last"){ const t=lastTxt(l); return '<td><div class="ro lst" data-rk="'+k+'" data-last="'+esc(l.id)+'"'+st+' title="'+esc(t)+'">'+esc(t)+'</div></td>'; }
+   let c=!ed?'<div class="ro" data-rk="'+k+'"'+st+'>'+esc(ty==="sel"?(k==="stage"?SC.lab(SC.STAGES,v):k==="priority"?SC.lab(SC.PRIOS,SC.prioOf(l)):SC.lab(SC.NEXT,v)):ty==="date"&&v?dmy(v):String(v))+'</div>'
     :ty==="sel"?'<select class="cx" data-k="'+k+'"'+st+' aria-label="'+t+'">'+sopt(k,v)+'</select>'
     :'<input class="cx" data-k="'+k+'"'+(ty==="date"?' type="date"':'')+(k==="contact_phone"||k==="contact_zalo"||k==="org_phone"?' inputmode="tel"':'')+st+' value="'+esc(String(v))+'" aria-label="'+t+'">';
    if(k==="name") c='<div class="nm">'+c+'<a href="#lead/'+encodeURIComponent(l.id)+'" title="Mở lead" aria-label="Mở lead">›</a></div>';
-   return '<td>'+c+'</td>'; }).join("")+(ownCol?'<td><div class="ro">'+(l.owner_id?esc(pname(l.owner_id)):'Kho chung')+'</div></td>':'')+'</tr>'; }).join("")+'</tbody></table></div>';
+   return '<td>'+c+'</td>'; }).join("")+'</tr>'; }).join("")+'</tbody></table></div>';
+}
+async function loadLast(){
+ const ids=$$(".sht [data-last]").map(e=>e.dataset.last).filter(id=>!(id in SHLAST)); if(!ids.length) return;
+ for(let i=0;i<ids.length;i+=100){ const ch=ids.slice(i,i+100);
+  const {data,error}=await SB.from("sales_acts").select("lead_id,note,at").in("lead_id",ch).order("at",{ascending:false}).limit(3000); if(error) return;
+  ch.forEach(id=>{ SHLAST[id]=null; }); (data||[]).forEach(a=>{ if(a.note&&String(a.note).trim()&&!SHLAST[a.lead_id]) SHLAST[a.lead_id]=a; }); }
+ $$(".sht [data-last]").forEach(e=>{ const l=lead(e.dataset.last); if(l){ const t=lastTxt(l); e.textContent=t; e.title=t; } });
 }
 function bindSheet(){
+ loadLast();
+ const saveW=()=>{ try{ localStorage.setItem("sl_colw",JSON.stringify(SHW)); }catch(e){} };
+ $$(".sht .rz").forEach(h=>{ const k=h.dataset.rz, def=(SHC.find(c=>c[0]===k)||[])[2]||120;
+  h.onpointerdown=e=>{ e.preventDefault(); h.setPointerCapture&&h.setPointerCapture(e.pointerId); h.classList.add("on"); document.body.classList.add("shrz");
+   const x0=e.clientX, w0=colW(k,def); let w=w0, raf=0;
+   h.onpointermove=ev=>{ w=Math.max(60,Math.min(800,Math.round(w0+ev.clientX-x0))); if(!raf) raf=requestAnimationFrame(()=>{ raf=0; setColW(k,w); }); };
+   h.onpointerup=h.onpointercancel=()=>{ h.onpointermove=h.onpointerup=h.onpointercancel=null; h.classList.remove("on"); document.body.classList.remove("shrz"); setColW(k,w); if(w!==w0){ SHW[k]=w; saveW(); drawBar(); } }; };
+  h.ondblclick=e=>{ e.preventDefault(); const cv=document.createElement("canvas").getContext("2d"), any=document.querySelector('.sht [data-k="'+k+'"],.sht [data-rk="'+k+'"]'); if(!any) return;
+   cv.font=getComputedStyle(any).font; let m=cv.measureText(h.parentNode.textContent).width+10;
+   document.querySelectorAll('.sht [data-k="'+k+'"],.sht [data-rk="'+k+'"]').forEach(el=>{ const t=el.tagName==="SELECT"?(el.options[el.selectedIndex]||{}).text||"":el.tagName==="INPUT"?el.value:el.textContent; m=Math.max(m,cv.measureText(t).width+(el.tagName==="SELECT"?34:20)); });
+   const w=Math.max(60,Math.min(600,Math.ceil(m))); setColW(k,w); SHW[k]=w; saveW(); drawBar(); }; });
+ const drawBar=()=>{ const b=$("#bColRs"); if(b) b.style.display=Object.keys(SHW).length?"":"none"; };
+ if($("#bColRs")) $("#bColRs").onclick=()=>{ SHW={}; saveW(); drawList(); };
  const save=async el=>{ const tr=el.closest("tr"), td=el.closest("td"), l=lead(tr.dataset.sid), k=el.dataset.k; if(!l) return;
   let v=el.value.trim(); if(k==="stage") v=v===""?l.stage:+v; else v=v||null;
   const old=k==="priority"?SC.prioOf(l)||null:(l[k]==null?null:l[k]); if(String(old==null?"":old)===String(v==null?"":v)) return;
@@ -393,7 +427,7 @@ async function vDetail(id){
  const dir=l.lat!=null?"https://www.google.com/maps/dir/?api=1&destination="+l.lat+","+l.lng:(l.address?"https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(l.address+(l.province?", "+l.province:"")):"");
  const td=tday(), od=l.next_at&&l.next_at<td, mine=l.owner_id===ME.id;
  const btn=(idA,ic,t,href,ext)=>href?'<a class="btn" id="'+idA+'" href="'+esc(href)+'"'+(ext?' target="_blank" rel="noopener"':'')+'><span>'+ic+'</span>'+t+'</a>':'<a class="btn" id="'+idA+'" aria-disabled="true" role="link"><span>'+ic+'</span>'+t+'</a>';
- const kv=[["Người liên hệ",[l.contact_name,l.contact_title].filter(Boolean).join(", ")],["Số điện thoại",ph.join(", ")],["Email/Web",[l.contact_email,l.org_email_web].filter(Boolean).join(" · ")],["Loại hình",[l.segment,l.org_type].filter(Boolean).join(" · ")],["Cây trồng",l.crops],["Quy mô",l.scale],["Địa chỉ",[l.address,l.area,l.province].filter(Boolean).join(", ")],["MST",l.tax_id],["Dấu hiệu nhu cầu",l.need_signal],["Nên chào",l.offer],["Cách tiếp cận",l.approach],["Nhu cầu đã ghi",(l.needs||[]).map(k=>SC.lab(SC.NEEDS,k)).join(", ")+(l.need_note?" · "+l.need_note:"")],["Khách hiện có",l.is_customer],["Phụ trách",l.owner_id?pname(l.owner_id):"Kho chung"],["Nguồn",l.source]].filter(x=>x[1]);
+ const kv=[...(l.rep_name?[["Người đại diện",[l.rep_name,l.rep_title].filter(Boolean).join(", ")]]:[]),["Người liên hệ",[l.contact_name,l.contact_title].filter(Boolean).join(", ")],["Số điện thoại",ph.join(", ")],["Email/Web",[l.contact_email,l.org_email_web].filter(Boolean).join(" · ")],["Loại hình",[l.segment,l.org_type].filter(Boolean).join(" · ")],["Cây trồng",l.crops],["Quy mô",l.scale],["Địa chỉ",[l.address,l.area,l.province].filter(Boolean).join(", ")],["MST",l.tax_id],["Dấu hiệu nhu cầu",l.need_signal],["Nên chào",l.offer],["Cách tiếp cận",l.approach],["Nhu cầu đã ghi",(l.needs||[]).map(k=>SC.lab(SC.NEEDS,k)).join(", ")+(l.need_note?" · "+l.need_note:"")],["Khách hiện có",l.is_customer],["Phụ trách",l.owner_id?pname(l.owner_id):"Kho chung"],["Nguồn",l.source]].filter(x=>x[1]);
  $("#app").innerHTML='<a href="#lead" class="sub" style="text-decoration:none">‹ Danh sách</a>'
   +'<h1 style="font-size:19px;margin:6px 0 4px;overflow-wrap:anywhere">'+esc(l.name)+'</h1>'
   +'<div class="chips" style="gap:4px"><span class="pill">'+esc(SC.lab(SC.STAGES,l.stage))+'</span>'+prHtml(l,"Ưu tiên ")+(l.fit?'<span class="pill">Tiềm năng '+esc(SC.lab(SC.FITS,l.fit).toLowerCase())+'</span>':'')+csHtml(l)+'<span class="pill">'+l.touch_count+' lần chạm · '+esc(SC.ago(l.last_touch_at,new Date(Date.now())))+'</span></div>'
@@ -425,7 +459,7 @@ async function vDetail(id){
  drawTimeline(l);
 }
 function editForm(l){
- const T=[["name","Tên khách (tổ chức, hộ)"],["contact_name","Người liên hệ"],["contact_title","Chức vụ"],["contact_phone","Số điện thoại"],["contact_zalo","Zalo (nếu khác)"],["contact_email","Email"],["province","Tỉnh thành"],["address","Địa chỉ"],["segment","Nhóm khách"],["crops","Cây trồng"],["scale","Quy mô"]];
+ const T=[["name","Tên khách (tổ chức, hộ)"],...("rep_name" in l?[["rep_name","Người đại diện (có thể trùng người liên hệ)"],["rep_title","Chức vụ người đại diện"]]:[]),["contact_name","Người liên hệ"],["contact_title","Chức vụ"],["contact_phone","Số điện thoại"],["contact_zalo","Zalo (nếu khác)"],["contact_email","Email"],["province","Tỉnh thành"],["address","Địa chỉ"],["segment","Nhóm khách"],["crops","Cây trồng"],["scale","Quy mô"]];
  const sel=(id,arr,v,all)=>'<select class="in" id="'+id+'"><option value="">'+all+'</option>'+arr.map(([k,t])=>'<option value="'+esc(k)+'"'+(String(v||"")===String(k)?" selected":"")+'>'+esc(t)+'</option>').join("")+'</select>';
  $("#edit").innerHTML='<div style="margin-top:10px">'
   +T.map(([k,t])=>'<div class="f"><label for="e_'+k+'">'+t+'</label><input class="in" id="e_'+k+'" value="'+esc(l[k]||"")+'"></div>').join("")

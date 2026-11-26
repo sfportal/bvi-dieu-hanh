@@ -328,6 +328,8 @@ async function syncLead(d){
   const l=L.find(x=>x.id===d.lead_id)||{}, p={};
   [["contact_name","contact_name"],["contact_title","contact_title"],["contact_phone","contact_phone"],["email","contact_email"]].forEach(([a,b])=>{ const v=String(c[a]||"").trim(); if(v&&!String(l[b]||"").trim()) p[b]=v; });
   if(Object.keys(p).length){ const {error}=await SB.from("sales_leads").update(p).eq("id",d.lead_id); if(!error) Object.assign(l,p); }
+  const rn=String(c.rep||"").trim(), rt=String(c.rep_title||"").trim(); // người đại diện: chỉ điền khi lead chưa có
+  if(rn&&!/^\[/.test(rn)) try{ await SB.from("sales_leads").update(rt?{rep_name:rn,rep_title:rt}:{rep_name:rn}).eq("id",d.lead_id).is("rep_name",null); }catch(e){}
   const who=[c.contact_name,c.contact_title,ph].map(x=>String(x||"").trim()).filter(Boolean).join(", ");
   if(who||String(c.note||"").trim()) await SB.from("sales_acts").insert({lead_id:d.lead_id,kind:"note",note:"Gửi duyệt "+lab(QC.KINDS,d.kind).toLowerCase()+' "'+(d.title||"")+'"'+(who?". Đầu mối: "+who:"")+(String(c.note||"").trim()?". Ghi chú: "+String(c.note).trim():"")});
  }catch(e){}
